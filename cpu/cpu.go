@@ -137,10 +137,22 @@ func JMP_FAR_PTR16(core *CpuCore) {
 }
 
 func JMP_NEAR_REL16(core *CpuCore) {
-	destAddr := core.memoryAccessController.ReadNextWord().(uint16)
-	log.Printf("INSTR JMP NEAR REL 16 %016X", destAddr)
 
-	destAddr = core.registers.IP + destAddr
+	offset := core.memoryAccessController.ReadHalfWord().(uint8)
+
+	var destAddr uint16 = core.registers.IP
+	switch {
+	case offset > 0x0 && offset <= 0x7f:
+		// forward jump
+		destAddr = destAddr + uint16(offset)
+		break
+	case offset >= 0x80 && offset <= 0xFF:
+		// backward jump
+		destAddr = destAddr - uint16(offset)
+		break
+	}
+
+	log.Printf("INSTR JMP NEAR REL 16 %08X", offset)
 
 	core.memoryAccessController.SetIP(destAddr)
 }
