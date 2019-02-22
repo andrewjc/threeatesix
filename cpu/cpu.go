@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/andrewjc/threeatesix/common"
 	"log"
+	"strings"
 )
 
 func New80386CPU() CpuCore {
@@ -25,6 +26,10 @@ type CpuCore struct {
 	mode                   uint8
 }
 
+func (core *CpuCore) SetCS(addr uint16) {
+	core.registers.CS = addr
+}
+
 func (core *CpuCore) SetIP(addr uint16) {
 	core.registers.IP = addr
 }
@@ -42,7 +47,7 @@ func (core *CpuCore) IncrementIP() {
 }
 
 func (core *CpuCore) Step() {
-	instrByte := core.memoryAccessController.ReadHalfWord() //read 8 bit value
+	instrByte := core.memoryAccessController.GetNextInstruction() //read 8 bit value
 
 	instructionImpl := core.opCodeMap[instrByte.(uint8)]
 	if instructionImpl != nil {
@@ -50,7 +55,17 @@ func (core *CpuCore) Step() {
 	} else {
 		log.Printf("CPU CORE ERROR!!!")
 		core.dumpCoreInfo()
+
+		// Gather next few bytes for debugging...
+		peekBytes := core.memoryAccessController.PeekNextBytes(10)
+		stb := strings.Builder{}
+		for _, b := range peekBytes {
+			stb.WriteString(fmt.Sprintf("%#2x ", b))
+		}
+		log.Printf("Next 10 bytes at instruction pointer: " + stb.String())
+
 		log.Fatalf("CPU core failure. Unrecognised opcode: %#2x\n", instrByte)
+
 	}
 
 	fmt.Printf("CPU Stepped...\n")
@@ -111,6 +126,11 @@ func (core *CpuCore) dumpCoreInfo() {
 	}
 }
 
+// Gets the current code segment + IP addr in memory
+func (core *CpuCore) GetCurrentCodePointer() uint16 {
+	return core.registers.CS<<4 + core.registers.IP
+}
+
 /* CPU OPCODE IMPLEMENTATIONS */
 
 func mapOpCodes(c *CpuCore) {
@@ -118,66 +138,39 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xEA] = JMP_FAR_PTR16
 	c.opCodeMap[0xE9] = JMP_NEAR_REL16
 
-	c.opCodeMap[0x30] = XOR_rm8_r8
-
-	// 0x40…0x47, 0xFE/0, 0xFF/0
-	for i := 61; i <= 68; i++ {
-		c.opCodeMap[uint8(i)] = INC_WD_REG
-	}
-
 }
 
 type OpCodeImpl func(*CpuCore)
 
 func JMP_FAR_PTR16(core *CpuCore) {
-	destAddr := core.memoryAccessController.ReadNextWord().(uint16)
-	log.Printf("INSTR JMP FAR PTR %016X", destAddr)
+	destAddr := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
+	segment := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 3)
 
+	log.Printf("INSTR DECODE: JMP FAR PTR %016X:%016X", segment, destAddr)
+
+	core.memoryAccessController.SetCS(segment)
 	core.memoryAccessController.SetIP(destAddr)
 }
 
 func JMP_NEAR_REL16(core *CpuCore) {
 
-	offset := core.memoryAccessController.ReadHalfWord().(uint8)
+	tmp := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
 
+	log.Printf(fmt.Sprintf("Test: %b %08X   lastbit: %b", tmp, tmp, tmp>>15))
+
+	var offset uint16
+	offset = tmp
 	var destAddr uint16 = core.registers.IP
-	switch {
-	case offset > 0x0 && offset <= 0x7f:
-		// forward jump
+	if (tmp>>15)&1 == 1 {
+		offset = tmp << 1 >> 1
+		log.Printf(fmt.Sprintf("Test: %b", offset))
 		destAddr = destAddr + uint16(offset)
-		break
-	case offset >= 0x80 && offset <= 0xFF:
-		// backward jump
+
+	} else {
 		destAddr = destAddr - uint16(offset)
-		break
 	}
 
 	log.Printf("INSTR JMP NEAR REL 16 %08X", offset)
 
 	core.memoryAccessController.SetIP(destAddr)
-}
-
-func XOR_rm8_r8(core *CpuCore) {
-	// https://c9x.me/x86/html/file_module_x86_id_330.html
-	// Destination = Destination ^ Source;
-
-	destAddr := core.memoryAccessController.ReadNextWord()
-	srcAddr := core.memoryAccessController.ReadNextWord()
-
-	destVal := core.memoryAccessController.ReadAddr(destAddr.(uint16))
-	srcVal := core.memoryAccessController.ReadAddr(srcAddr.(uint16))
-
-	destVal = destVal ^ srcVal
-
-	core.memoryAccessController.WriteAddr(destAddr.(uint16), destVal)
-}
-
-func INC_WD_REG(core *CpuCore) {
-	// https://c9x.me/x86/html/file_module_x86_id_140.html
-
-	// Destination = Destination + 1;
-
-	destAddr := core.memoryAccessController.ReadNextWord()
-
-	log.Printf("REG: %#2x", destAddr)
 }

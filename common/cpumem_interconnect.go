@@ -1,5 +1,7 @@
 package common
 
+import "log"
+
 /*
 	Memory interconnect - provides memory access between cpu and ram
 */
@@ -28,26 +30,27 @@ type CpuRegisterController interface {
 	GetCS() uint16
 	IncrementIP()
 	SetIP(addr uint16)
+	SetCS(addr uint16)
 }
 
 func (mem *MemoryAccessController) SetCpuRegisterController(controller CpuRegisterController) {
 	mem.cpuRegisterController = controller
 }
 
-func (mem *MemoryAccessController) ReadHalfWord() interface{} {
-	return mem.memoryAccessProvider.ReadByteCode()
+func (mem *MemoryAccessController) GetNextInstruction() interface{} {
+	return mem.memoryAccessProvider.ReadNextInstruction()
 }
 
-func (mem *MemoryAccessController) ReadNextWord() interface{} {
-	return mem.memoryAccessProvider.ReadNextWordCode()
+func (mem *MemoryAccessController) ReadAddr8(address uint16) uint8 {
+	return mem.memoryAccessProvider.ReadAddr8(address)
 }
 
-func (mem *MemoryAccessController) ReadNextDWord() interface{} {
-	return mem.memoryAccessProvider.ReadNextDWordCode()
+func (mem *MemoryAccessController) ReadAddr16(address uint16) uint16 {
+	return mem.memoryAccessProvider.ReadAddr16(address)
 }
 
-func (mem *MemoryAccessController) ReadAddr(address uint16) uint8 {
-	return (*mem.backingRam)[address]
+func (mem *MemoryAccessController) ReadAddr32(address uint16) uint32 {
+	return mem.memoryAccessProvider.ReadAddr32(address)
 }
 
 func (mem *MemoryAccessController) WriteAddr(address uint16, value uint8) {
@@ -60,49 +63,67 @@ func (mem *MemoryAccessController) LockBootVector() {
 
 type MemoryAccessProvider interface {
 
-	// Access functions for reading instructions from code segment
-	ReadByteCode() interface{}
-	ReadNextWordCode() interface{}
-	ReadNextDWordCode() interface{}
+	// Read the next instruction at CS:IP
+	ReadNextInstruction() interface{}
+
+	ReadAddr8(u uint16) uint8
+	ReadAddr16(u uint16) uint16
+	ReadAddr32(u uint16) uint32
 }
 
 type RealModeAccessProvider struct {
 	*MemoryAccessController
 }
 
-func (r *RealModeAccessProvider) ReadByteCode() interface{} {
+func (r *RealModeAccessProvider) ReadAddr8(addr uint16) uint8 {
+
+	var byteData uint8
+	if r.resetVectorBaseAddr > 0 {
+		byteData = (*r.biosImage)[addr]
+	} else {
+		byteData = (*r.backingRam)[addr]
+	}
+
+	return byteData
+}
+
+func (r *RealModeAccessProvider) ReadAddr16(addr uint16) uint16 {
+
+	b1 := uint16(r.ReadAddr8(addr))
+	b2 := uint16(r.ReadAddr8(addr + 1))
+	return b2<<8 | b1
+
+}
+
+func (r *RealModeAccessProvider) ReadAddr32(addr uint16) uint32 {
+
+	b1 := uint32(r.ReadAddr16(addr))
+	b2 := uint32(r.ReadAddr16(addr + 1))
+	return b2<<16 | b1
+
+}
+
+func (r *RealModeAccessProvider) ReadNextInstruction() interface{} {
 
 	ip := (r.cpuRegisterController).GetIP()
 	cs := r.cpuRegisterController.GetCS()
 
 	addr := uint32(uint32(cs)<<4 + uint32(ip))
 
-	// simulate memory mapped address space
-
 	// bios address space
-	var byteData byte
+	var byteData uint8
 	if r.resetVectorBaseAddr > 0 {
 		addr = uint32(ip)
 		byteData = (*r.biosImage)[addr]
+
+		log.Printf("Reading instruction at %#16x (bios map space): %#2x\n", addr, byteData)
+
 	} else {
 		byteData = (*r.backingRam)[addr]
+		log.Printf("Reading instruction at %#16x (ram map space): %#2x\n", addr, byteData)
 	}
 
-	(r.cpuRegisterController).IncrementIP()
-
 	return byteData
-}
-
-func (r *RealModeAccessProvider) ReadNextWordCode() interface{} {
-	b1 := uint16(r.ReadHalfWord().(uint8))
-	b2 := uint16(r.ReadHalfWord().(uint8))
-	return b2<<8 | b1
-}
-
-func (r *RealModeAccessProvider) ReadNextDWordCode() interface{} {
-	b1 := uint32(r.ReadNextWord().(uint16))
-	b2 := uint32(r.ReadNextWord().(uint16))
-	return b2<<16 | b1
 }
 
 func (mem *MemoryAccessController) EnterMode(mode uint8) {
@@ -114,6 +135,31 @@ func (mem *MemoryAccessController) EnterMode(mode uint8) {
 
 func (mem *MemoryAccessController) SetIP(addr uint16) {
 	mem.cpuRegisterController.SetIP(addr)
+}
+
+func (mem *MemoryAccessController) SetCS(addr uint16) {
+	mem.cpuRegisterController.SetCS(addr)
+}
+
+func (mem *MemoryAccessController) PeekNextBytes(numBytes int) []byte {
+
+	buffer := make([]byte, numBytes)
+
+	for i := 0; i < numBytes; i++ {
+
+		ip := (mem.cpuRegisterController).GetIP() + uint16(i)
+		cs := mem.cpuRegisterController.GetCS()
+		addr := uint32(uint32(cs)<<4 + uint32(ip))
+
+		if mem.resetVectorBaseAddr > 0 {
+			addr = uint32(ip)
+			buffer[i] = (*mem.biosImage)[addr]
+		} else {
+			buffer[i] = (*mem.backingRam)[addr]
+		}
+	}
+
+	return buffer
 }
 
 func CreateCpuMemoryInterconnect(ram *[]byte, bios *[]byte) *MemoryAccessController {
