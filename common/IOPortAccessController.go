@@ -16,6 +16,10 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 	return byteData
 }
 
+func (r *IOPortAccessController) WriteAddr8(addr uint16, value uint8) {
+	r.backingMemory[addr] = value
+}
+
 func CreateIOPortController() *IOPortAccessController{
 	return &IOPortAccessController{backingMemory:make([]byte, 0x10000)}
 }

@@ -108,29 +108,27 @@ type CpuRegisters struct {
 
 	// accumulator registers
 	// used for I/O port access, arithmetic, interrupt calls
-	AH  uint8
-	AL  uint8
-	AX  uint8
+	AH uint8
+	AL uint8
+	AX uint8
 
 	// base registers
 	// used as a base pointer for memory access
-	BX  uint8
-	BH  uint8
-	BL  uint8
+	BX uint8
+	BH uint8
+	BL uint8
 
 	// counter registers
 	// used as loop counter and for shifts
-	CX  uint8
-	CH  uint8
-	CL  uint8
+	CX uint8
+	CH uint8
+	CL uint8
 
 	// data registers
 	// used for I/O port access, arithmetic, interrupt calls
-	DX  uint8
-	DH  uint8
-	DL  uint8
-
-
+	DX uint8
+	DH uint8
+	DL uint8
 
 	// Flags
 	DF uint16 // direction flag
@@ -183,7 +181,11 @@ func (core *CpuCore) GetCurrentCodePointer() uint16 {
 func mapOpCodes(c *CpuCore) {
 
 	c.opCodeMap[0xEA] = INSTR_JMP_FAR_PTR16
+
 	c.opCodeMap[0xE9] = INSTR_JMP_NEAR_REL16
+
+	c.opCodeMap[0xE3] = INSTR_JCXZ_SHORT_REL8
+	c.opCodeMap[0x75] = INSTR_JNZ_SHORT_REL8
 
 	c.opCodeMap[0xFA] = INSTR_CLI
 	c.opCodeMap[0xFC] = INSTR_CLD
@@ -193,6 +195,16 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xEC] = INSTR_IN //imm to AX
 	c.opCodeMap[0xED] = INSTR_IN //DX to AX
 
+	c.opCodeMap[0xE6] = INSTR_OUT //AL to imm
+	c.opCodeMap[0xE7] = INSTR_OUT //AX to imm
+	c.opCodeMap[0xEE] = INSTR_OUT //AL to DX
+	c.opCodeMap[0xEF] = INSTR_OUT //AX to DX
+
+	c.opCodeMap[0xA8] = INSTR_TEST_AL
+
+	c.opCodeMap[0xB0] = INSTR_MOV
+	c.opCodeMap[0xB4] = INSTR_MOV
+
 }
 
 type OpCodeImpl func(*CpuCore)
@@ -201,14 +213,75 @@ func INSTR_CLI(core *CpuCore) {
 	// Clear interrupts
 	log.Printf("TODO: Write CLI (Clear interrupts implementation!")
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP()+1))
+	core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
 }
 
 func INSTR_CLD(core *CpuCore) {
 	// Clear direction flag
 	core.registers.DF = 0
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP()+1))
+	core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
+}
+
+func INSTR_TEST_AL(core *CpuCore) {
+
+	val := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
+
+	val2 := core.registers.AL
+
+	tmp := val & val2
+	core.registers.SF = uint16(getMSB(tmp))
+
+	if tmp == 0 {
+		core.registers.ZF = 1
+	} else {
+		core.registers.ZF = 0
+	}
+
+	core.registers.PF = 1
+	for i := uint8(0); i < 8; i++ {
+		core.registers.PF ^= uint16(getBitValue(tmp, i))
+	}
+
+	core.registers.CF = 0
+	core.registers.OF = 0
+
+	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+}
+
+func INSTR_MOV(core *CpuCore) {
+
+	switch {
+	case 0xB0 == core.currentByteAtCodePointer:
+		{
+			val := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
+			core.registers.AL = val
+		}
+	case 0xB4 == core.currentByteAtCodePointer:
+		{
+			val := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
+			core.registers.AH = val
+		}
+	case 0x8B == core.currentByteAtCodePointer:
+		{
+			// rmbyte decode:
+			rm := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
+
+			log.Fatalf("Please implement mov r16, r/m16")
+		}
+	default:
+		log.Fatal("Unrecognised MOV instruction!")
+	}
+
+	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+}
+
+func getMSB(value uint8) uint8 {
+	return (value >> 8) & 1
+}
+
+func getBitValue(value uint8, place uint8) uint8 {
+	return (value >> place) & 1
 }
 
 func INSTR_IN(core *CpuCore) {
@@ -262,9 +335,53 @@ func INSTR_IN(core *CpuCore) {
 		log.Fatal("Unrecognised IN (port read) instruction!")
 	}
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP()+2))
+	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 }
 
+func INSTR_OUT(core *CpuCore) {
+	// Read from port
+
+	switch {
+	case 0xE6 == core.currentByteAtCodePointer:
+		{
+			// Write value in AL to port addr imm8
+			imm := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
+
+			core.ioPortAccessController.WriteAddr8(uint16(imm), core.registers.AL)
+
+			log.Printf("Port out addr: AL to io port imm addr %04X (data = %04X)", imm, core.registers.AL)
+		}
+	case 0xE5 == core.currentByteAtCodePointer:
+		{
+			// Write value in AX to port addr imm8
+			imm := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
+
+			core.ioPortAccessController.WriteAddr8(uint16(imm), core.registers.AX)
+
+			log.Printf("Port out addr: AX to io port imm addr %04X (data = %04X)", imm, core.registers.AX)
+		}
+	case 0xEE == core.currentByteAtCodePointer:
+		{
+			// Use value of DX as io port addr, and write value in AL
+
+			core.ioPortAccessController.WriteAddr8(uint16(core.registers.DX), core.registers.AL)
+
+			log.Printf("Port out addr: DX addr to io port imm addr %04X (data = %04X)", core.registers.DX, core.registers.AL)
+		}
+	case 0xEF == core.currentByteAtCodePointer:
+		{
+			// Use value of DX as io port addr, and write value in AX
+
+			core.ioPortAccessController.WriteAddr8(uint16(core.registers.DX), core.registers.AX)
+
+			log.Printf("Port out addr: DX addr to io port imm addr %04X (data = %04X)", core.registers.DX, core.registers.AX)
+		}
+	default:
+		log.Fatal("Unrecognised IN (port read) instruction!")
+	}
+
+	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+}
 
 func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 	destAddr := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
@@ -282,5 +399,37 @@ func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
 	destAddr = destAddr + int16(offset)
 
-	core.memoryAccessController.SetIP(uint16(destAddr)+3)
+	core.memoryAccessController.SetIP(uint16(destAddr) + 3)
+}
+
+func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
+
+	offset := int16(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
+
+	var destAddr = int16(core.registers.IP)
+
+	destAddr = destAddr + int16(offset)
+
+	if core.registers.ZF == 1 {
+		core.memoryAccessController.SetIP(uint16(destAddr) + 2)
+	} else {
+		core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
+	}
+
+}
+
+func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
+
+	offset := int16(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
+
+	var destAddr = int16(core.registers.IP)
+
+	destAddr = destAddr + int16(offset)
+
+	if core.registers.CX == 0 {
+		core.memoryAccessController.SetIP(uint16(destAddr) + 2)
+	} else {
+		core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
+	}
+
 }
