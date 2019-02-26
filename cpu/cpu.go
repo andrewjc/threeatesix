@@ -21,9 +21,13 @@ func New80386CPU() CpuCore {
 
 type CpuCore struct {
 	memoryAccessController *common.MemoryAccessController
+	ioPortAccessController *common.IOPortAccessController
 	registers              *CpuRegisters
 	opCodeMap              []OpCodeImpl
 	mode                   uint8
+
+	lastExecutedInstructionPointer uint16
+	currentByteAtCodePointer       byte
 }
 
 func (core *CpuCore) SetCS(addr uint16) {
@@ -47,9 +51,15 @@ func (core *CpuCore) IncrementIP() {
 }
 
 func (core *CpuCore) Step() {
-	instrByte := core.memoryAccessController.GetNextInstruction() //read 8 bit value
+	curCodePointer := core.GetCurrentCodePointer()
+	if curCodePointer == core.lastExecutedInstructionPointer {
+		log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
+	}
 
-	instructionImpl := core.opCodeMap[instrByte.(uint8)]
+	instrByte := core.memoryAccessController.GetNextInstruction() //read 8 bit value
+	core.currentByteAtCodePointer = instrByte.(uint8)
+
+	instructionImpl := core.opCodeMap[core.currentByteAtCodePointer]
 	if instructionImpl != nil {
 		instructionImpl(core)
 	} else {
@@ -69,14 +79,17 @@ func (core *CpuCore) Step() {
 	}
 
 	fmt.Printf("CPU Stepped...\n")
+	core.lastExecutedInstructionPointer = curCodePointer
+
 }
 
-func (core *CpuCore) Init(memController *common.MemoryAccessController) {
+func (core *CpuCore) Init(memController *common.MemoryAccessController, ioPortController *common.IOPortAccessController) {
 	core.memoryAccessController = memController
 
 	core.EnterMode(common.REAL_MODE)
 
 	core.memoryAccessController.SetCpuRegisterController(core)
+	core.ioPortAccessController = ioPortController
 
 	core.Reset()
 }
@@ -88,11 +101,45 @@ func (core *CpuCore) Reset() {
 }
 
 type CpuRegisters struct {
-
 	// 16bit registers (real mode)
 	CS uint16 // code segment
 	DS uint16 // data segment
 	IP uint16 // instruction pointer
+
+	// accumulator registers
+	// used for I/O port access, arithmetic, interrupt calls
+	AH  uint8
+	AL  uint8
+	AX  uint8
+
+	// base registers
+	// used as a base pointer for memory access
+	BX  uint8
+	BH  uint8
+	BL  uint8
+
+	// counter registers
+	// used as loop counter and for shifts
+	CX  uint8
+	CH  uint8
+	CL  uint8
+
+	// data registers
+	// used for I/O port access, arithmetic, interrupt calls
+	DX  uint8
+	DH  uint8
+	DL  uint8
+
+
+
+	// Flags
+	DF uint16 // direction flag
+	CF uint16
+	OF uint16
+	ZF uint16
+	SF uint16
+	AF uint16
+	PF uint16
 
 	// 32bit registers (protected mode)
 	EIP uint32
@@ -135,42 +182,105 @@ func (core *CpuCore) GetCurrentCodePointer() uint16 {
 
 func mapOpCodes(c *CpuCore) {
 
-	c.opCodeMap[0xEA] = JMP_FAR_PTR16
-	c.opCodeMap[0xE9] = JMP_NEAR_REL16
+	c.opCodeMap[0xEA] = INSTR_JMP_FAR_PTR16
+	c.opCodeMap[0xE9] = INSTR_JMP_NEAR_REL16
+
+	c.opCodeMap[0xFA] = INSTR_CLI
+	c.opCodeMap[0xFC] = INSTR_CLD
+
+	c.opCodeMap[0xE4] = INSTR_IN //imm to AL
+	c.opCodeMap[0xE5] = INSTR_IN //DX to AL
+	c.opCodeMap[0xEC] = INSTR_IN //imm to AX
+	c.opCodeMap[0xED] = INSTR_IN //DX to AX
 
 }
 
 type OpCodeImpl func(*CpuCore)
 
-func JMP_FAR_PTR16(core *CpuCore) {
+func INSTR_CLI(core *CpuCore) {
+	// Clear interrupts
+	log.Printf("TODO: Write CLI (Clear interrupts implementation!")
+
+	core.memoryAccessController.SetIP(uint16(core.GetIP()+1))
+}
+
+func INSTR_CLD(core *CpuCore) {
+	// Clear direction flag
+	core.registers.DF = 0
+
+	core.memoryAccessController.SetIP(uint16(core.GetIP()+1))
+}
+
+func INSTR_IN(core *CpuCore) {
+	// Read from port
+
+	switch {
+	case 0xE4 == core.currentByteAtCodePointer:
+		{
+			// Read from port (imm) to AL
+			imm := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
+
+			data := core.ioPortAccessController.ReadAddr8(imm)
+
+			core.registers.AL = data
+			log.Printf("Port IN addr: imm addr %04X to AL (data = %04X)", imm, data)
+		}
+	case 0xE5 == core.currentByteAtCodePointer:
+		{
+			// Read from port (DX) to AL
+
+			dx := core.registers.DX
+
+			data := core.ioPortAccessController.ReadAddr8(uint16(dx))
+
+			core.registers.AL = data
+			log.Printf("Port IN addr: DX VAL %04X to AL (data = %04X)", dx, data)
+		}
+	case 0xEC == core.currentByteAtCodePointer:
+		{
+			// Read from port (imm) to AX
+
+			imm := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
+
+			data := core.ioPortAccessController.ReadAddr8(imm)
+
+			core.registers.AX = data
+			log.Printf("Port IN addr: imm addr %04X to AX (data = %04X)", imm, data)
+		}
+	case 0xED == core.currentByteAtCodePointer:
+		{
+			// Read from port (DX) to AX
+
+			dx := core.registers.DX
+
+			data := core.ioPortAccessController.ReadAddr8(uint16(dx))
+
+			core.registers.AX = data
+			log.Printf("Port IN addr: DX VAL %04X to AX (data = %04X)", dx, data)
+		}
+	default:
+		log.Fatal("Unrecognised IN (port read) instruction!")
+	}
+
+	core.memoryAccessController.SetIP(uint16(core.GetIP()+2))
+}
+
+
+func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 	destAddr := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
 	segment := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 3)
-
-	log.Printf("INSTR DECODE: JMP FAR PTR %016X:%016X", segment, destAddr)
 
 	core.memoryAccessController.SetCS(segment)
 	core.memoryAccessController.SetIP(destAddr)
 }
 
-func JMP_NEAR_REL16(core *CpuCore) {
+func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
-	tmp := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
+	offset := int16(core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1))
 
-	log.Printf(fmt.Sprintf("Test: %b %08X   lastbit: %b", tmp, tmp, tmp>>15))
+	var destAddr = int16(core.registers.IP)
 
-	var offset uint16
-	offset = tmp
-	var destAddr uint16 = core.registers.IP
-	if (tmp>>15)&1 == 1 {
-		offset = tmp << 1 >> 1
-		log.Printf(fmt.Sprintf("Test: %b", offset))
-		destAddr = destAddr + uint16(offset)
+	destAddr = destAddr + int16(offset)
 
-	} else {
-		destAddr = destAddr - uint16(offset)
-	}
-
-	log.Printf("INSTR JMP NEAR REL 16 %08X", offset)
-
-	core.memoryAccessController.SetIP(destAddr)
+	core.memoryAccessController.SetIP(uint16(destAddr)+3)
 }

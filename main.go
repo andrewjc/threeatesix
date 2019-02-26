@@ -37,11 +37,13 @@ const MAX_RAM_BYTES = 0x1E84800 //32 million (32mb)
 func (computer *PersonalComputer) power() {
 	// do stuff
 
-	memInterconnect := common.CreateCpuMemoryInterconnect(&computer.ram, &computer.rom.bios)
+	memController := common.CreateMemoryController(&computer.ram, &computer.rom.bios)
+
+	ioPortController := common.CreateIOPortController()
 
 	computer.loadBios()
 
-	computer.cpu.Init(memInterconnect)
+	computer.cpu.Init(memController, ioPortController)
 
 	for {
 		// stuff
