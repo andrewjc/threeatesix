@@ -23,9 +23,6 @@ type MemoryAccessController struct {
 }
 
 type CpuRegisterController interface {
-	GetEIP() uint32
-	IncrementEIP()
-
 	GetIP() uint16
 	GetCS() uint16
 	IncrementIP()

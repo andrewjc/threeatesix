@@ -12,6 +12,31 @@ func New80386CPU() CpuCore {
 	cpuCore := CpuCore{}
 	cpuCore.registers = &CpuRegisters{}
 
+	// index of 8 bit registers
+	cpuCore.registers.registers8Bit = []*uint8 {
+		&cpuCore.registers.AL,
+		&cpuCore.registers.CL,
+		&cpuCore.registers.DL,
+		&cpuCore.registers.BL,
+		&cpuCore.registers.AH,
+		&cpuCore.registers.CH,
+		&cpuCore.registers.DH,
+		&cpuCore.registers.BH,
+	}
+
+	// index of 16 bit registers
+	cpuCore.registers.registers16Bit = []*uint16 {
+		&cpuCore.registers.AX,
+		&cpuCore.registers.CX,
+		&cpuCore.registers.DX,
+		&cpuCore.registers.BX,
+		&cpuCore.registers.SP,
+		&cpuCore.registers.BP,
+		&cpuCore.registers.SI,
+		&cpuCore.registers.DI,
+
+	}
+
 	cpuCore.opCodeMap = make([]OpCodeImpl, 256)
 
 	mapOpCodes(&cpuCore)
@@ -101,32 +126,40 @@ func (core *CpuCore) Reset() {
 }
 
 type CpuRegisters struct {
+	registers8Bit  []*uint8
+	registers16Bit []*uint16
+	registers32Bit []*uint32
+
 	// 16bit registers (real mode)
 	CS uint16 // code segment
 	DS uint16 // data segment
 	IP uint16 // instruction pointer
+	SP uint16
+	BP uint16
+	SI uint16
+	DI uint16
 
 	// accumulator registers
 	// used for I/O port access, arithmetic, interrupt calls
 	AH uint8
 	AL uint8
-	AX uint8
+	AX uint16
 
 	// base registers
 	// used as a base pointer for memory access
-	BX uint8
+	BX uint16
 	BH uint8
 	BL uint8
 
 	// counter registers
 	// used as loop counter and for shifts
-	CX uint8
+	CX uint16
 	CH uint8
 	CL uint8
 
 	// data registers
 	// used for I/O port access, arithmetic, interrupt calls
-	DX uint8
+	DX uint16
 	DH uint8
 	DL uint8
 
@@ -139,25 +172,8 @@ type CpuRegisters struct {
 	AF uint16
 	PF uint16
 
-	// 32bit registers (protected mode)
-	EIP uint32
-	EAX uint32
-	ECX uint32
-	EDX uint32
-	EBX uint32
-	ESP uint32
-	EBP uint32
-	ESI uint32
-	EDI uint32
 }
 
-func (core *CpuCore) IncrementEIP() {
-	core.registers.EIP++
-}
-
-func (core *CpuCore) GetEIP() uint32 {
-	return core.registers.EIP
-}
 
 func (core *CpuCore) EnterMode(mode uint8) {
 	core.mode = mode
@@ -204,6 +220,7 @@ func mapOpCodes(c *CpuCore) {
 
 	c.opCodeMap[0xB0] = INSTR_MOV
 	c.opCodeMap[0xB4] = INSTR_MOV
+	c.opCodeMap[0x8B] = INSTR_MOV
 
 }
 
@@ -264,8 +281,13 @@ func INSTR_MOV(core *CpuCore) {
 		}
 	case 0x8B == core.currentByteAtCodePointer:
 		{
+			/* mov r16, rm16 */
 			// rmbyte decode:
-			rm := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
+			reg16 := getReg16(core)
+			
+			rm16 := getRm16(core)
+
+			log.Print(fmt.Sprintf("%v %v", modrm, disp))
 
 			log.Fatalf("Please implement mov r16, r/m16")
 		}
@@ -274,6 +296,105 @@ func INSTR_MOV(core *CpuCore) {
 	}
 
 	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+}
+
+func getRm16(core *CpuCore, modRm ModRm) interface{} {
+	if modRm.mod == 3 {
+		// reg
+		return core.registers.registers16Bit[modRm.rm]
+	} else {
+		// mem
+
+		var disp = getDisplacementFromModRm(core, modRm)
+		if modRm.mod == 0 && modRm.rm == 6 {
+			segment = core.registers.DS
+			pointer = buildPointer(displacement);
+		} else {
+
+			segment = getDefaultSegment(m_segsMemPtr[m_rm]);
+			switch(m_rm) {
+
+			case 0: pointer = buildPointer(m_cpu.BX, m_cpu.SI, displacement); break;
+			case 1: pointer = buildPointer(m_cpu.BX, m_cpu.DI, displacement); break;
+			case 2: pointer = buildPointer(m_cpu.BP, m_cpu.SI, displacement); break;
+			case 3: pointer = buildPointer(m_cpu.BP, m_cpu.DI, displacement); break;
+			case 4: pointer = buildPointer(m_cpu.SI, displacement); break;
+			case 5: pointer = buildPointer(m_cpu.DI, displacement); break;
+			case 6: pointer = buildPointer(m_cpu.BP, displacement); break;
+			case 7: pointer = buildPointer(m_cpu.BX, displacement); break;
+
+			default:
+				throw new DecoderException(String.format("Illegal mod/rm byte (mod = 0x%02x, reg = 0x%02x, rm = 0x%02x)", m_mod, m_reg, m_rm));
+			}
+		}
+
+		Operand offset = new OperandAddress(pointer);
+
+		if(addressOnly)
+		return offset;
+
+		if(isWord)
+		return new OperandMemory16(m_cpu, segment, offset);
+		else
+		return new OperandMemory8(m_cpu, segment, offset);
+
+
+
+
+	}
+}
+
+func getReg16(core *CpuCore) *uint16 {
+	modrm := decodeModRm(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
+
+	reg := getReg16FromModRm(core, modrm)
+	return reg
+}
+
+func getReg8FromModRm(core *CpuCore, rm ModRm) *uint8 {
+	// get the register reference from lookup table
+	return core.registers.registers8Bit[rm.reg]
+}
+
+func getReg16FromModRm(core *CpuCore, rm ModRm) *uint16 {
+	// get the register reference from lookup table
+	return core.registers.registers16Bit[rm.reg]
+}
+
+func getDisplacementFromModRm(core *CpuCore, rm ModRm) uint16 {
+	switch {
+	case rm.mod == 0:
+		if rm.rm == 6 {
+			return core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 2)
+		} else {
+			return 0
+		}
+	case rm.mod == 1:
+		return uint16(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 2))
+
+	case rm.mod == 2:
+		return core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 2)
+	default:
+		log.Fatal("Unknown modrm displacement value...")
+	}
+	return 0
+}
+
+type ModRm struct {
+	mod uint8
+	reg uint8
+	rm  uint8
+}
+
+func decodeModRm(modrmByte uint8) ModRm {
+
+	modRmDecode := ModRm{}
+
+	modRmDecode.mod = (modrmByte >> 6) & 0x03
+	modRmDecode.reg = (modrmByte >> 3) & 0x07
+	modRmDecode.rm = modrmByte & 0x07
+
+	return modRmDecode
 }
 
 func getMSB(value uint8) uint8 {
@@ -291,9 +412,9 @@ func INSTR_IN(core *CpuCore) {
 	case 0xE4 == core.currentByteAtCodePointer:
 		{
 			// Read from port (imm) to AL
-			imm := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
+			imm := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
 
-			data := core.ioPortAccessController.ReadAddr8(imm)
+			data := core.ioPortAccessController.ReadAddr8(uint16(imm))
 
 			core.registers.AL = data
 			log.Printf("Port IN addr: imm addr %04X to AL (data = %04X)", imm, data)
@@ -315,7 +436,7 @@ func INSTR_IN(core *CpuCore) {
 
 			imm := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
 
-			data := core.ioPortAccessController.ReadAddr8(imm)
+			data := core.ioPortAccessController.ReadAddr16(imm)
 
 			core.registers.AX = data
 			log.Printf("Port IN addr: imm addr %04X to AX (data = %04X)", imm, data)
@@ -326,7 +447,7 @@ func INSTR_IN(core *CpuCore) {
 
 			dx := core.registers.DX
 
-			data := core.ioPortAccessController.ReadAddr8(uint16(dx))
+			data := core.ioPortAccessController.ReadAddr16(uint16(dx))
 
 			core.registers.AX = data
 			log.Printf("Port IN addr: DX VAL %04X to AX (data = %04X)", dx, data)
@@ -351,12 +472,12 @@ func INSTR_OUT(core *CpuCore) {
 
 			log.Printf("Port out addr: AL to io port imm addr %04X (data = %04X)", imm, core.registers.AL)
 		}
-	case 0xE5 == core.currentByteAtCodePointer:
+	case 0xE7 == core.currentByteAtCodePointer:
 		{
 			// Write value in AX to port addr imm8
 			imm := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
 
-			core.ioPortAccessController.WriteAddr8(uint16(imm), core.registers.AX)
+			core.ioPortAccessController.WriteAddr16(uint16(imm), core.registers.AX)
 
 			log.Printf("Port out addr: AX to io port imm addr %04X (data = %04X)", imm, core.registers.AX)
 		}
@@ -372,7 +493,7 @@ func INSTR_OUT(core *CpuCore) {
 		{
 			// Use value of DX as io port addr, and write value in AX
 
-			core.ioPortAccessController.WriteAddr8(uint16(core.registers.DX), core.registers.AX)
+			core.ioPortAccessController.WriteAddr16(uint16(core.registers.DX), core.registers.AX)
 
 			log.Printf("Port out addr: DX addr to io port imm addr %04X (data = %04X)", core.registers.DX, core.registers.AX)
 		}
