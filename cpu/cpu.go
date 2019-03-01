@@ -309,6 +309,8 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xA8] = INSTR_TEST_AL
 
 	c.opCodeMap[0xB0] = INSTR_MOV
+	c.opCodeMap[0xBB] = INSTR_MOV
+
 	c.opCodeMap[0xB4] = INSTR_MOV
 	c.opCodeMap[0x8B] = INSTR_MOV
 	c.opCodeMap[0x8C] = INSTR_MOV
@@ -322,7 +324,7 @@ type OpCodeImpl func(*CpuCore)
 
 func INSTR_CLI(core *CpuCore) {
 	// Clear interrupts
-	log.Printf("TODO: Write CLI (Clear interrupts implementation!")
+	log.Printf("[%#04x] TODO: Write CLI (Clear interrupts implementation!", core.GetCurrentCodePointer())
 
 	core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
 }
@@ -330,7 +332,7 @@ func INSTR_CLI(core *CpuCore) {
 func INSTR_CLD(core *CpuCore) {
 	// Clear direction flag
 	core.registers.DF = 0
-
+	log.Printf("[%#04x] CLD", core.GetCurrentCodePointer())
 	core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
 }
 
@@ -358,6 +360,7 @@ func INSTR_TEST_AL(core *CpuCore) {
 	core.registers.OF = 0
 
 	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+	log.Printf("[%#04x] Test AL, %d", core.GetCurrentCodePointer(), val)
 }
 
 func INSTR_MOV(core *CpuCore) {
@@ -367,13 +370,23 @@ func INSTR_MOV(core *CpuCore) {
 		{
 			val := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
 			core.registers.AL = val
-			log.Print(fmt.Sprintf("MOV IMM8, AH - %v", val))
+			log.Print(fmt.Sprintf("[%#04x] MOV AL, %#02x", core.GetCurrentCodePointer(), val))
+			core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 		}
+	case 0xBB == core.currentByteAtCodePointer:
+		{
+			val := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
+			core.registers.BX = val
+			log.Print(fmt.Sprintf("[%#04x] MOV BX, %#04x", core.GetCurrentCodePointer(), val))
+			core.memoryAccessController.SetIP(uint16(core.GetIP() + 3))
+		}
+
 	case 0xB4 == core.currentByteAtCodePointer:
 		{
 			val := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
 			core.registers.AH = val
-			log.Print(fmt.Sprintf("MOV IMM8, AH - %v", val))
+			log.Print(fmt.Sprintf("[%#04x] MOV IMM8, AH - %v", core.GetCurrentCodePointer(), val))
+			core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 		}
 	case 0x8B == core.currentByteAtCodePointer:
 		{
@@ -385,10 +398,11 @@ func INSTR_MOV(core *CpuCore) {
 
 			src := getRm16(core, modrm)
 
-			log.Print(fmt.Sprintf("MOV r16, rm16 - %v %v %v", modrm, dest, src))
+			log.Print(fmt.Sprintf("[%#04x] MOV r16, rm16 - %v %v %v", core.GetCurrentCodePointer(), modrm, dest, src))
 
 			// copy value stored in reg16 into rm16
 			*dest = *src
+			core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 		}
 	case 0x8C == core.currentByteAtCodePointer:
 		{
@@ -399,10 +413,11 @@ func INSTR_MOV(core *CpuCore) {
 
 			dest := getRm16(core, modrm)
 
-			log.Print(fmt.Sprintf("MOV r/m16,Sreg - %v %v %v", modrm, dest, src))
+			log.Print(fmt.Sprintf("[%#04x] MOV r/m16,Sreg - %v %v %v", core.GetCurrentCodePointer(), modrm, dest, src))
 
 			// copy value stored in reg16 into rm16
 			*dest = *src
+			core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 		}
 	case 0x8E == core.currentByteAtCodePointer:
 		{
@@ -413,16 +428,16 @@ func INSTR_MOV(core *CpuCore) {
 
 			dest := core.registers.registersSegmentRegisters[modrm.reg]
 
-			log.Print(fmt.Sprintf(" MOV Sreg,r/m16 - %v %v %v", modrm, dest, src))
+			log.Print(fmt.Sprintf("[%#04x]  MOV Sreg,r/m16 - %v %v %v", core.GetCurrentCodePointer(), modrm, dest, src))
 
 			// copy value stored in reg16 into rm16
 			*dest = *src
+			core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 		}
 	default:
 		log.Fatal("Unrecognised MOV instruction!")
 	}
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 }
 
 func INSTR_CMP(core *CpuCore) {
@@ -450,7 +465,7 @@ func INSTR_CMP(core *CpuCore) {
 				core.registers.CF = 0
 			}
 
-			log.Print(fmt.Sprintf("CMP AL, IMM8 - %v", src))
+			log.Print(fmt.Sprintf("[%#04x] CMP AL, IMM8 - %v", core.GetCurrentCodePointer(), src))
 		}
 
 	default:
@@ -576,7 +591,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr8(uint16(imm))
 
 			core.registers.AL = data
-			log.Printf("Port IN addr: imm addr %04X to AL (data = %04X)", imm, data)
+			log.Printf("[%#04x] Port IN addr: imm addr %04X to AL (data = %04X)", core.GetCurrentCodePointer(), imm, data)
 		}
 	case 0xE5 == core.currentByteAtCodePointer:
 		{
@@ -587,7 +602,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr8(uint16(dx))
 
 			core.registers.AL = data
-			log.Printf("Port IN addr: DX VAL %04X to AL (data = %04X)", dx, data)
+			log.Printf("[%#04x] Port IN addr: DX VAL %04X to AL (data = %04X)", core.GetCurrentCodePointer(), dx, data)
 		}
 	case 0xEC == core.currentByteAtCodePointer:
 		{
@@ -598,7 +613,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr16(imm)
 
 			core.registers.AX = data
-			log.Printf("Port IN addr: imm addr %04X to AX (data = %04X)", imm, data)
+			log.Printf("[%#04x] Port IN addr: imm addr %04X to AX (data = %04X)", core.GetCurrentCodePointer(), imm, data)
 		}
 	case 0xED == core.currentByteAtCodePointer:
 		{
@@ -609,7 +624,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr16(uint16(dx))
 
 			core.registers.AX = data
-			log.Printf("Port IN addr: DX VAL %04X to AX (data = %04X)", dx, data)
+			log.Printf("[%#04x] Port IN addr: DX VAL %04X to AX (data = %04X)", dx, data)
 		}
 	default:
 		log.Fatal("Unrecognised IN (port read) instruction!")
@@ -629,7 +644,7 @@ func INSTR_OUT(core *CpuCore) {
 
 			core.ioPortAccessController.WriteAddr8(uint16(imm), core.registers.AL)
 
-			log.Printf("Port out addr: AL to io port imm addr %04X (data = %04X)", imm, core.registers.AL)
+			log.Printf("[%#04x] Port out addr: AL to io port imm addr %04X (data = %04X)", core.GetCurrentCodePointer(), imm, core.registers.AL)
 		}
 	case 0xE7 == core.currentByteAtCodePointer:
 		{
@@ -638,7 +653,7 @@ func INSTR_OUT(core *CpuCore) {
 
 			core.ioPortAccessController.WriteAddr16(uint16(imm), core.registers.AX)
 
-			log.Printf("Port out addr: AX to io port imm addr %04X (data = %04X)", imm, core.registers.AX)
+			log.Printf("[%#04x] Port out addr: AX to io port imm addr %04X (data = %04X)", core.GetCurrentCodePointer(), imm, core.registers.AX)
 		}
 	case 0xEE == core.currentByteAtCodePointer:
 		{
@@ -646,7 +661,7 @@ func INSTR_OUT(core *CpuCore) {
 
 			core.ioPortAccessController.WriteAddr8(uint16(core.registers.DX), core.registers.AL)
 
-			log.Printf("Port out addr: DX addr to io port imm addr %04X (data = %04X)", core.registers.DX, core.registers.AL)
+			log.Printf("[%#04x] Port out addr: DX addr to io port imm addr %04X (data = %04X)", core.GetCurrentCodePointer(), core.registers.DX, core.registers.AL)
 		}
 	case 0xEF == core.currentByteAtCodePointer:
 		{
@@ -654,7 +669,7 @@ func INSTR_OUT(core *CpuCore) {
 
 			core.ioPortAccessController.WriteAddr16(uint16(core.registers.DX), core.registers.AX)
 
-			log.Printf("Port out addr: DX addr to io port imm addr %04X (data = %04X)", core.registers.DX, core.registers.AX)
+			log.Printf("[%#04x] Port out addr: DX addr to io port imm addr %04X (data = %04X)", core.GetCurrentCodePointer(), core.registers.DX, core.registers.AX)
 		}
 	default:
 		log.Fatal("Unrecognised IN (port read) instruction!")
@@ -667,56 +682,55 @@ func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 	destAddr := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
 	segment := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 3)
 
+	log.Printf("[%#04x] JMP %#04x:%#04x (FAR_PTR16)", core.GetCurrentCodePointer(), segment, destAddr)
 	core.memoryAccessController.SetCS(segment)
 	core.memoryAccessController.SetIP(destAddr)
-	log.Printf("INSTR_JMP_FAR_PTR16 - jumped to: %#04x:%#04x", segment, destAddr)
 }
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
 	offset := int16(core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1))
 
-	var destAddr = int16(core.registers.IP)
+	var destAddr = int16(core.registers.IP+3)
 
 	destAddr = destAddr + int16(offset)
 
-	core.memoryAccessController.SetIP(uint16(destAddr) + 3)
-	log.Printf("INSTR_JMP_NEAR_REL16 - jumped to: %#04x", uint16(destAddr)+3)
+	log.Printf("[%#04x] JMP %#04x (NEAR_REL16)", core.GetCurrentCodePointer(), uint16(destAddr))
+	core.memoryAccessController.SetIP(uint16(destAddr))
 }
 
 func INSTR_JZ_SHORT_REL8(core *CpuCore) {
 
 	offset := int16(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
 
-	var destAddr = int16(core.registers.IP)
+	var destAddr = int16(core.registers.IP+2)
 
 	destAddr = destAddr + int16(offset)
 
 	if core.registers.ZF == 0 {
+		log.Printf("[%#04x] JZ %#04x (SHORT REL8)", core.GetCurrentCodePointer(), uint16(destAddr))
 		core.memoryAccessController.SetIP(uint16(destAddr))
-		log.Printf("INSTR_JZ_SHORT_REL8 - jumped to: %#04x", uint16(destAddr))
 	} else {
-		core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
-		log.Printf("INSTR_JZ_SHORT_REL8 - jumped to: %#04x", uint16(core.GetIP()+1))
+		log.Printf("[%#04x] JZ %#04x (SHORT REL8)", core.GetCurrentCodePointer(), uint16(core.GetIP()+1))
+		core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 	}
 
 }
 
 func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
 
-	doCoreDump(core)
 	offset := int16(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
 
-	var destAddr = int16(core.registers.IP)
+	var destAddr = int16(core.registers.IP+2)
 
 	destAddr = destAddr + (offset)
 
 	if core.registers.ZF != 0 {
+		log.Printf("[%#04x] JNZ %#04x (SHORT REL8)", core.GetCurrentCodePointer(), uint16(destAddr))
 		core.memoryAccessController.SetIP(uint16(destAddr))
-		log.Printf("INSTR_JNZ_SHORT_REL8 - jumped to: %#04x", uint16(destAddr))
 	} else {
-		core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
-		log.Printf("INSTR_JNZ_SHORT_REL8 - jumped to: %#04x", uint16(core.GetIP()+1))
+		log.Printf("[%#04x] JNZ %#04x (SHORT REL8)", core.GetCurrentCodePointer(), uint16(core.GetIP()+2))
+		core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 	}
 
 }
@@ -725,16 +739,16 @@ func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
 
 	offset := int16(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
 
-	var destAddr = int16(core.registers.IP)
+	var destAddr = int16(core.registers.IP+2)
 
 	destAddr = destAddr + int16(offset)
 
 	if core.registers.CX == 0 {
-		core.memoryAccessController.SetIP(uint16(destAddr) + 2)
-		log.Printf("INSTR_JCXZ_SHORT_REL8 - jumped to: %#04x", uint16(destAddr)+2)
+		log.Printf("[%#04x] JCXZ %#04x (SHORT REL8)", core.GetCurrentCodePointer(), uint16(destAddr))
+		core.memoryAccessController.SetIP(uint16(destAddr))
 	} else {
-		core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
-		log.Printf("INSTR_JCXZ_SHORT_REL8 - jumped to: %#04x", uint16(core.GetIP()+1))
+		log.Printf("[%#04x] JCXZ %#04x (SHORT REL8)", core.GetCurrentCodePointer(), uint16(core.GetIP()+2))
+		core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 	}
 
 }
