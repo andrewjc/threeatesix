@@ -13,7 +13,7 @@ func New80386CPU() CpuCore {
 	cpuCore.registers = &CpuRegisters{}
 
 	// index of 8 bit registers
-	cpuCore.registers.registers8Bit = []*uint8 {
+	cpuCore.registers.registers8Bit = []*uint8{
 		&cpuCore.registers.AL,
 		&cpuCore.registers.CL,
 		&cpuCore.registers.DL,
@@ -25,7 +25,7 @@ func New80386CPU() CpuCore {
 	}
 
 	// index of 16 bit registers
-	cpuCore.registers.registers16Bit = []*uint16 {
+	cpuCore.registers.registers16Bit = []*uint16{
 		&cpuCore.registers.AX,
 		&cpuCore.registers.CX,
 		&cpuCore.registers.DX,
@@ -34,7 +34,13 @@ func New80386CPU() CpuCore {
 		&cpuCore.registers.BP,
 		&cpuCore.registers.SI,
 		&cpuCore.registers.DI,
+	}
 
+	cpuCore.registers.registersSegmentRegisters = []*uint16{
+		&cpuCore.registers.ES,
+		&cpuCore.registers.CS,
+		&cpuCore.registers.SS,
+		&cpuCore.registers.DS,
 	}
 
 	cpuCore.opCodeMap = make([]OpCodeImpl, 256)
@@ -89,15 +95,8 @@ func (core *CpuCore) Step() {
 		instructionImpl(core)
 	} else {
 		log.Printf("CPU CORE ERROR!!!")
-		core.dumpCoreInfo()
 
-		// Gather next few bytes for debugging...
-		peekBytes := core.memoryAccessController.PeekNextBytes(10)
-		stb := strings.Builder{}
-		for _, b := range peekBytes {
-			stb.WriteString(fmt.Sprintf("%#2x ", b))
-		}
-		log.Printf("Next 10 bytes at instruction pointer: " + stb.String())
+		doCoreDump(core)
 
 		log.Fatalf("CPU core failure. Unrecognised opcode: %#2x\n", instrByte)
 
@@ -105,6 +104,36 @@ func (core *CpuCore) Step() {
 
 	fmt.Printf("CPU Stepped...\n")
 	core.lastExecutedInstructionPointer = curCodePointer
+
+}
+
+func doCoreDump(core *CpuCore) {
+	if core.mode == common.REAL_MODE {
+		log.Println("Cpu core in real mode")
+	}
+
+	// Gather next few bytes for debugging...
+	peekBytes := core.memoryAccessController.PeekNextBytes(10)
+	stb := strings.Builder{}
+	for _, b := range peekBytes {
+		stb.WriteString(fmt.Sprintf("%#2x ", b))
+	}
+	log.Printf("Next 10 bytes at instruction pointer: " + stb.String())
+
+	log.Printf("CS: %#2x, IP: %#2x", core.registers.CS, core.registers.IP)
+
+	log.Printf("8 Bit registers:")
+	for x, y := range core.registers.registers8Bit {
+		log.Printf("%v %#2x (pntr: %#2x)", core.registers.index8ToString(x), *y, y)
+	}
+	log.Printf("16 Bit registers:")
+	for x, y := range core.registers.registers16Bit {
+		log.Printf("%v %#2x (pntr: %#2x)", core.registers.index16ToString(x), *y, y)
+	}
+	log.Printf("Segment registers:")
+	for x, y := range core.registers.registersSegmentRegisters {
+		log.Printf("%v %#2x (pntr: %#2x)", core.registers.indexSegmentToString(x), *y, y)
+	}
 
 }
 
@@ -130,9 +159,16 @@ type CpuRegisters struct {
 	registers16Bit []*uint16
 	registers32Bit []*uint32
 
+	registersSegmentRegisters []*uint16
+
 	// 16bit registers (real mode)
 	CS uint16 // code segment
 	DS uint16 // data segment
+	SS uint16 // stack segment
+	ES uint16 // extended segment
+	FS uint16 // ?? segment
+	GS uint16 // ?? segment
+
 	IP uint16 // instruction pointer
 	SP uint16
 	BP uint16
@@ -171,20 +207,72 @@ type CpuRegisters struct {
 	SF uint16
 	AF uint16
 	PF uint16
-
 }
 
+func (c CpuRegisters) index8ToString(i int) string {
+	switch {
+	case i == 0:
+		return "AL"
+	case i == 1:
+		return "CL"
+	case i == 2:
+		return "DL"
+	case i == 3:
+		return "BL"
+	case i == 4:
+		return "AH"
+	case i == 5:
+		return "CH"
+	case i == 6:
+		return "DH"
+	case i == 7:
+		return "BH"
+	default:
+		return fmt.Sprintf("Unrecognised 8 bit register index %d", i)
+	}
+}
+
+func (c CpuRegisters) index16ToString(i int) string {
+	switch {
+	case i == 0:
+		return "AX"
+	case i == 1:
+		return "CX"
+	case i == 2:
+		return "DX"
+	case i == 3:
+		return "BX"
+	case i == 4:
+		return "SP"
+	case i == 5:
+		return "BP"
+	case i == 6:
+		return "SI"
+	case i == 7:
+		return "DI"
+	default:
+		return fmt.Sprintf("Unrecognised 16 bit register index %d", i)
+	}
+}
+
+func (core CpuRegisters) indexSegmentToString(i int) string {
+	switch {
+	case i == 0:
+		return "ES"
+	case i == 1:
+		return "CS"
+	case i == 2:
+		return "SS"
+	case i == 3:
+		return "DS"
+	default:
+		return fmt.Sprintf("Unrecognised segment register index %d", i)
+	}
+}
 
 func (core *CpuCore) EnterMode(mode uint8) {
 	core.mode = mode
 	core.memoryAccessController.EnterMode(mode)
-}
-
-func (core *CpuCore) dumpCoreInfo() {
-	if core.mode == common.REAL_MODE {
-		log.Println("Cpu core in real mode")
-		log.Printf("Registers: IP: %016X, CS: %016X, DS: %016X", core.registers.IP, core.registers.CS, core.registers.DS)
-	}
 }
 
 // Gets the current code segment + IP addr in memory
@@ -201,6 +289,8 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xE9] = INSTR_JMP_NEAR_REL16
 
 	c.opCodeMap[0xE3] = INSTR_JCXZ_SHORT_REL8
+
+	c.opCodeMap[0x74] = INSTR_JZ_SHORT_REL8
 	c.opCodeMap[0x75] = INSTR_JNZ_SHORT_REL8
 
 	c.opCodeMap[0xFA] = INSTR_CLI
@@ -221,6 +311,10 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xB0] = INSTR_MOV
 	c.opCodeMap[0xB4] = INSTR_MOV
 	c.opCodeMap[0x8B] = INSTR_MOV
+	c.opCodeMap[0x8C] = INSTR_MOV
+	c.opCodeMap[0x8E] = INSTR_MOV
+
+	c.opCodeMap[0x3C] = INSTR_CMP
 
 }
 
@@ -273,23 +367,56 @@ func INSTR_MOV(core *CpuCore) {
 		{
 			val := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
 			core.registers.AL = val
+			log.Print(fmt.Sprintf("MOV IMM8, AH - %v", val))
 		}
 	case 0xB4 == core.currentByteAtCodePointer:
 		{
 			val := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
 			core.registers.AH = val
+			log.Print(fmt.Sprintf("MOV IMM8, AH - %v", val))
 		}
 	case 0x8B == core.currentByteAtCodePointer:
 		{
 			/* mov r16, rm16 */
-			// rmbyte decode:
-			reg16 := getReg16(core)
-			
-			rm16 := getRm16(core)
 
-			log.Print(fmt.Sprintf("%v %v", modrm, disp))
+			dest := getReg16(core)
 
-			log.Fatalf("Please implement mov r16, r/m16")
+			modrm := decodeModRm(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
+
+			src := getRm16(core, modrm)
+
+			log.Print(fmt.Sprintf("MOV r16, rm16 - %v %v %v", modrm, dest, src))
+
+			// copy value stored in reg16 into rm16
+			*dest = *src
+		}
+	case 0x8C == core.currentByteAtCodePointer:
+		{
+			/* MOV r/m16,Sreg */
+			modrm := decodeModRm(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
+
+			src := core.registers.registersSegmentRegisters[modrm.reg]
+
+			dest := getRm16(core, modrm)
+
+			log.Print(fmt.Sprintf("MOV r/m16,Sreg - %v %v %v", modrm, dest, src))
+
+			// copy value stored in reg16 into rm16
+			*dest = *src
+		}
+	case 0x8E == core.currentByteAtCodePointer:
+		{
+			/* MOV Sreg,r/m16 */
+			modrm := decodeModRm(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
+
+			src := getRm16(core, modrm)
+
+			dest := core.registers.registersSegmentRegisters[modrm.reg]
+
+			log.Print(fmt.Sprintf(" MOV Sreg,r/m16 - %v %v %v", modrm, dest, src))
+
+			// copy value stored in reg16 into rm16
+			*dest = *src
 		}
 	default:
 		log.Fatal("Unrecognised MOV instruction!")
@@ -298,14 +425,52 @@ func INSTR_MOV(core *CpuCore) {
 	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
 }
 
-func getRm16(core *CpuCore, modRm ModRm) interface{} {
+func INSTR_CMP(core *CpuCore) {
+	/*
+		cmp dst, src	ZF	CF
+		dst = src	1	0
+		dst < src	0	1
+		dst > src	0	0
+
+	*/
+	switch {
+	case 0x3C == core.currentByteAtCodePointer:
+		{
+			src := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
+			dst := core.registers.AL
+
+			if src == dst {
+				core.registers.ZF = 1
+				core.registers.CF = 0
+			} else if dst < src {
+				core.registers.ZF = 0
+				core.registers.CF = 1
+			} else if dst > src {
+				core.registers.ZF = 0
+				core.registers.CF = 0
+			}
+
+			log.Print(fmt.Sprintf("CMP AL, IMM8 - %v", src))
+		}
+
+	default:
+		log.Fatal("Unrecognised CMP instruction!")
+	}
+
+	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+}
+
+func getRm16(core *CpuCore, modRm ModRm) *uint16 {
 	if modRm.mod == 3 {
 		// reg
 		return core.registers.registers16Bit[modRm.rm]
 	} else {
 		// mem
 
-		var disp = getDisplacementFromModRm(core, modRm)
+		log.Fatalf("TODO")
+		return nil
+
+		/*var disp = getDisplacementFromModRm(core, modRm)
 		if modRm.mod == 0 && modRm.rm == 6 {
 			segment = core.registers.DS
 			pointer = buildPointer(displacement);
@@ -338,8 +503,7 @@ func getRm16(core *CpuCore, modRm ModRm) interface{} {
 		else
 		return new OperandMemory8(m_cpu, segment, offset);
 
-
-
+		*/
 
 	}
 }
@@ -349,11 +513,6 @@ func getReg16(core *CpuCore) *uint16 {
 
 	reg := getReg16FromModRm(core, modrm)
 	return reg
-}
-
-func getReg8FromModRm(core *CpuCore, rm ModRm) *uint8 {
-	// get the register reference from lookup table
-	return core.registers.registers8Bit[rm.reg]
 }
 
 func getReg16FromModRm(core *CpuCore, rm ModRm) *uint16 {
@@ -510,6 +669,7 @@ func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 
 	core.memoryAccessController.SetCS(segment)
 	core.memoryAccessController.SetIP(destAddr)
+	log.Printf("INSTR_JMP_FAR_PTR16 - jumped to: %#04x:%#04x", segment, destAddr)
 }
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {
@@ -521,9 +681,10 @@ func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 	destAddr = destAddr + int16(offset)
 
 	core.memoryAccessController.SetIP(uint16(destAddr) + 3)
+	log.Printf("INSTR_JMP_NEAR_REL16 - jumped to: %#04x", uint16(destAddr)+3)
 }
 
-func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
+func INSTR_JZ_SHORT_REL8(core *CpuCore) {
 
 	offset := int16(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
 
@@ -531,10 +692,31 @@ func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
 
 	destAddr = destAddr + int16(offset)
 
-	if core.registers.ZF == 1 {
-		core.memoryAccessController.SetIP(uint16(destAddr) + 2)
+	if core.registers.ZF == 0 {
+		core.memoryAccessController.SetIP(uint16(destAddr))
+		log.Printf("INSTR_JZ_SHORT_REL8 - jumped to: %#04x", uint16(destAddr))
 	} else {
 		core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
+		log.Printf("INSTR_JZ_SHORT_REL8 - jumped to: %#04x", uint16(core.GetIP()+1))
+	}
+
+}
+
+func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
+
+	doCoreDump(core)
+	offset := int16(core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1))
+
+	var destAddr = int16(core.registers.IP)
+
+	destAddr = destAddr + (offset)
+
+	if core.registers.ZF != 0 {
+		core.memoryAccessController.SetIP(uint16(destAddr))
+		log.Printf("INSTR_JNZ_SHORT_REL8 - jumped to: %#04x", uint16(destAddr))
+	} else {
+		core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
+		log.Printf("INSTR_JNZ_SHORT_REL8 - jumped to: %#04x", uint16(core.GetIP()+1))
 	}
 
 }
@@ -549,8 +731,10 @@ func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
 
 	if core.registers.CX == 0 {
 		core.memoryAccessController.SetIP(uint16(destAddr) + 2)
+		log.Printf("INSTR_JCXZ_SHORT_REL8 - jumped to: %#04x", uint16(destAddr)+2)
 	} else {
 		core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
+		log.Printf("INSTR_JCXZ_SHORT_REL8 - jumped to: %#04x", uint16(core.GetIP()+1))
 	}
 
 }

@@ -1,7 +1,5 @@
 package common
 
-import "log"
-
 /*
 	Memory interconnect - provides memory access between cpu and ram
 */
@@ -66,7 +64,6 @@ type MemoryAccessProvider interface {
 	ReadAddr8(u uint16) uint8
 	ReadAddr16(u uint16) uint16
 	ReadAddr32(u uint16) uint32
-
 }
 
 type RealModeAccessProvider struct {
@@ -114,11 +111,11 @@ func (r *RealModeAccessProvider) ReadNextInstruction() interface{} {
 		addr = uint32(ip)
 		byteData = (*r.biosImage)[addr]
 
-		log.Printf("[BIOS MAP] Reading instruction at %#4x: next byte: %#2x\n", addr, byteData)
+		//log.Printf("[BIOS MAP] Reading instruction at %#4x: next byte: %#2x\n", addr, byteData)
 
 	} else {
 		byteData = (*r.backingRam)[addr]
-		log.Printf("[RAM MAP] Reading instruction at %#4x: next byte: %#2x\n", addr, byteData)
+		//log.Printf("[RAM MAP] Reading instruction at %#4x: next byte: %#2x\n", addr, byteData)
 	}
 
 	return byteData
