@@ -5,7 +5,9 @@ import (
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/cpu"
 	"io/ioutil"
+	"log"
 	"os"
+	"unsafe"
 )
 
 /*
@@ -36,6 +38,25 @@ const MAX_RAM_BYTES = 0x1E84800 //32 million (32mb)
 
 func (computer *PersonalComputer) power() {
 	// do stuff
+
+
+	solid := uint32(123456789)
+
+	pntr := uintptr(unsafe.Pointer(&solid))
+
+	d1 := &pntr
+	d3 := (*uint32)(unsafe.Pointer(pntr))
+
+	log.Printf("%d %d %d", solid, *d1, *d3)
+
+	pntr += 2
+	d3 = (*uint32)(unsafe.Pointer(pntr))
+
+	*d3 = 66
+
+	log.Printf("%d %d %d", solid, *d1, *d3)
+
+
 
 	memController := common.CreateMemoryController(&computer.ram, &computer.rom.bios)
 
