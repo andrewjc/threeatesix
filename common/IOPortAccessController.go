@@ -38,6 +38,15 @@ func (r *IOPortAccessController) WriteAddr8(addr uint16, value uint8) {
 		return
 	}
 
+	if addr == 0x0A0H {
+		// Interrupt controller 1
+		r.cpuController.
+	}
+
+	if addr == 0x0A1H {
+		// Interrupt controller 2
+	}
+
 	r.backingMemory[addr] = value
 }
 

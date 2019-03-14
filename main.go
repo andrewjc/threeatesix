@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/cpu"
+	"github.com/andrewjc/threeatesix/intel8259a"
 	"io/ioutil"
 	"os"
 )
@@ -27,9 +28,12 @@ type PersonalComputer struct {
 	cpu             cpu.CpuCore
 	mathCoProcessor cpu.CpuCore
 
-	isaBus ISABus
-	ram    []byte
-	rom    RomImages
+	bus common.Bus
+	ram []byte
+	rom RomImages
+
+	masterInterruptController intel8259a.Intel8259a
+	slaveInterruptController  intel8259a.Intel8259a
 }
 
 const BIOS_FILENAME = "bios.bin"
@@ -75,17 +79,22 @@ func (computer *PersonalComputer) loadBios() {
 
 }
 
-type ISABus struct {
-}
-
 func NewPC() *PersonalComputer {
 	pc := &PersonalComputer{}
 
-	pc.isaBus = ISABus{}
+	pc.bus = common.Bus{}
 	pc.ram = make([]byte, MAX_RAM_BYTES)
 	pc.rom = RomImages{}
 	pc.cpu = cpu.New80386CPU()
 	pc.mathCoProcessor = cpu.New80287MathCoProcessor()
+
+	pc.masterInterruptController = intel8259a.NewIntel8259a() //pic1
+	pc.slaveInterruptController = intel8259a.NewIntel8259a()  //pic2
+
+	pc.bus.registerDevice(pc.cpu, common.MODULE_PRIMARY_PROCESSOR)
+	pc.bus.registerDevice(pc.mathCoProcessor, common.MODULE_MATH_CO_PROCESSOR)
+	pc.bus.registerDevice(pc.masterInterruptController, common.MODULE_MASTER_INTERRUPT_CONTROLLER)
+	pc.bus.registerDevice(pc.slaveInterruptController, common.MODULE_SLAVE_INTERRUPT_CONTROLLER)
 
 	return pc
 }
