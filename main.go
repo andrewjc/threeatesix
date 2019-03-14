@@ -5,9 +5,7 @@ import (
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/cpu"
 	"io/ioutil"
-	"log"
 	"os"
-	"unsafe"
 )
 
 /*
@@ -26,7 +24,9 @@ type RomImages struct {
 }
 
 type PersonalComputer struct {
-	cpu    cpu.CpuCore
+	cpu             cpu.CpuCore
+	mathCoProcessor cpu.CpuCore
+
 	isaBus ISABus
 	ram    []byte
 	rom    RomImages
@@ -39,32 +39,19 @@ const MAX_RAM_BYTES = 0x1E84800 //32 million (32mb)
 func (computer *PersonalComputer) power() {
 	// do stuff
 
-
-	solid := uint32(123456789)
-
-	pntr := uintptr(unsafe.Pointer(&solid))
-
-	d1 := &pntr
-	d3 := (*uint32)(unsafe.Pointer(pntr))
-
-	log.Printf("%d %d %d", solid, *d1, *d3)
-
-	pntr += 2
-	d3 = (*uint32)(unsafe.Pointer(pntr))
-
-	*d3 = 66
-
-	log.Printf("%d %d %d", solid, *d1, *d3)
-
-
-
 	memController := common.CreateMemoryController(&computer.ram, &computer.rom.bios)
 
 	ioPortController := common.CreateIOPortController()
 
 	computer.loadBios()
 
+	memController.SetCpuController(&computer.cpu)
+	memController.SetCoProcessorController(&computer.mathCoProcessor)
+	ioPortController.SetCpuController(&computer.cpu)
+	ioPortController.SetCoProcessorController(&computer.mathCoProcessor)
+
 	computer.cpu.Init(memController, ioPortController)
+	computer.mathCoProcessor.Init(memController, ioPortController)
 
 	for {
 		// stuff
@@ -98,6 +85,7 @@ func NewPC() *PersonalComputer {
 	pc.ram = make([]byte, MAX_RAM_BYTES)
 	pc.rom = RomImages{}
 	pc.cpu = cpu.New80386CPU()
+	pc.mathCoProcessor = cpu.New80287MathCoProcessor()
 
 	return pc
 }

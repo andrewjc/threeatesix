@@ -4,32 +4,35 @@ package common
 	Memory interconnect - provides memory access between cpu and ram
 */
 
-const (
-	REAL_MODE = iota
-	PROTECTED_MODE
-)
-
 type MemoryAccessController struct {
 	backingRam *[]byte
 	biosImage  *[]byte
 
-	cpuRegisterController CpuRegisterController
-	memoryAccessProvider  MemoryAccessProvider
+	cpuRegisterController    CpuController
+	cpuCoProcessorController CpuController
+
+	memoryAccessProvider MemoryAccessProvider
 
 	resetVectorBaseAddr uint32
+
 	//used during initial boot. this simulates the 'hack' that motherboards do
 }
 
-type CpuRegisterController interface {
+type CpuController interface {
 	GetIP() uint16
 	GetCS() uint16
 	IncrementIP()
 	SetIP(addr uint16)
 	SetCS(addr uint16)
+	EnterMode(mode uint8)
 }
 
-func (mem *MemoryAccessController) SetCpuRegisterController(controller CpuRegisterController) {
+func (mem *MemoryAccessController) SetCpuController(controller CpuController) {
 	mem.cpuRegisterController = controller
+}
+
+func (mem *MemoryAccessController) SetCoProcessorController(controller CpuController) {
+	mem.cpuCoProcessorController = controller
 }
 
 func (mem *MemoryAccessController) GetNextInstruction() interface{} {
@@ -158,5 +161,5 @@ func (mem *MemoryAccessController) PeekNextBytes(numBytes int) []byte {
 }
 
 func CreateMemoryController(ram *[]byte, bios *[]byte) *MemoryAccessController {
-	return &MemoryAccessController{ram, bios, nil, nil, 0}
+	return &MemoryAccessController{ram, bios, nil, nil, nil, 0}
 }

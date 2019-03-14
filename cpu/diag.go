@@ -8,6 +8,9 @@ import (
 )
 
 func doCoreDump(core *CpuCore) {
+
+	log.Println("Dumping core: " + core.FriendlyPartName())
+
 	if core.mode == common.REAL_MODE {
 		log.Println("Cpu core in real mode")
 	}

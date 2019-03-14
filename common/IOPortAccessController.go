@@ -1,6 +1,8 @@
 package common
 
-import "log"
+import (
+	"log"
+)
 
 /*
 	IO Port Access Controller
@@ -8,7 +10,17 @@ import "log"
 */
 
 type IOPortAccessController struct {
-	backingMemory []byte
+	backingMemory         []byte
+	cpuController         CpuController
+	coProcessorController CpuController
+}
+
+func (mem *IOPortAccessController) SetCpuController(controller CpuController) {
+	mem.cpuController = controller
+}
+
+func (mem *IOPortAccessController) SetCoProcessorController(controller CpuController) {
+	mem.coProcessorController = controller
 }
 
 func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
@@ -19,6 +31,13 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 }
 
 func (r *IOPortAccessController) WriteAddr8(addr uint16, value uint8) {
+
+	if addr == 0x00F1 {
+		// 80287 math coprocessor
+		r.coProcessorController.EnterMode(REAL_MODE)
+		return
+	}
+
 	r.backingMemory[addr] = value
 }
 
@@ -32,6 +51,6 @@ func (r *IOPortAccessController) WriteAddr16(addr uint16, value uint16) {
 	log.Fatal("TODO!")
 }
 
-func CreateIOPortController() *IOPortAccessController{
-	return &IOPortAccessController{backingMemory:make([]byte, 0x10000)}
+func CreateIOPortController() *IOPortAccessController {
+	return &IOPortAccessController{backingMemory: make([]byte, 0x10000)}
 }
