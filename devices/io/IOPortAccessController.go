@@ -42,12 +42,13 @@ func (r *IOPortAccessController) WriteAddr8(addr uint16, value uint8) {
 		return
 	}
 
-	/*if addr == 0x0A0H {
+	/*if addr == 0x0A0 {
 		// Interrupt controller 1
-		r.cpuController.
+
+		return
 	}
 
-	if addr == 0x0A1H {
+	if addr == 0x0A1 {
 		// Interrupt controller 2
 	}*/
 

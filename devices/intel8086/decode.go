@@ -38,6 +38,7 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xBC] = INSTR_MOV
 
 	c.opCodeMap[0xB4] = INSTR_MOV
+	c.opCodeMap[0x8A] = INSTR_MOV
 	c.opCodeMap[0x8B] = INSTR_MOV
 	c.opCodeMap[0x8C] = INSTR_MOV
 	c.opCodeMap[0x8E] = INSTR_MOV
@@ -47,6 +48,9 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x87] = INSTR_XCHG
 
 	c.opCodeMap[0x90] = INSTR_NOP
+
+	c.opCodeMap[0xC3] = INSTR_RET_NEAR
+
 }
 
 type OpCodeImpl func(*CpuCore)
@@ -57,6 +61,19 @@ func INSTR_NOP(core *CpuCore) {
 
 	core.registers.IP = uint16(core.GetIP() + 1)
 }
+
+
+func INSTR_RET_NEAR(core *CpuCore) {
+
+	log.Printf("[%#04x] retn", core.GetCurrentCodePointer())
+
+	stackPntrAddr := core.registers.SP
+
+	core.registers.IP = uint16(stackPntrAddr + 1)
+
+	core.registers.SP += 2
+}
+
 
 func INSTR_CLI(core *CpuCore) {
 	// Clear interrupts
@@ -148,6 +165,25 @@ func INSTR_MOV(core *CpuCore) {
 			core.registers.AH = val
 			log.Print(fmt.Sprintf("[%#04x] MOV AH, %v", core.GetCurrentlyExecutingInstructionPointer(), val))
 			core.registers.IP = uint16(core.GetIP() + 2)
+		}
+	case 0x8A == core.currentByteAtCodePointer:
+		{
+			/* 	MOV r8,r/m8 */
+			core.IncrementIP()
+			modrm := consumeModRm(core)
+
+			// dest
+			dest := core.registers.registers8Bit[modrm.reg]
+			src := core.registers.registers8Bit[modrm.rm]
+
+			*dest = *src
+
+			dstName := core.registers.index8ToString(int(modrm.reg))
+			srcName := core.registers.index8ToString(int(modrm.rm))
+
+			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionPointer(), dstName, srcName))
+
+			core.registers.IP = uint16(core.GetIP())
 		}
 	case 0x8B == core.currentByteAtCodePointer:
 		{
@@ -310,7 +346,7 @@ func INSTR_OUT(core *CpuCore) {
 
 			core.ioPortAccessController.WriteAddr8(uint16(imm), core.registers.AL)
 
-			log.Printf("[%#04x] Port out addr: AL to io port imm addr %04X (data = %04X)", core.GetCurrentlyExecutingInstructionPointer(), imm, core.registers.AL)
+			log.Printf("[%#04x] out %04X, al", core.GetCurrentlyExecutingInstructionPointer(), imm)
 		}
 	case 0xE7 == core.currentByteAtCodePointer:
 		{
@@ -319,7 +355,7 @@ func INSTR_OUT(core *CpuCore) {
 
 			core.ioPortAccessController.WriteAddr16(uint16(imm), core.registers.AX)
 
-			log.Printf("[%#04x] Port out addr: AX to io port imm addr %04X (data = %04X)", core.GetCurrentlyExecutingInstructionPointer(), imm, core.registers.AX)
+			log.Printf("[%#04x] out %04X, ax", core.GetCurrentlyExecutingInstructionPointer(), imm)
 		}
 	case 0xEE == core.currentByteAtCodePointer:
 		{
