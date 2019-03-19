@@ -3,8 +3,12 @@ package main
 import (
 	"fmt"
 	"github.com/andrewjc/threeatesix/common"
-	"github.com/andrewjc/threeatesix/cpu"
-	"github.com/andrewjc/threeatesix/intel8259a"
+	"github.com/andrewjc/threeatesix/devices/bus"
+	"github.com/andrewjc/threeatesix/devices/intel8086"
+	"github.com/andrewjc/threeatesix/devices/intel8259a"
+	"github.com/andrewjc/threeatesix/devices/io"
+	"github.com/andrewjc/threeatesix/devices/memmap"
+
 	"io/ioutil"
 	"os"
 )
@@ -25,42 +29,52 @@ type RomImages struct {
 }
 
 type PersonalComputer struct {
-	cpu             cpu.CpuCore
-	mathCoProcessor cpu.CpuCore
+	cpu             *intel8086.CpuCore
+	mathCoProcessor *intel8086.CpuCore
 
-	bus common.Bus
+	bus *bus.Bus
+
 	ram []byte
 	rom RomImages
 
-	masterInterruptController intel8259a.Intel8259a
-	slaveInterruptController  intel8259a.Intel8259a
+	masterInterruptController *intel8259a.Intel8259a
+	slaveInterruptController  *intel8259a.Intel8259a
+
+	memController *memmap.MemoryAccessController
+	ioPortController *io.IOPortAccessController
+
 }
 
 const BIOS_FILENAME = "bios.bin"
 
 const MAX_RAM_BYTES = 0x1E84800 //32 million (32mb)
 
-func (computer *PersonalComputer) power() {
+func (pc *PersonalComputer) power() {
 	// do stuff
 
-	memController := common.CreateMemoryController(&computer.ram, &computer.rom.bios)
+	pc.loadBios()
 
-	ioPortController := common.CreateIOPortController()
+	pc.memController.SetBus(pc.bus)
 
-	computer.loadBios()
+	pc.ioPortController.SetBus(pc.bus)
 
-	memController.SetCpuController(&computer.cpu)
-	memController.SetCoProcessorController(&computer.mathCoProcessor)
-	ioPortController.SetCpuController(&computer.cpu)
-	ioPortController.SetCoProcessorController(&computer.mathCoProcessor)
+	pc.bus.RegisterDevice(pc.cpu, common.MODULE_PRIMARY_PROCESSOR)
+	pc.bus.RegisterDevice(pc.mathCoProcessor, common.MODULE_MATH_CO_PROCESSOR)
+	pc.bus.RegisterDevice(pc.masterInterruptController, common.MODULE_MASTER_INTERRUPT_CONTROLLER)
+	pc.bus.RegisterDevice(pc.slaveInterruptController, common.MODULE_SLAVE_INTERRUPT_CONTROLLER)
 
-	computer.cpu.Init(memController, ioPortController)
-	computer.mathCoProcessor.Init(memController, ioPortController)
+	pc.bus.RegisterDevice(pc.memController, common.MODULE_MEMORY_ACCESS_CONTROLLER)
+	pc.bus.RegisterDevice(pc.ioPortController, common.MODULE_IO_PORT_ACCESS_CONTROLLER)
+
+	pc.memController.HandleMemoryMapSwitch(common.REAL_MODE)
+
+	pc.cpu.Init(pc.bus)
+	pc.mathCoProcessor.Init(pc.bus)
 
 	for {
 		// stuff
 
-		computer.cpu.Step()
+		pc.cpu.Step()
 	}
 }
 
@@ -82,19 +96,18 @@ func (computer *PersonalComputer) loadBios() {
 func NewPC() *PersonalComputer {
 	pc := &PersonalComputer{}
 
-	pc.bus = common.Bus{}
+	pc.bus = bus.NewDeviceBus()
 	pc.ram = make([]byte, MAX_RAM_BYTES)
 	pc.rom = RomImages{}
-	pc.cpu = cpu.New80386CPU()
-	pc.mathCoProcessor = cpu.New80287MathCoProcessor()
+	pc.cpu = intel8086.New80386CPU()
+	pc.mathCoProcessor = intel8086.New80287MathCoProcessor()
 
 	pc.masterInterruptController = intel8259a.NewIntel8259a() //pic1
 	pc.slaveInterruptController = intel8259a.NewIntel8259a()  //pic2
 
-	pc.bus.registerDevice(pc.cpu, common.MODULE_PRIMARY_PROCESSOR)
-	pc.bus.registerDevice(pc.mathCoProcessor, common.MODULE_MATH_CO_PROCESSOR)
-	pc.bus.registerDevice(pc.masterInterruptController, common.MODULE_MASTER_INTERRUPT_CONTROLLER)
-	pc.bus.registerDevice(pc.slaveInterruptController, common.MODULE_SLAVE_INTERRUPT_CONTROLLER)
+	pc.memController = memmap.CreateMemoryController(&pc.ram, &pc.rom.bios)
+
+	pc.ioPortController = io.CreateIOPortController()
 
 	return pc
 }

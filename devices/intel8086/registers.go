@@ -1,4 +1,4 @@
-package cpu
+package intel8086
 
 import "fmt"
 

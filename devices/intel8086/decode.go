@@ -1,4 +1,4 @@
-package cpu
+package intel8086
 
 import (
 	"fmt"
@@ -55,21 +55,21 @@ func INSTR_NOP(core *CpuCore) {
 	// Clear interrupts
 	log.Printf("[%#04x] NOP", core.GetCurrentlyExecutingInstructionPointer())
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
+	core.registers.IP = uint16(core.GetIP() + 1)
 }
 
 func INSTR_CLI(core *CpuCore) {
 	// Clear interrupts
 	log.Printf("[%#04x] TODO: Write CLI (Clear interrupts implementation!", core.GetCurrentCodePointer())
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
+	core.registers.IP = uint16(uint16(core.GetIP() + 1))
 }
 
 func INSTR_CLD(core *CpuCore) {
 	// Clear direction flag
 	core.registers.DF = 0
 	log.Printf("[%#04x] CLD", core.GetCurrentCodePointer())
-	core.memoryAccessController.SetIP(uint16(core.GetIP() + 1))
+	core.registers.IP = uint16(uint16(core.GetIP() + 1))
 }
 
 func INSTR_TEST_AL(core *CpuCore) {
@@ -95,7 +95,7 @@ func INSTR_TEST_AL(core *CpuCore) {
 	core.registers.CF = 0
 	core.registers.OF = 0
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+	core.registers.IP = uint16(uint16(core.GetIP() + 2))
 	log.Printf("[%#04x] Test AL, %d", core.GetCurrentlyExecutingInstructionPointer(), val)
 }
 
@@ -116,8 +116,6 @@ func INSTR_XCHG(core *CpuCore) {
 	reg2 = reg1
 
 	reg1 = tmp
-
-	core.memoryAccessController.SetIP(uint16(core.GetIP()))
 }
 
 func INSTR_MOV(core *CpuCore) {
@@ -128,28 +126,28 @@ func INSTR_MOV(core *CpuCore) {
 			val := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
 			core.registers.AL = val
 			log.Print(fmt.Sprintf("[%#04x] MOV AL, %#02x", core.GetCurrentlyExecutingInstructionPointer(), val))
-			core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+			core.registers.IP = uint16(core.GetIP() + 2)
 		}
 	case 0xBB == core.currentByteAtCodePointer:
 		{
 			val := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
 			core.registers.BX = val
 			log.Print(fmt.Sprintf("[%#04x] MOV BX, %#04x", core.GetCurrentlyExecutingInstructionPointer(), val))
-			core.memoryAccessController.SetIP(uint16(core.GetIP() + 3))
+			core.registers.IP = uint16(core.GetIP() + 3)
 		}
 	case 0xBC == core.currentByteAtCodePointer:
 		{
 			val := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 1)
 			core.registers.SP = val
 			log.Print(fmt.Sprintf("[%#04x] MOV SP, %#04x", core.GetCurrentlyExecutingInstructionPointer(), val))
-			core.memoryAccessController.SetIP(uint16(core.GetIP() + 3))
+			core.registers.IP = uint16(core.GetIP() + 3)
 		}
 	case 0xB4 == core.currentByteAtCodePointer:
 		{
 			val := core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer() + 1)
 			core.registers.AH = val
 			log.Print(fmt.Sprintf("[%#04x] MOV AH, %v", core.GetCurrentlyExecutingInstructionPointer(), val))
-			core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+			core.registers.IP = uint16(core.GetIP() + 2)
 		}
 	case 0x8B == core.currentByteAtCodePointer:
 		{
@@ -168,7 +166,7 @@ func INSTR_MOV(core *CpuCore) {
 
 			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionPointer(), dstName, srcName))
 
-			core.memoryAccessController.SetIP(uint16(core.GetIP()))
+			core.registers.IP = uint16(core.GetIP())
 		}
 	case 0x8C == core.currentByteAtCodePointer:
 		{
@@ -186,7 +184,7 @@ func INSTR_MOV(core *CpuCore) {
 
 			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionPointer(), dstName, srcName))
 
-			core.memoryAccessController.SetIP(uint16(core.GetIP()))
+			core.registers.IP = uint16(core.GetIP())
 		}
 	case 0x8E == core.currentByteAtCodePointer:
 		{
@@ -204,7 +202,7 @@ func INSTR_MOV(core *CpuCore) {
 
 			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionPointer(), dstName, srcName))
 
-			core.memoryAccessController.SetIP(uint16(core.GetIP()))
+			core.registers.IP = uint16(core.GetIP())
 		}
 	default:
 		log.Fatal("Unrecognised MOV instruction!")
@@ -244,7 +242,7 @@ func INSTR_CMP(core *CpuCore) {
 		log.Fatal("Unrecognised CMP instruction!")
 	}
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+	core.registers.IP = uint16(core.GetIP() + 2)
 }
 
 func INSTR_IN(core *CpuCore) {
@@ -298,7 +296,7 @@ func INSTR_IN(core *CpuCore) {
 		log.Fatal("Unrecognised IN (port read) instruction!")
 	}
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+	core.registers.IP = uint16(core.GetIP() + 2)
 }
 
 func INSTR_OUT(core *CpuCore) {
@@ -343,7 +341,7 @@ func INSTR_OUT(core *CpuCore) {
 		log.Fatal("Unrecognised IN (port read) instruction!")
 	}
 
-	core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+	core.registers.IP = uint16(core.GetIP() + 2)
 }
 
 func INSTR_JMP_FAR_PTR16(core *CpuCore) {
@@ -351,8 +349,8 @@ func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 	segment := core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer() + 3)
 
 	log.Printf("[%#04x] JMP %#04x:%#04x (FAR_PTR16)", core.GetCurrentlyExecutingInstructionPointer(), segment, destAddr)
-	core.memoryAccessController.SetCS(segment)
-	core.memoryAccessController.SetIP(destAddr)
+	core.registers.CS = segment
+	core.registers.IP = destAddr
 }
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {
@@ -364,7 +362,7 @@ func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 	destAddr = destAddr + int16(offset)
 
 	log.Printf("[%#04x] JMP %#04x (NEAR_REL16)", core.GetCurrentlyExecutingInstructionPointer(), uint16(destAddr))
-	core.memoryAccessController.SetIP(uint16(destAddr))
+	core.registers.IP = uint16(destAddr)
 }
 
 func INSTR_JZ_SHORT_REL8(core *CpuCore) {
@@ -377,10 +375,10 @@ func INSTR_JZ_SHORT_REL8(core *CpuCore) {
 
 	if core.registers.ZF == 0 {
 		log.Printf("[%#04x] JZ %#04x (SHORT REL8)", core.GetCurrentlyExecutingInstructionPointer(), uint16(destAddr))
-		core.memoryAccessController.SetIP(uint16(destAddr))
+		core.registers.IP = uint16(destAddr)
 	} else {
 		log.Printf("[%#04x] JZ %#04x (SHORT REL8)", core.GetCurrentlyExecutingInstructionPointer(), uint16(core.GetIP()+1))
-		core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+		core.registers.IP = uint16(uint16(core.GetIP() + 2))
 	}
 
 }
@@ -395,10 +393,10 @@ func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
 
 	if core.registers.ZF != 0 {
 		log.Printf("[%#04x] JNZ %#04x (SHORT REL8)", core.GetCurrentlyExecutingInstructionPointer(), uint16(destAddr))
-		core.memoryAccessController.SetIP(uint16(destAddr))
+		core.registers.IP = uint16(destAddr)
 	} else {
 		log.Printf("[%#04x] JNZ %#04x (SHORT REL8)", core.GetCurrentlyExecutingInstructionPointer(), uint16(core.GetIP()+2))
-		core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+		core.registers.IP = uint16(core.GetIP() + 2)
 	}
 
 }
@@ -413,10 +411,10 @@ func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
 
 	if core.registers.CX == 0 {
 		log.Printf("[%#04x] JCXZ %#04x (SHORT REL8)", core.GetCurrentlyExecutingInstructionPointer(), uint16(destAddr))
-		core.memoryAccessController.SetIP(uint16(destAddr))
+		core.registers.IP = uint16(destAddr)
 	} else {
 		log.Printf("[%#04x] JCXZ %#04x (SHORT REL8)", core.GetCurrentlyExecutingInstructionPointer(), uint16(core.GetIP()+2))
-		core.memoryAccessController.SetIP(uint16(core.GetIP() + 2))
+		core.registers.IP = uint16(core.GetIP() + 2)
 	}
 
 }

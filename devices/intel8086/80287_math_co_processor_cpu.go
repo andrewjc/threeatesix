@@ -1,8 +1,8 @@
-package cpu
+package intel8086
 
 import "github.com/andrewjc/threeatesix/common"
 
-func New80287MathCoProcessor() CpuCore {
+func New80287MathCoProcessor() *CpuCore {
 
 	cpuCore := New80386CPU()
 

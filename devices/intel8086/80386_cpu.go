@@ -1,14 +1,16 @@
-package cpu
+package intel8086
 
 import (
-	"fmt"
 	"github.com/andrewjc/threeatesix/common"
+	"github.com/andrewjc/threeatesix/devices/bus"
+	"github.com/andrewjc/threeatesix/devices/io"
+	"github.com/andrewjc/threeatesix/devices/memmap"
 	"log"
 )
 
-func New80386CPU() CpuCore {
+func New80386CPU() *CpuCore {
 
-	cpuCore := CpuCore{}
+	cpuCore := &CpuCore{}
 	cpuCore.partId = common.MODULE_PRIMARY_PROCESSOR
 
 	cpuCore.registers = &CpuRegisters{}
@@ -46,24 +48,38 @@ func New80386CPU() CpuCore {
 
 	cpuCore.opCodeMap = make([]OpCodeImpl, 256)
 
-	mapOpCodes(&cpuCore)
+	mapOpCodes(cpuCore)
 
 	return cpuCore
 }
 
 type CpuCore struct {
-	partId uint8
+	partId                 uint8
+	bus                    *bus.Bus
+	memoryAccessController *memmap.MemoryAccessController
+	ioPortAccessController   *io.IOPortAccessController
 
-	memoryAccessController *common.MemoryAccessController
-	ioPortAccessController *common.IOPortAccessController
-	registers              *CpuRegisters
-	opCodeMap              []OpCodeImpl
-	mode                   uint8
+	registers *CpuRegisters
+	opCodeMap []OpCodeImpl
+	mode      uint8
+
+	busId uint32
 
 	currentlyExecutingInstructionPointer uint16
 	lastExecutedInstructionPointer       uint16
 
 	currentByteAtCodePointer byte
+}
+
+func (device *CpuCore) SetDeviceBusId(id uint32) {
+	device.busId = id
+}
+
+func (device *CpuCore) OnReceiveMessage(message bus.BusMessage) {
+	switch {
+	case message.Subject == common.MESSAGE_REQUEST_CPU_MODESWITCH:
+		device.EnterMode(message.Data[0])
+	}
 }
 
 func (core *CpuCore) SetCS(addr uint16) {
@@ -86,9 +102,18 @@ func (core *CpuCore) IncrementIP() {
 	core.registers.IP++
 }
 
-func (core *CpuCore) Init(memController *common.MemoryAccessController, ioPortController *common.IOPortAccessController) {
-	core.memoryAccessController = memController
-	core.ioPortAccessController = ioPortController
+func (core *CpuCore) Init(bus *bus.Bus) {
+	core.bus = bus
+
+	// obtain a pointer to the memory controller on the bus
+	// this is a bit of a hack but avoids a linear lookup for every
+	// instruction access
+	dev1 := core.bus.FindSingleDevice(common.MODULE_MEMORY_ACCESS_CONTROLLER).(*memmap.MemoryAccessController)
+	core.memoryAccessController = dev1
+
+	dev2 := core.bus.FindSingleDevice(common.MODULE_IO_PORT_ACCESS_CONTROLLER).(*io.IOPortAccessController)
+	core.ioPortAccessController = dev2
+
 
 	core.EnterMode(common.REAL_MODE)
 
@@ -98,12 +123,14 @@ func (core *CpuCore) Init(memController *common.MemoryAccessController, ioPortCo
 func (core *CpuCore) Reset() {
 	core.registers.CS = 0xF000
 	core.registers.IP = 0xFFF0
-	core.memoryAccessController.LockBootVector()
+	core.bus.SendMessage(bus.BusMessage{common.MESSAGE_GLOBAL_LOCK_BIOS_MEM_REGION, []byte{}})
 }
 
 func (core *CpuCore) EnterMode(mode uint8) {
 	core.mode = mode
-	core.memoryAccessController.EnterMode(mode)
+
+	core.bus.SendMessage(bus.BusMessage{common.MESSAGE_GLOBAL_CPU_MODESWITCH, []byte{mode}})
+
 	processorString := core.FriendlyPartName()
 	modeString := ""
 	if core.mode == common.REAL_MODE {
@@ -132,8 +159,8 @@ func (core *CpuCore) Step() {
 		log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
 	}
 
-	instrByte := core.memoryAccessController.GetNextInstruction() //read 8 bit value
-	core.currentByteAtCodePointer = instrByte.(uint8)
+	instrByte := core.memoryAccessController.ReadAddr8(core.currentlyExecutingInstructionPointer)
+	core.currentByteAtCodePointer = instrByte
 
 	instructionImpl := core.opCodeMap[core.currentByteAtCodePointer]
 	if instructionImpl != nil {
@@ -143,11 +170,8 @@ func (core *CpuCore) Step() {
 
 		log.Printf("CPU core failure. Unrecognised opcode: %#2x\n", instrByte)
 		doCoreDump(core)
-
-		//log.Fatal("Execution Terminated.")
 	}
 
-	fmt.Printf("CPU Stepped...\n")
 	core.lastExecutedInstructionPointer = core.currentlyExecutingInstructionPointer
 
 }
