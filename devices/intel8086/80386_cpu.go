@@ -62,13 +62,21 @@ type CpuCore struct {
 	registers *CpuRegisters
 	opCodeMap []OpCodeImpl
 	mode      uint8
+	flags CpuExecutionFlags
 
 	busId uint32
 
-	currentlyExecutingInstructionPointer uint16
-	lastExecutedInstructionPointer       uint16
+	currentlyExecutingInstructionPointer uint32
+	lastExecutedInstructionPointer       uint32
 
 	currentByteAtCodePointer byte
+}
+
+type CpuExecutionFlags struct {
+	CS_OVERRIDE        uint16
+	CS_OVERRIDE_ENABLE bool
+
+	CR0                uint32
 }
 
 func (device *CpuCore) SetDeviceBusId(id uint32) {
@@ -142,14 +150,14 @@ func (core *CpuCore) EnterMode(mode uint8) {
 }
 
 // Gets the current code segment + IP addr in memory
-func (core *CpuCore) GetCurrentCodePointer() uint16 {
-	return core.registers.CS<<4 + core.registers.IP
+func (core *CpuCore) GetCurrentCodePointer() uint32 {
+	return uint32(core.registers.CS<<4 + core.registers.IP)
 }
 
 // Returns the address in memory of the instruction currently executing.
 // This is different from GetCurrentCodePointer in that the currently executing
 // instruction can update the CS and IP registers.
-func (core *CpuCore) GetCurrentlyExecutingInstructionPointer() uint16 {
+func (core *CpuCore) GetCurrentlyExecutingInstructionPointer() uint32 {
 	return core.currentlyExecutingInstructionPointer
 }
 
@@ -159,7 +167,23 @@ func (core *CpuCore) Step() {
 		log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
 	}
 
-	instrByte := core.memoryAccessController.ReadAddr8(core.currentlyExecutingInstructionPointer)
+	instrByte := core.memoryAccessController.ReadAddr8(uint32(core.currentlyExecutingInstructionPointer))
+
+	core.flags.CS_OVERRIDE = 0x0
+	core.flags.CS_OVERRIDE_ENABLE = false
+
+	if core.memoryAccessController.PeekNextBytes(1)[0] == 0x2E {
+		// Prefix byte
+		// cs segment override
+
+		core.flags.CS_OVERRIDE = 0x0
+		core.flags.CS_OVERRIDE_ENABLE = true
+		core.IncrementIP()
+
+		instrByte = core.memoryAccessController.ReadAddr8(uint32(core.currentlyExecutingInstructionPointer+1))
+
+	}
+
 	core.currentByteAtCodePointer = instrByte
 
 	instructionImpl := core.opCodeMap[core.currentByteAtCodePointer]
@@ -186,12 +210,4 @@ func (core *CpuCore) FriendlyPartName() string {
 	}
 
 	return "Unknown"
-}
-
-func getMSB(value uint8) uint8 {
-	return (value >> 8) & 1
-}
-
-func getBitValue(value uint8, place uint8) uint8 {
-	return (value >> place) & 1
 }

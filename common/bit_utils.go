@@ -33,3 +33,12 @@ func B(val bool) byte {
 	}
 	return 0
 }
+
+
+func GetMSB(value uint8) uint8 {
+	return (value >> 8) & 1
+}
+
+func GetBitValue(value uint8, place uint8) uint8 {
+	return (value >> place) & 1
+}

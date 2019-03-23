@@ -23,9 +23,9 @@ type MemoryAccessController struct {
 
 
 type MemoryAccessProvider interface {
-	ReadAddr8(u uint16) uint8
-	ReadAddr16(u uint16) uint16
-	ReadAddr32(u uint16) uint32
+	ReadAddr8(u uint32) uint8
+	ReadAddr16(u uint32) uint16
+	ReadAddr32(u uint32) uint32
 	PeekNextBytesImpl(numBytes int) []byte
 }
 
@@ -60,20 +60,26 @@ func (controller *MemoryAccessController) SetBus(bus *bus.Bus) {
 	controller.bus = bus
 }
 
-func (mem *MemoryAccessController) ReadAddr8(address uint16) uint8 {
+func (mem *MemoryAccessController) ReadAddr8(address uint32) uint8 {
 	return mem.memoryAccessProvider.ReadAddr8(address)
 }
 
-func (mem *MemoryAccessController) ReadAddr16(address uint16) uint16 {
+func (mem *MemoryAccessController) ReadAddr16(address uint32) uint16 {
 	return mem.memoryAccessProvider.ReadAddr16(address)
 }
 
-func (mem *MemoryAccessController) ReadAddr32(address uint16) uint32 {
+func (mem *MemoryAccessController) ReadAddr32(address uint32) uint32 {
 	return mem.memoryAccessProvider.ReadAddr32(address)
 }
 
-func (mem *MemoryAccessController) WriteAddr(address uint16, value uint8) {
+func (mem *MemoryAccessController) WriteAddr(address uint32, value uint8) {
 	(*mem.backingRam)[address] = value
+}
+
+func (mem *MemoryAccessController) WriteAddr16(address uint32, value uint16) {
+	for i := uint32(0); i < 2; i++ {
+		mem.WriteAddr(address+i, uint8(value>>uint32(i*8)&0xFF))
+	}
 }
 
 func (mem *MemoryAccessController) LockBootVector() {

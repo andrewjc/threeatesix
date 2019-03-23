@@ -9,7 +9,7 @@ type RealModeAccessProvider struct {
 	*MemoryAccessController
 }
 
-func (r *RealModeAccessProvider) ReadAddr8(addr uint16) uint8 {
+func (r *RealModeAccessProvider) ReadAddr8(addr uint32) uint8 {
 
 	var byteData uint8
 	if r.resetVectorBaseAddr > 0 {
@@ -21,7 +21,7 @@ func (r *RealModeAccessProvider) ReadAddr8(addr uint16) uint8 {
 	return byteData
 }
 
-func (r *RealModeAccessProvider) ReadAddr16(addr uint16) uint16 {
+func (r *RealModeAccessProvider) ReadAddr16(addr uint32) uint16 {
 
 	b1 := uint16(r.ReadAddr8(addr))
 	b2 := uint16(r.ReadAddr8(addr + 1))
@@ -29,7 +29,7 @@ func (r *RealModeAccessProvider) ReadAddr16(addr uint16) uint16 {
 
 }
 
-func (r *RealModeAccessProvider) ReadAddr32(addr uint16) uint32 {
+func (r *RealModeAccessProvider) ReadAddr32(addr uint32) uint32 {
 
 	b1 := uint32(r.ReadAddr16(addr))
 	b2 := uint32(r.ReadAddr16(addr + 1))
