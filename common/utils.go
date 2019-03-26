@@ -42,3 +42,11 @@ func GetMSB(value uint8) uint8 {
 func GetBitValue(value uint8, place uint8) uint8 {
 	return (value >> place) & 1
 }
+
+func Bool2Uint8(boolValue bool) uint8 {
+	if boolValue {
+		return 1
+	} else {
+		return 0
+	}
+}

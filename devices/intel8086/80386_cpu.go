@@ -190,9 +190,10 @@ func (core *CpuCore) Step() {
 	if instructionImpl != nil {
 		instructionImpl(core)
 	} else {
+		log.Printf("[%#04x] Unrecognised opcode: %#2x\n", core.currentlyExecutingInstructionPointer, instrByte)
+
 		log.Printf("CPU CORE ERROR!!!")
 
-		log.Printf("CPU core failure. Unrecognised opcode: %#2x\n", instrByte)
 		doCoreDump(core)
 	}
 
@@ -210,4 +211,16 @@ func (core *CpuCore) FriendlyPartName() string {
 	}
 
 	return "Unknown"
+}
+
+func (core *CpuCore) readImm8() uint8 {
+	retVal := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()))
+	core.registers.IP += 1
+	return retVal
+}
+
+func (core *CpuCore) readImm16() uint16 {
+	retVal := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()))
+	core.registers.IP += 2
+	return retVal
 }

@@ -57,7 +57,7 @@ type CpuRegisters struct {
 	PF uint16
 }
 
-func (c CpuRegisters) index8ToString(i int) string {
+func (c CpuRegisters) index8ToString(i uint8) string {
 	switch {
 	case i == 0:
 		return "AL"
@@ -80,7 +80,7 @@ func (c CpuRegisters) index8ToString(i int) string {
 	}
 }
 
-func (c CpuRegisters) index16ToString(i int) string {
+func (c CpuRegisters) index16ToString(i uint8) string {
 	switch {
 	case i == 0:
 		return "AX"
@@ -103,7 +103,7 @@ func (c CpuRegisters) index16ToString(i int) string {
 	}
 }
 
-func (core CpuRegisters) indexSegmentToString(i int) string {
+func (core CpuRegisters) indexSegmentToString(i uint8) string {
 	switch {
 	case i == 0:
 		return "ES"

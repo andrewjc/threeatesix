@@ -27,15 +27,15 @@ func doCoreDump(core *CpuCore) {
 
 	log.Printf("8 Bit registers:")
 	for x, y := range core.registers.registers8Bit {
-		log.Printf("%v %#2x (pntr: %#2x)", core.registers.index8ToString(x), *y, y)
+		log.Printf("%v %#2x (pntr: %#2x)", core.registers.index8ToString(uint8(x)), *y, y)
 	}
 	log.Printf("16 Bit registers:")
 	for x, y := range core.registers.registers16Bit {
-		log.Printf("%v %#2x (pntr: %#2x)", core.registers.index16ToString(x), *y, y)
+		log.Printf("%v %#2x (pntr: %#2x)", core.registers.index16ToString(uint8(x)), *y, y)
 	}
 	log.Printf("Segment registers:")
 	for x, y := range core.registers.registersSegmentRegisters {
-		log.Printf("%v %#2x (pntr: %#2x)", core.registers.indexSegmentToString(x), *y, y)
+		log.Printf("%v %#2x (pntr: %#2x)", core.registers.indexSegmentToString(uint8(x)), *y, y)
 	}
 
 }
