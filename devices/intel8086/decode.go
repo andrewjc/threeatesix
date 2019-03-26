@@ -54,7 +54,18 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x8C] = INSTR_MOV
 	c.opCodeMap[0x8E] = INSTR_MOV
 
+	c.opCodeMap[0x3A] = INSTR_CMP
+	c.opCodeMap[0x3B] = INSTR_CMP
 	c.opCodeMap[0x3C] = INSTR_CMP
+	c.opCodeMap[0x3D] = INSTR_CMP
+	c.opCodeMap[0x80] = INSTR_CMP
+	c.opCodeMap[0x81] = INSTR_CMP
+	c.opCodeMap[0x83] = INSTR_CMP
+	c.opCodeMap[0x38] = INSTR_CMP
+	c.opCodeMap[0x39] = INSTR_CMP
+	c.opCodeMap[0xA6] = INSTR_CMP
+	c.opCodeMap[0xA7] = INSTR_CMP
+
 
 	c.opCodeMap[0x87] = INSTR_XCHG
 
@@ -97,6 +108,7 @@ func mapOpCodes(c *CpuCore) {
 	// opcode 0F A0 and 0F A8 are push .. todo
 
 
+
 }
 
 type OpCodeImpl func(*CpuCore)
@@ -109,18 +121,13 @@ func INSTR_PUSH(core *CpuCore) {
 	case 0x50 == core.currentByteAtCodePointer:
 		{
 			// PUSH r16
-
-			core.IncrementIP()
-			modrm := consumeModRm(core)
-
-			val := core.registers.registers16Bit[modrm.reg]
-			regName := core.registers.index16ToString(modrm.reg)
+			val, valName := core.registers.registers16Bit[core.currentByteAtCodePointer - 0x50], core.registers.index16ToString(core.currentByteAtCodePointer - 0x50)
 
 			core.registers.SP = core.registers.SP - 2
 
 			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), *val)
 
-			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionPointer(), regName)
+			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionPointer(), valName)
 
 		}
 	case 0x6A == core.currentByteAtCodePointer:
@@ -283,7 +290,7 @@ func INSTR_OR(core *CpuCore) {
 	sign2 := (term2 >> (bitLength)) & 0x01
 	signr := uint8((result >> (bitLength)) & 0x01)
 
-	core.registers.CF = uint16(common.Bool2Uint8( core.registers.AL >> (bitLength) != 0 ))
+	core.registers.CF = uint16(common.Bool2Uint8( result >> (bitLength) != 0 ))
 
 	core.registers.ZF = uint16(common.Bool2Uint8(result == 0))
 
@@ -394,6 +401,155 @@ func INSTR_TEST_AL(core *CpuCore) {
 	log.Printf("[%#04x] Test AL, %d", core.GetCurrentlyExecutingInstructionPointer(), val)
 }
 
+func INSTR_CMP(core *CpuCore) {
+
+	var term1 uint32
+	var term2 uint32
+	var result uint32
+
+	var bitLength uint32
+
+	switch {
+	case 0xA6 == core.currentByteAtCodePointer: {
+		//  CMPS m8, m8
+		core.IncrementIP()
+		term1 = uint32(core.memoryAccessController.ReadAddr8(core.BuildAddress(core.registers.DS, core.registers.SI)))
+		term2 = uint32(core.memoryAccessController.ReadAddr8(core.BuildAddress(core.registers.DS, core.registers.DI)))
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp m8, m8", core.GetCurrentlyExecutingInstructionPointer())
+	}
+	case 0xA7 == core.currentByteAtCodePointer: {
+		// CMPS m16, m16
+		core.IncrementIP()
+		term1 = uint32(core.memoryAccessController.ReadAddr16(core.BuildAddress(core.registers.DS, core.registers.SI)))
+		term2 = uint32(core.memoryAccessController.ReadAddr16(core.BuildAddress(core.registers.DS, core.registers.DI)))
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp m16, m16", core.GetCurrentlyExecutingInstructionPointer())
+	}
+	case 0x3C == core.currentByteAtCodePointer: {
+		// CMP AL, imm8
+		core.IncrementIP()
+		term1 = uint32(core.registers.AL)
+		term2 = uint32(core.readImm8())
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp AL, [%#04x]", core.GetCurrentlyExecutingInstructionPointer(), term2)
+	}
+	case 0x3D == core.currentByteAtCodePointer: {
+		//	CMP AX, imm16
+		core.IncrementIP()
+		term1 = uint32(core.registers.AX)
+		term2 = uint32(core.readImm16())
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp AX, [%#04x]", core.GetCurrentlyExecutingInstructionPointer(), term2)
+	}
+	case 0x80 == core.currentByteAtCodePointer: {
+		// CMP r/m8, imm8
+		core.IncrementIP()
+		modrm := consumeModRm(core)
+		rm8, rm8Str := core.readRm8(&modrm)
+		term1 = uint32(*rm8)
+		term2 = uint32(core.readImm8())
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp %s, [%#04x]", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, term2)
+	}
+	case 0x81 == core.currentByteAtCodePointer: {
+		// CMP r/m16, imm16
+		core.IncrementIP()
+		modrm := consumeModRm(core)
+		rm8, rm8Str := core.readRm16(&modrm)
+		term1 = uint32(*rm8)
+		term2 = uint32(core.readImm16())
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp %s, [%#04x]", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, term2)
+	}
+	case 0x83 == core.currentByteAtCodePointer: {
+		// CMP r/m16,imm8
+		core.IncrementIP()
+		modrm := consumeModRm(core)
+		rm8, rm8Str := core.readRm16(&modrm)
+		term1 = uint32(*rm8)
+		term2 = uint32(core.readImm8())
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp %s, [%#04x]", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, term2)
+	}
+	case 0x38 == core.currentByteAtCodePointer: {
+		// CMP r/m8,r8
+		core.IncrementIP()
+		modrm := consumeModRm(core)
+		rm8, rm8Str := core.readRm8(&modrm)
+		term1 = uint32(*rm8)
+
+		r8, r8Str := core.readR8(&modrm)
+		term2 = uint32(*r8)
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, r8Str)
+	}
+	case 0x39 == core.currentByteAtCodePointer: {
+		// CMP r/m16,r16
+		core.IncrementIP()
+		modrm := consumeModRm(core)
+		rm8, rm8Str := core.readRm16(&modrm)
+		term1 = uint32(*rm8)
+
+		r8, r8Str := core.readR16(&modrm)
+		term2 = uint32(*r8)
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, r8Str)
+	}
+	case 0x3A == core.currentByteAtCodePointer: {
+		// CMP r8,r/m8
+		core.IncrementIP()
+		modrm := consumeModRm(core)
+		r8, r8Str := core.readR8(&modrm)
+		term1 = uint32(*r8)
+
+		rm8, rm8Str := core.readRm8(&modrm)
+		term2 = uint32(*rm8)
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionPointer(), r8Str, rm8Str)
+	}
+	case 0x3B == core.currentByteAtCodePointer: {
+		// CMP r16,r/m16
+		core.IncrementIP()
+		modrm := consumeModRm(core)
+		r8, r8Str := core.readR16(&modrm)
+		term1 = uint32(*r8)
+
+		rm8, rm8Str := core.readRm16(&modrm)
+		term2 = uint32(*rm8)
+		result = uint32(term1) - uint32(term2)
+
+		log.Printf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionPointer(), r8Str, rm8Str)
+	}
+	}
+
+	bitLength = uint32(bits.Len32(result))
+
+	// update flags
+	sign1 := (term1 >> (bitLength)) & 0x01
+	sign2 := (term2 >> (bitLength)) & 0x01
+	signr := uint8((result >> (bitLength)) & 0x01)
+
+	core.registers.CF = uint16(common.Bool2Uint8( result >> (bitLength) != 0 ))
+
+	core.registers.ZF = uint16(common.Bool2Uint8(result == 0))
+
+	core.registers.SF = uint16(common.Bool2Uint8(signr != 0))
+
+	core.registers.OF = uint16(common.Bool2Uint8((sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0)))
+
+}
+
 func INSTR_SUB(core *CpuCore) {
 
 	var term1 uint32
@@ -453,7 +609,7 @@ func INSTR_SUB(core *CpuCore) {
 	sign2 := (term2 >> (bitLength)) & 0x01
 	signr := uint8((result >> (bitLength)) & 0x01)
 
-	core.registers.CF = uint16(common.Bool2Uint8( core.registers.AL >> (bitLength) != 0 ))
+	core.registers.CF = uint16(common.Bool2Uint8( result >> (bitLength) != 0 ))
 
 	core.registers.ZF = uint16(common.Bool2Uint8(result == 0))
 
@@ -741,7 +897,7 @@ func INSTR_MOV(core *CpuCore) {
 
 }
 
-func INSTR_CMP(core *CpuCore) {
+func INSTR_CMPOLD(core *CpuCore) {
 	/*
 		cmp dst, src	ZF	CF
 		dst = src	1	0
@@ -888,9 +1044,11 @@ func INSTR_JMP_FAR_M16(core *CpuCore, modrm *ModRm) {
 	if modrm.mod == 3 {
 		addr := core.registers.registers16Bit[modrm.rm]
 		core.registers.IP = *addr
+		log.Printf("[%#04x] JMP %#04x (JMP_FAR_M16)", core.GetCurrentlyExecutingInstructionPointer(), uint16(*addr))
 	} else {
 		addr := modrm.getAddressMode16(core)
 		core.registers.IP = addr
+		log.Printf("[%#04x] JMP %#04x (JMP_FAR_M16)", core.GetCurrentlyExecutingInstructionPointer(), uint16(addr))
 	}
 
 }

@@ -224,3 +224,48 @@ func (core *CpuCore) readImm16() uint16 {
 	core.registers.IP += 2
 	return retVal
 }
+
+func (core *CpuCore) BuildAddress(segment uint16, address uint16) uint32 {
+	return uint32(segment<<4 + address)
+}
+
+func (core *CpuCore) readRm8(modrm *ModRm) (*uint8, string) {
+	if modrm.mod == 3 {
+		dest := core.registers.registers8Bit[modrm.rm]
+		destName := core.registers.index8ToString(modrm.rm)
+		return dest, destName
+
+	} else {
+		addressMode := modrm.getAddressMode16(core)
+		destValue := core.memoryAccessController.ReadAddr8(uint32(addressMode))
+		destName := "rm/8"
+		return &destValue, destName
+	}
+}
+
+func (core *CpuCore) readRm16(modrm *ModRm) (*uint16, string) {
+	if modrm.mod == 3 {
+		dest := core.registers.registers16Bit[modrm.rm]
+		destName := core.registers.index16ToString(modrm.rm)
+		return dest, destName
+
+	} else {
+		addressMode := modrm.getAddressMode16(core)
+		destValue := core.memoryAccessController.ReadAddr16(uint32(addressMode))
+		destName := "rm/16"
+		return &destValue, destName
+	}
+}
+
+func (core *CpuCore) readR8(modrm *ModRm) (*uint8, string) {
+	dest := core.registers.registers8Bit[modrm.reg]
+	dstName := core.registers.index8ToString(modrm.reg)
+	return dest, dstName
+}
+
+func (core *CpuCore) readR16(modrm *ModRm) (*uint16, string) {
+	dest := core.registers.registers16Bit[modrm.reg]
+	dstName := core.registers.index16ToString(modrm.reg)
+	return dest, dstName
+
+}
