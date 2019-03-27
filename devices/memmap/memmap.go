@@ -72,13 +72,13 @@ func (mem *MemoryAccessController) ReadAddr32(address uint32) uint32 {
 	return mem.memoryAccessProvider.ReadAddr32(address)
 }
 
-func (mem *MemoryAccessController) WriteAddr(address uint32, value uint8) {
+func (mem *MemoryAccessController) WriteAddr8(address uint32, value uint8) {
 	(*mem.backingRam)[address] = value
 }
 
 func (mem *MemoryAccessController) WriteAddr16(address uint32, value uint16) {
 	for i := uint32(0); i < 2; i++ {
-		mem.WriteAddr(address+i, uint8(value>>uint32(i*8)&0xFF))
+		mem.WriteAddr8(address+i, uint8(value>>uint32(i*8)&0xFF))
 	}
 }
 

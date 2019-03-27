@@ -269,3 +269,29 @@ func (core *CpuCore) readR16(modrm *ModRm) (*uint16, string) {
 	return dest, dstName
 
 }
+
+func (core *CpuCore) writeRm8(modrm *ModRm, value *uint8) {
+	if modrm.mod == 3 {
+		core.registers.registers8Bit[modrm.rm] = value
+	} else {
+		addressMode := modrm.getAddressMode16(core)
+		core.memoryAccessController.WriteAddr8(uint32(addressMode), *value)
+	}
+}
+
+func (core *CpuCore) writeRm16(modrm *ModRm, value *uint16) {
+	if modrm.mod == 3 {
+		core.registers.registers16Bit[modrm.rm] = value
+	} else {
+		addressMode := modrm.getAddressMode16(core)
+		core.memoryAccessController.WriteAddr16(uint32(addressMode), *value)
+	}
+}
+
+func (core *CpuCore) writeR8(modrm *ModRm, value *uint8) {
+	core.registers.registers8Bit[modrm.reg] = value
+}
+
+func (core *CpuCore) writeR16(modrm *ModRm, value *uint16) {
+	core.registers.registers16Bit[modrm.reg] = value
+}
