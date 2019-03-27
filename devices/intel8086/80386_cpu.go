@@ -167,34 +167,10 @@ func (core *CpuCore) Step() {
 		log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
 	}
 
-	instrByte := core.memoryAccessController.ReadAddr8(uint32(core.currentlyExecutingInstructionPointer))
+	status := core.routeInstruction()
 
-	core.flags.CS_OVERRIDE = 0x0
-	core.flags.CS_OVERRIDE_ENABLE = false
-
-	if core.memoryAccessController.PeekNextBytes(1)[0] == 0x2E {
-		// Prefix byte
-		// cs segment override
-
-		core.flags.CS_OVERRIDE = 0x0
-		core.flags.CS_OVERRIDE_ENABLE = true
-		core.IncrementIP()
-
-		instrByte = core.memoryAccessController.ReadAddr8(uint32(core.currentlyExecutingInstructionPointer+1))
-
-	}
-
-	core.currentByteAtCodePointer = instrByte
-
-	instructionImpl := core.opCodeMap[core.currentByteAtCodePointer]
-	if instructionImpl != nil {
-		instructionImpl(core)
-	} else {
-		log.Printf("[%#04x] Unrecognised opcode: %#2x\n", core.currentlyExecutingInstructionPointer, instrByte)
-
-		log.Printf("CPU CORE ERROR!!!")
-
-		doCoreDump(core)
+	if status != 0 {
+		panic(0)
 	}
 
 	core.lastExecutedInstructionPointer = core.currentlyExecutingInstructionPointer
