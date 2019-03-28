@@ -1398,26 +1398,46 @@ func INSTR_SHL(core *CpuCore) {
 func INSTR_XCHG(core *CpuCore) {
 	core.IncrementIP()
 
-	var term1 uint32
-	var term2 uint32
-	var result uint32
-
-	var bitLength uint32
-
 	switch core.currentByteAtCodePointer {
 	case 0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98: {
 		// xchg ax, 16
-		term1 = uint32(core.registers.AX)
+		term1 := core.registers.AX
 		r16,r16Str := core.registers.registers16Bit[core.currentByteAtCodePointer - 0x90], core.registers.index16ToString(core.currentByteAtCodePointer - 0x90)
-		term2 = uint32(*r16)
+		term2 := *r16
+		core.registers.AX = term2
+		*r16 = term1
+
 		log.Printf("[%#04x] xchg AX, %s", core.GetCurrentlyExecutingInstructionPointer(), r16Str)
 	}
 	case 0x86: {
-		// xchg r/m8, r8
-		term1 = uint32(core.registers.AX)
-		r16,r16Str := core.registers.registers16Bit[core.currentByteAtCodePointer - 0x90], core.registers.index16ToString(core.currentByteAtCodePointer - 0x90)
-		term2 = uint32(*r16)
-		log.Printf("[%#04x] xchg AX, %s", core.GetCurrentlyExecutingInstructionPointer(), r16Str)
+		// XCHG r/m8, r8
+		modrm := consumeModRm(core)
+		rm8, rm8Str := core.readRm8(&modrm)
+
+		r8, r8Str := core.readR8(&modrm)
+
+		tmp := *rm8
+
+		*rm8 = *r8
+
+		*r8 = tmp
+
+		log.Printf("[%#04x] xchg %s, %s", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, r8Str)
+	}
+	case 0x87: {
+		// XCHG r/m16, r16
+		modrm := consumeModRm(core)
+		rm8, rm8Str := core.readRm16(&modrm)
+
+		r8, r8Str := core.readR16(&modrm)
+
+		tmp := *rm8
+
+		*rm8 = *r8
+
+		*r8 = tmp
+
+		log.Printf("[%#04x] xchg %s, %s", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, r8Str)
 	}
 	default:
 		log.Println("Unrecognised xchg instruction!")
@@ -1425,23 +1445,6 @@ func INSTR_XCHG(core *CpuCore) {
 	}
 
 
-	core.IncrementIP()
-
-	modrm := consumeModRm(core)
-
-	reg1 := *core.registers.registers16Bit[modrm.mod]
-	reg2 := *core.registers.registers16Bit[modrm.reg]
-
-	regName := core.registers.index16ToString(modrm.mod)
-	regName2 := core.registers.index16ToString(modrm.reg)
-
-	log.Print(fmt.Sprintf("[%#04x] XCHG %s, %s", core.GetCurrentlyExecutingInstructionPointer(), regName, regName2))
-
-	tmp := reg2
-
-	reg2 = reg1
-
-	reg1 = tmp
 }
 
 func INSTR_MOV(core *CpuCore) {
