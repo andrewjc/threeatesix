@@ -18,16 +18,17 @@ import (
 */
 
 func main() {
-	machine := NewPC()
+	machine := newPc()
 
 	machine.power()
 
 }
 
-type RomImages struct {
+type romimages struct {
 	bios []byte
 }
 
+// PersonalComputer represents the virtual PC being emulated
 type PersonalComputer struct {
 	cpu             *intel8086.CpuCore
 	mathCoProcessor *intel8086.CpuCore
@@ -35,7 +36,7 @@ type PersonalComputer struct {
 	bus *bus.Bus
 
 	ram []byte
-	rom RomImages
+	rom romimages
 
 	masterInterruptController *intel8259a.Intel8259a
 	slaveInterruptController  *intel8259a.Intel8259a
@@ -45,9 +46,11 @@ type PersonalComputer struct {
 
 }
 
-const BIOS_FILENAME = "bios.bin"
+// BiosFilename - name of the bios image the virtual machine will boot up
+const BiosFilename = "bios.bin"
 
-const MAX_RAM_BYTES = 0x1E84800 //32 million (32mb)
+// MaxRAMBytes - the amount of ram installed in this virtual machine
+const MaxRAMBytes = 0x1E84800 //32 million (32mb)
 
 func (pc *PersonalComputer) power() {
 	// do stuff
@@ -78,27 +81,27 @@ func (pc *PersonalComputer) power() {
 	}
 }
 
-func (computer *PersonalComputer) loadBios() {
-	biosData, err := ioutil.ReadFile(BIOS_FILENAME)
+func (pc *PersonalComputer) loadBios() {
+	biosData, err := ioutil.ReadFile(BiosFilename)
 
 	if err != nil {
 		fmt.Printf("Failed to load bios! - %s", err.Error())
 		os.Exit(1)
 	}
 
-	computer.rom.bios = make([]byte, len(biosData))
+	pc.rom.bios = make([]byte, len(biosData))
 	for i := 0; i < len(biosData); i++ {
-		computer.rom.bios[i] = biosData[i]
+		pc.rom.bios[i] = biosData[i]
 	}
 
 }
 
-func NewPC() *PersonalComputer {
+func newPc() *PersonalComputer {
 	pc := &PersonalComputer{}
 
 	pc.bus = bus.NewDeviceBus()
-	pc.ram = make([]byte, MAX_RAM_BYTES)
-	pc.rom = RomImages{}
+	pc.ram = make([]byte, MaxRAMBytes)
+	pc.rom = romimages{}
 	pc.cpu = intel8086.New80386CPU()
 	pc.mathCoProcessor = intel8086.New80287MathCoProcessor()
 

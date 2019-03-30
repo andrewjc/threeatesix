@@ -18,7 +18,7 @@ type ModRm struct {
 }
 
 
-func consumeModRm(core *CpuCore) ModRm {
+func (core *CpuCore) consumeModRm() ModRm {
 
 	m := ModRm{}
 
