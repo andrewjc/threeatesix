@@ -48,16 +48,11 @@ type CpuRegisters struct {
 	DL uint8
 
 	// Flags
-	DF uint16 // direction flag
-	CF uint16
-	OF uint16
-	ZF uint16
-	SF uint16
-	AF uint16
-	PF uint16
+	FLAGS uint16
 }
 
-func (c CpuRegisters) index8ToString(i uint8) string {
+func (c *CpuRegisters) index8ToString(i uint8) string {
+
 	switch {
 	case i == 0:
 		return "AL"
@@ -80,7 +75,7 @@ func (c CpuRegisters) index8ToString(i uint8) string {
 	}
 }
 
-func (c CpuRegisters) index16ToString(i uint8) string {
+func (c *CpuRegisters) index16ToString(i uint8) string {
 	switch {
 	case i == 0:
 		return "AX"
@@ -103,7 +98,7 @@ func (c CpuRegisters) index16ToString(i uint8) string {
 	}
 }
 
-func (core CpuRegisters) indexSegmentToString(i uint8) string {
+func (core *CpuRegisters) indexSegmentToString(i uint8) string {
 	switch {
 	case i == 0:
 		return "ES"
@@ -117,3 +112,4 @@ func (core CpuRegisters) indexSegmentToString(i uint8) string {
 		return fmt.Sprintf("Unrecognised segment register index %d", i)
 	}
 }
+

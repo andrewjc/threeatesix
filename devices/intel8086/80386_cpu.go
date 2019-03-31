@@ -271,3 +271,19 @@ func (core *CpuCore) writeR8(modrm *ModRm, value *uint8) {
 func (core *CpuCore) writeR16(modrm *ModRm, value *uint16) {
 	core.registers.registers16Bit[modrm.reg] = value
 }
+
+func (core *CpuCore) SetFlag(mask uint16, status bool) {
+	core.registers.SetFlag(mask, status)
+}
+
+func (core *CpuCore) GetFlag(mask uint16) bool {
+	return core.registers.GetFlag(mask)
+}
+
+func (core *CpuCore) GetFlagInt(mask uint16) uint16 {
+	return core.registers.GetFlagInt(mask)
+}
+
+func (core *CpuCore) GetRegisters() *CpuRegisters {
+	return core.registers
+}
