@@ -35,7 +35,7 @@ type PersonalComputer struct {
 }
 
 // BiosFilename - name of the bios image the virtual machine will boot up
-const BiosFilename = "bios.bin"
+const BiosFilename = "bios/bios.bin"
 
 // MaxRAMBytes - the amount of ram installed in this virtual machine
 const MaxRAMBytes = 0x1E84800 //32 million (32mb)
@@ -99,16 +99,26 @@ func (pc *PersonalComputer) GetBus() *bus.Bus {
 }
 
 func (pc *PersonalComputer) LoadBios() {
-	biosData, err := ioutil.ReadFile(BiosFilename)
-
+	var fileLength int32
+	fi, err := os.Stat(BiosFilename)
 	if err != nil {
-		fmt.Printf("Failed to load bios! - %s", err.Error())
-		os.Exit(1)
-	}
+		// Could not obtain stat, handle error
+	} else {
+		fileLength = int32(fi.Size())
 
-	pc.rom.bios = make([]byte, len(biosData))
-	for i := 0; i < len(biosData); i++ {
-		pc.rom.bios[i] = biosData[i]
+		biosData, err := ioutil.ReadFile(BiosFilename)
+
+		if err != nil {
+			fmt.Printf("Failed to load bios! - %s", err.Error())
+			os.Exit(1)
+		}
+
+		romChipSize := int32(fileLength)
+		pc.rom.bios = make([]byte, romChipSize)
+		for i := fileLength-1;i>=0;i-- {
+			offset := romChipSize-(fileLength-i)
+			pc.rom.bios[offset] = biosData[i]
+		}
 	}
 
 }

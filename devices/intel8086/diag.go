@@ -16,7 +16,7 @@ func doCoreDump(core *CpuCore) {
 	}
 
 	// Gather next few bytes for debugging...
-	peekBytes := core.memoryAccessController.PeekNextBytes(10)
+	peekBytes := core.memoryAccessController.PeekNextBytes( core.currentlyExecutingInstructionPointer, 10)
 	stb := strings.Builder{}
 	for _, b := range peekBytes {
 		stb.WriteString(fmt.Sprintf("%#2x ", b))
@@ -38,4 +38,11 @@ func doCoreDump(core *CpuCore) {
 		log.Printf("%v %#2x (pntr: %#2x)", core.registers.indexSegmentToString(uint8(x)), *y, y)
 	}
 
+	log.Printf("Control flags:")
+	log.Printf("CR0[pe] = %b",  core.registers.CR0 >> 0 & 1)
+	log.Printf("CR0[mp] = %b",  core.registers.CR0 >> 1 & 1)
+	log.Printf("CR0[em] = %b",  core.registers.CR0 >> 2 & 1)
+	log.Printf("CR0[ts] = %b",  core.registers.CR0 >> 3 & 1)
+	log.Printf("CR0[et] = %b",  core.registers.CR0 >> 4 & 1)
+	log.Printf("CR0[ne] = %b",  core.registers.CR0 >> 5 & 1)
 }

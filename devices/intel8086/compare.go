@@ -107,6 +107,61 @@ func INSTR_TEST(core *CpuCore) {
 
 }
 
+
+func INSTR_XCHG(core *CpuCore) {
+	core.IncrementIP()
+
+	switch core.currentByteAtCodePointer {
+	case 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98:
+		{
+			// xchg ax, 16
+			term1 := core.registers.AX
+			r16, r16Str := core.registers.registers16Bit[core.currentByteAtCodePointer-0x90], core.registers.index16ToString(core.currentByteAtCodePointer-0x90)
+			term2 := *r16
+			core.registers.AX = term2
+			*r16 = term1
+
+			log.Printf("[%#04x] xchg AX, %s", core.GetCurrentlyExecutingInstructionPointer(), r16Str)
+		}
+	case 0x86:
+		{
+			// XCHG r/m8, r8
+			modrm := core.consumeModRm()
+			rm8, rm8Str := core.readRm8(&modrm)
+
+			r8, r8Str := core.readR8(&modrm)
+
+			tmp := *rm8
+
+			*rm8 = *r8
+
+			*r8 = tmp
+
+			log.Printf("[%#04x] xchg %s, %s", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, r8Str)
+		}
+	case 0x87:
+		{
+			// XCHG r/m16, r16
+			modrm := core.consumeModRm()
+			rm8, rm8Str := core.readRm16(&modrm)
+
+			r8, r8Str := core.readR16(&modrm)
+
+			tmp := *rm8
+
+			*rm8 = *r8
+
+			*r8 = tmp
+
+			log.Printf("[%#04x] xchg %s, %s", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, r8Str)
+		}
+	default:
+		log.Println("Unrecognised xchg instruction!")
+		doCoreDump(core)
+	}
+
+}
+
 func INSTR_CMP(core *CpuCore) {
 
 	var term1 uint32

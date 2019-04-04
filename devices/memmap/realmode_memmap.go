@@ -1,10 +1,5 @@
 package memmap
 
-import (
-	"github.com/andrewjc/threeatesix/common"
-	cpu2 "github.com/andrewjc/threeatesix/devices/cpu"
-)
-
 type RealModeAccessProvider struct {
 	*MemoryAccessController
 }
@@ -13,7 +8,7 @@ func (r *RealModeAccessProvider) ReadAddr8(addr uint32) uint8 {
 
 	var byteData uint8
 	if r.resetVectorBaseAddr > 0 {
-		byteData = (*r.biosImage)[addr]
+		return r.ReadFromBiosAddressSpace(addr)
 	} else {
 		byteData = (*r.backingRam)[addr]
 	}
@@ -37,25 +32,30 @@ func (r *RealModeAccessProvider) ReadAddr32(addr uint32) uint32 {
 
 }
 
-func (r *RealModeAccessProvider) PeekNextBytesImpl(numBytes int) []byte {
+func (r *RealModeAccessProvider) PeekNextBytesImpl(addr uint32, numBytes uint32) []byte {
 	buffer := make([]byte, numBytes)
 
-	cpu := r.bus.FindSingleDevice(common.MODULE_PRIMARY_PROCESSOR).(cpu2.CpuController)
-	cs := cpu.GetCS()
-	ip := cpu.GetIP()
-
-	for i := 0; i < numBytes; i++ {
-
-		ip := ip + uint16(i)
-		addr := uint32(uint16(cs)<<4 + uint16(ip))
+	for i := uint32(0); i < numBytes; i++ {
 
 		if r.resetVectorBaseAddr > 0 {
-			addr = uint32(ip)
-			buffer[i] = (*r.biosImage)[addr]
+			buffer[i] = r.ReadFromBiosAddressSpace(addr+i)
 		} else {
-			buffer[i] = (*r.backingRam)[addr]
+			buffer[i] = (*r.backingRam)[addr+i]
 		}
 	}
 
 	return buffer
+}
+
+func (r *RealModeAccessProvider) ReadFromBiosAddressSpace(addr uint32) uint8 {
+
+	ddd := 0xF000FFFF - addr
+
+	biosImageLength := uint32(len(*r.biosImage)-1)
+
+	offs := biosImageLength - ddd
+
+	byteData := (*r.biosImage)[offs]
+
+	return byteData
 }

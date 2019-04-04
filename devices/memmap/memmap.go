@@ -26,7 +26,7 @@ type MemoryAccessProvider interface {
 	ReadAddr8(u uint32) uint8
 	ReadAddr16(u uint32) uint16
 	ReadAddr32(u uint32) uint32
-	PeekNextBytesImpl(numBytes int) []byte
+	PeekNextBytesImpl(addr uint32, numBytes uint32) []byte
 }
 
 func (mem *MemoryAccessController) SetDeviceBusId(id uint32) {
@@ -90,6 +90,6 @@ func (mem *MemoryAccessController) UnlockBootVector() {
 }
 
 
-func (mem *MemoryAccessController) PeekNextBytes(numBytes int) []byte {
-	return mem.memoryAccessProvider.PeekNextBytesImpl(numBytes)
+func (mem *MemoryAccessController) PeekNextBytes(addr uint32, numBytes uint32) []byte {
+	return mem.memoryAccessProvider.PeekNextBytesImpl(addr, numBytes)
 }

@@ -40,19 +40,17 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x84] = INSTR_TEST
 	c.opCodeMap[0x85] = INSTR_TEST
 
-	c.opCodeMap[0xB0] = INSTR_MOV
-	c.opCodeMap[0xB1] = INSTR_MOV
-	c.opCodeMap[0xB2] = INSTR_MOV
-	c.opCodeMap[0xB3] = INSTR_MOV
-	c.opCodeMap[0xB4] = INSTR_MOV
-	c.opCodeMap[0xB5] = INSTR_MOV
-	c.opCodeMap[0xB6] = INSTR_MOV
-	c.opCodeMap[0xB7] = INSTR_MOV
-	c.opCodeMap[0xB8] = INSTR_MOV
+	c.opCodeMap[0xA0] = INSTR_MOV
+	c.opCodeMap[0xA1] = INSTR_MOV
+	c.opCodeMap[0xA2] = INSTR_MOV
+	c.opCodeMap[0xA3] = INSTR_MOV
+	for i := 0; i < len(c.registers.registers8Bit); i++ {
+		c.opCodeMap[0xB0+i] = INSTR_MOV
+	}
 
-	c.opCodeMap[0xBA] = INSTR_MOV
-	c.opCodeMap[0xBB] = INSTR_MOV
-	c.opCodeMap[0xBC] = INSTR_MOV
+	for i := 0; i < len(c.registers.registers16Bit); i++ {
+		c.opCodeMap[0xB8+i] = INSTR_MOV
+	}
 
 	c.opCodeMap[0x8A] = INSTR_MOV
 	c.opCodeMap[0x8B] = INSTR_MOV
@@ -119,6 +117,13 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xC0] = INSTR_SHIFT
 	c.opCodeMap[0xC1] = INSTR_SHIFT
 
+	c.opCodeMap[0x30] = INSTR_XOR
+	c.opCodeMap[0x31] = INSTR_XOR
+	c.opCodeMap[0x32] = INSTR_XOR
+	c.opCodeMap[0x33] = INSTR_XOR
+	c.opCodeMap[0x34] = INSTR_XOR
+	c.opCodeMap[0x35] = INSTR_XOR
+
 	// opcodes that handle multiple instructions (handled by modrm byte)
 	c.opCodeMap[0xFF] = INSTR_FF_OPCODES
 	c.opCodeMap[0x80] = INSTR_80_OPCODES
@@ -147,11 +152,23 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x1E] = INSTR_PUSH
 	c.opCodeMap[0x06] = INSTR_PUSH
 
-	// opcode 0F A0 and 0F A8 are push .. todo
 
+	// 2 byte opcodes
+	c.opCodeMap2Byte[0x01] = INSTR_SMSW
 }
 
 type OpCodeImpl func(*CpuCore)
+
+func INSTR_SMSW(core *CpuCore) {
+	core.IncrementIP()
+	modrm := core.consumeModRm()
+
+	value := uint16(core.registers.CR0)
+
+	core.writeRm16(&modrm, &value)
+	log.Printf("[%#04x] smsw %s", core.GetCurrentlyExecutingInstructionPointer(), "r/m16")
+	core.registers.IP = uint16(core.GetIP() + 1)
+}
 
 func INSTR_FF_OPCODES(core *CpuCore) {
 
@@ -207,6 +224,8 @@ func INSTR_80_OPCODES(core *CpuCore) {
 		INSTR_OR(core)
 	case 4:
 		INSTR_AND(core)
+	case 6:
+		INSTR_XOR(core)
 	case 7:
 		INSTR_CMP(core)
 	default:
@@ -229,6 +248,8 @@ func INSTR_81_OPCODES(core *CpuCore) {
 		INSTR_OR(core)
 	case 4:
 		INSTR_AND(core)
+	case 6:
+		INSTR_XOR(core)
 	case 7:
 		INSTR_CMP(core)
 	default:
@@ -253,6 +274,8 @@ func INSTR_83_OPCODES(core *CpuCore) {
 		INSTR_AND(core)
 	case 5:
 		INSTR_SUB(core)
+	case 6:
+		INSTR_XOR(core)
 	case 7:
 		INSTR_CMP(core)
 	default:
@@ -284,277 +307,6 @@ func INSTR_CLD(core *CpuCore) {
 }
 
 
-
-func INSTR_XCHG(core *CpuCore) {
-	core.IncrementIP()
-
-	switch core.currentByteAtCodePointer {
-	case 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98:
-		{
-			// xchg ax, 16
-			term1 := core.registers.AX
-			r16, r16Str := core.registers.registers16Bit[core.currentByteAtCodePointer-0x90], core.registers.index16ToString(core.currentByteAtCodePointer-0x90)
-			term2 := *r16
-			core.registers.AX = term2
-			*r16 = term1
-
-			log.Printf("[%#04x] xchg AX, %s", core.GetCurrentlyExecutingInstructionPointer(), r16Str)
-		}
-	case 0x86:
-		{
-			// XCHG r/m8, r8
-			modrm := core.consumeModRm()
-			rm8, rm8Str := core.readRm8(&modrm)
-
-			r8, r8Str := core.readR8(&modrm)
-
-			tmp := *rm8
-
-			*rm8 = *r8
-
-			*r8 = tmp
-
-			log.Printf("[%#04x] xchg %s, %s", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, r8Str)
-		}
-	case 0x87:
-		{
-			// XCHG r/m16, r16
-			modrm := core.consumeModRm()
-			rm8, rm8Str := core.readRm16(&modrm)
-
-			r8, r8Str := core.readR16(&modrm)
-
-			tmp := *rm8
-
-			*rm8 = *r8
-
-			*r8 = tmp
-
-			log.Printf("[%#04x] xchg %s, %s", core.GetCurrentlyExecutingInstructionPointer(), rm8Str, r8Str)
-		}
-	default:
-		log.Println("Unrecognised xchg instruction!")
-		doCoreDump(core)
-	}
-
-}
-
-func INSTR_MOV(core *CpuCore) {
-
-	switch core.currentByteAtCodePointer {
-	case 0xB0:
-		{
-			val := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
-			*core.registers.registers8Bit[0] = val
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionPointer(), core.registers.index8ToString(0), val))
-			core.registers.IP = uint16(core.GetIP() + 2)
-		}
-	case 0xB1:
-		{
-			val := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
-			*core.registers.registers8Bit[1] = val
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionPointer(), core.registers.index8ToString(1), val))
-			core.registers.IP = uint16(core.GetIP() + 2)
-		}
-	case 0xB2:
-		{
-			val := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
-			*core.registers.registers8Bit[2] = val
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionPointer(), core.registers.index8ToString(2), val))
-			core.registers.IP = uint16(core.GetIP() + 2)
-		}
-	case 0xB3:
-		{
-			val := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
-			*core.registers.registers8Bit[3] = val
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionPointer(), core.registers.index8ToString(3), val))
-			core.registers.IP = uint16(core.GetIP() + 2)
-		}
-	case 0xB4:
-		{
-			val := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
-			*core.registers.registers8Bit[4] = val
-			log.Print(fmt.Sprintf("[%#04x] MOV %s,  %#02x", core.GetCurrentlyExecutingInstructionPointer(), core.registers.index8ToString(4), val))
-			core.registers.IP = uint16(core.GetIP() + 2)
-		}
-	case 0xB5:
-		{
-			val := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
-			*core.registers.registers8Bit[5] = val
-			log.Print(fmt.Sprintf("[%#04x] MOV %s,  %#02x", core.GetCurrentlyExecutingInstructionPointer(), core.registers.index8ToString(5), val))
-			core.registers.IP = uint16(core.GetIP() + 2)
-		}
-	case 0xB6:
-		{
-			val := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
-			*core.registers.registers8Bit[6] = val
-			log.Print(fmt.Sprintf("[%#04x] MOV %s,  %#02x", core.GetCurrentlyExecutingInstructionPointer(), core.registers.index8ToString(6), val))
-			core.registers.IP = uint16(core.GetIP() + 2)
-		}
-	case 0xB7:
-		{
-			val := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
-			*core.registers.registers8Bit[7] = val
-			log.Print(fmt.Sprintf("[%#04x] MOV %s,  %#02x", core.GetCurrentlyExecutingInstructionPointer(), core.registers.index8ToString(7), val))
-			core.registers.IP = uint16(core.GetIP() + 2)
-		}
-
-	case 0xB8:
-		{
-			val := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
-			*core.registers.registers16Bit[0] = val
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#04x", core.GetCurrentlyExecutingInstructionPointer(), core.registers.index16ToString(0), val))
-			core.registers.IP = uint16(core.GetIP() + 3)
-		}
-
-	case 0xBA:
-		{
-			val := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
-			core.registers.DX = val
-			log.Print(fmt.Sprintf("[%#04x] MOV DX, %#04x", core.GetCurrentlyExecutingInstructionPointer(), val))
-			core.registers.IP = uint16(core.GetIP() + 3)
-		}
-	case 0xBB:
-		{
-			val := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
-			core.registers.BX = val
-			log.Print(fmt.Sprintf("[%#04x] MOV BX, %#04x", core.GetCurrentlyExecutingInstructionPointer(), val))
-			core.registers.IP = uint16(core.GetIP() + 3)
-		}
-	case 0xBC:
-		{
-			val := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
-			core.registers.SP = val
-			log.Print(fmt.Sprintf("[%#04x] MOV SP, %#04x", core.GetCurrentlyExecutingInstructionPointer(), val))
-			core.registers.IP = uint16(core.GetIP() + 3)
-		}
-	case 0xBD:
-		{
-			val := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
-			core.registers.BP = val
-			log.Print(fmt.Sprintf("[%#04x] MOV BP, %#04x", core.GetCurrentlyExecutingInstructionPointer(), val))
-			core.registers.IP = uint16(core.GetIP() + 3)
-		}
-	case 0xBE:
-		{
-			val := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
-			core.registers.SI = val
-			log.Print(fmt.Sprintf("[%#04x] MOV SI, %#04x", core.GetCurrentlyExecutingInstructionPointer(), val))
-			core.registers.IP = uint16(core.GetIP() + 3)
-		}
-	case 0x8A:
-		{
-			/* 	MOV r8,r/m8 */
-			core.IncrementIP()
-			modrm := core.consumeModRm()
-
-			var src *uint8
-			var srcName string
-			dest := core.registers.registers8Bit[modrm.reg]
-
-			dstName := core.registers.index8ToString(modrm.reg)
-
-			if modrm.mod == 3 {
-				src = core.registers.registers8Bit[modrm.rm]
-				srcName = core.registers.index8ToString(modrm.rm)
-				*dest = *src
-			} else {
-				addressMode := modrm.getAddressMode16(core)
-				data := core.memoryAccessController.ReadAddr8(uint32(addressMode))
-				src = &data
-				srcName = "r/m8"
-				*dest = *src
-			}
-
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionPointer(), dstName, srcName))
-
-			core.registers.IP = uint16(core.GetIP())
-		}
-	case 0x8B:
-		{
-			/* mov r16, r/m16 */
-			core.IncrementIP()
-			modrm := core.consumeModRm()
-
-			// dest
-			dest := core.registers.registers16Bit[modrm.reg]
-			dstName := core.registers.index16ToString(modrm.reg)
-			var src *uint16
-			var srcName string
-			if modrm.mod == 3 {
-				src = core.registers.registers16Bit[modrm.rm]
-				srcName = core.registers.index16ToString(modrm.rm)
-				*dest = *src
-			} else {
-				addressMode := modrm.getAddressMode16(core)
-				data := core.memoryAccessController.ReadAddr16(uint32(addressMode))
-				src = &data
-				*dest = *src
-				srcName = "rm/16"
-			}
-
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionPointer(), dstName, srcName))
-
-			core.registers.IP = uint16(core.GetIP())
-		}
-	case 0x8C:
-		{
-			/* MOV r/m16,Sreg */
-			core.IncrementIP()
-			modrm := core.consumeModRm()
-
-			src := core.registers.registersSegmentRegisters[modrm.reg]
-			srcName := core.registers.indexSegmentToString(modrm.reg)
-
-			var dest *uint16
-			var destName string
-			if modrm.mod == 3 {
-				dest = core.registers.registers16Bit[modrm.rm]
-				destName = core.registers.index16ToString(modrm.rm)
-				*dest = *src
-			} else {
-				addressMode := modrm.getAddressMode16(core)
-				core.memoryAccessController.WriteAddr16(uint32(addressMode), *src)
-				srcName = "rm/16"
-			}
-
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionPointer(), destName, srcName))
-
-			core.registers.IP = uint16(core.GetIP())
-		}
-	case 0x8E:
-		{
-			/* MOV Sreg,r/m16 */
-			core.IncrementIP()
-			modrm := core.consumeModRm()
-
-			dest := core.registers.registersSegmentRegisters[modrm.reg]
-			dstName := core.registers.indexSegmentToString(modrm.reg)
-
-			var src *uint16
-			var srcName string
-			if modrm.mod == 3 {
-				src = core.registers.registers16Bit[modrm.rm]
-				srcName = core.registers.index16ToString(modrm.rm)
-				*dest = *src
-			} else {
-				addressMode := modrm.getAddressMode16(core)
-				data := core.memoryAccessController.ReadAddr16(uint32(addressMode))
-				src = &data
-				*dest = *src
-				srcName = "rm/16"
-			}
-
-			log.Print(fmt.Sprintf("[%#04x] MOV %s,%s", core.GetCurrentlyExecutingInstructionPointer(), dstName, srcName))
-
-			core.registers.IP = uint16(core.GetIP())
-		}
-
-	default:
-		log.Fatal("Unrecognised MOV instruction!")
-	}
-
-}
 
 
 

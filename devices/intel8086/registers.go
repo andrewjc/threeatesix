@@ -49,6 +49,9 @@ type CpuRegisters struct {
 
 	// Flags
 	FLAGS uint16
+
+	// Control Flag
+	CR0   uint32
 }
 
 func (c *CpuRegisters) index8ToString(i uint8) string {

@@ -608,6 +608,149 @@ func INSTR_OR(core *CpuCore) {
 
 }
 
+func INSTR_XOR(core *CpuCore) {
+	core.IncrementIP()
+
+	var term1 uint32
+	var term2 uint32
+	var result uint32
+
+	var bitLength uint32
+
+	switch core.currentByteAtCodePointer {
+	case 0x34:
+		{
+			// XOR AL,imm8
+			term2 = uint32(core.readImm8())
+			term1 = uint32(core.registers.AL)
+			result = uint32(term1) ^ uint32(term2)
+			core.registers.AL = uint8(result)
+
+			log.Printf("[%#04x] xor al, %#04x", core.GetCurrentlyExecutingInstructionPointer(), term2)
+		}
+	case 0x35:
+		{
+			// XOR AX,imm16
+			term2 = uint32(core.readImm16())
+			term1 = uint32(core.registers.AX)
+			result = uint32(term1) ^ uint32(term2)
+			core.registers.AX = uint16(result)
+
+			log.Printf("[%#04x] xor ax, %#04x", core.GetCurrentlyExecutingInstructionPointer(), term2)
+		}
+	case 0x80:
+		{
+			// XOR r/m8,imm8
+			modrm := core.consumeModRm()
+			rm, rmStr := core.readRm8(&modrm)
+			term1 = uint32(*rm)
+			term2 = uint32(core.readImm8())
+			tmp := uint8(uint32(term1) ^ uint32(term2))
+
+			core.writeRm8(&modrm, &tmp)
+
+			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionPointer(), rmStr, term2)
+		}
+	case 0x81:
+		{
+			// XOR r/m16,imm16
+			modrm := core.consumeModRm()
+			rm, rmStr := core.readRm16(&modrm)
+			term1 = uint32(*rm)
+			term2 = uint32(core.readImm16())
+			tmp := uint16(uint32(term1) ^ uint32(term2))
+
+			core.writeRm16(&modrm, &tmp)
+
+			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionPointer(), rmStr, term2)
+		}
+	case 0x83:
+		{
+			// XOR r/m16,imm8
+			modrm := core.consumeModRm()
+			rm, rmStr := core.readRm16(&modrm)
+			term1 = uint32(*rm)
+			term2 = uint32(core.readImm8())
+			tmp := uint16(uint32(term1) ^ uint32(term2))
+
+			core.writeRm16(&modrm, &tmp)
+
+			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionPointer(), rmStr, term2)
+		}
+	case 0x30:
+		{
+			// XOR r/m8,r8
+			modrm := core.consumeModRm()
+			rm, rmStr := core.readRm8(&modrm)
+			term1 = uint32(*rm)
+			rm2, rm2Str := core.readR8(&modrm)
+			term2 = uint32(*rm2)
+			tmp := uint8(uint32(term1) ^ uint32(term2))
+
+			core.writeRm8(&modrm, &tmp)
+
+			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionPointer(), rmStr, rm2Str)
+		}
+	case 0x31:
+		{
+			// XOR r/m16,r16
+			modrm := core.consumeModRm()
+			rm, rmStr := core.readRm16(&modrm)
+			term1 = uint32(*rm)
+			rm2, rm2Str := core.readR16(&modrm)
+			term2 = uint32(*rm2)
+			tmp := uint16(uint32(term1) ^ uint32(term2))
+
+			core.writeRm16(&modrm, &tmp)
+
+			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionPointer(), rmStr, rm2Str)
+		}
+	case 0x32:
+		{
+			// XOR r8,r/m8
+			modrm := core.consumeModRm()
+			rm, rmStr := core.readR8(&modrm)
+			term1 = uint32(*rm)
+			rm2, rm2Str := core.readRm8(&modrm)
+			term2 = uint32(*rm2)
+			tmp := uint8(uint32(term1) ^ uint32(term2))
+
+			core.writeR8(&modrm, &tmp)
+
+			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionPointer(), rmStr, rm2Str)
+		}
+	case 0x33:
+		{
+			// XOR r16,r/m16
+			modrm := core.consumeModRm()
+			rm, rmStr := core.readR16(&modrm)
+			term1 = uint32(*rm)
+			rm2, rm2Str := core.readRm16(&modrm)
+			term2 = uint32(*rm2)
+			tmp := uint16(uint32(term1) ^ uint32(term2))
+
+			core.writeR16(&modrm, &tmp)
+
+			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionPointer(), rmStr, rm2Str)
+		}
+	}
+
+	bitLength = uint32(bits.Len32(result))
+
+	// update flags
+
+	core.registers.SetFlag(OverFlowFlag,  false)
+
+	core.registers.SetFlag(CarryFlag, false)
+
+	core.registers.SetFlag(SignFlag, (result >> bitLength) != 0)
+
+	core.registers.SetFlag(ZeroFlag, result == 0)
+
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
+
+}
+
 
 func INSTR_SUB(core *CpuCore) {
 

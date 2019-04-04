@@ -47,6 +47,7 @@ func New80386CPU() *CpuCore {
 	}
 
 	cpuCore.opCodeMap = make([]OpCodeImpl, 256)
+	cpuCore.opCodeMap2Byte = make([]OpCodeImpl, 256)
 
 	mapOpCodes(cpuCore)
 
@@ -61,6 +62,8 @@ type CpuCore struct {
 
 	registers *CpuRegisters
 	opCodeMap []OpCodeImpl
+	opCodeMap2Byte []OpCodeImpl
+
 	mode      uint8
 	flags CpuExecutionFlags
 
@@ -151,7 +154,8 @@ func (core *CpuCore) EnterMode(mode uint8) {
 
 // Gets the current code segment + IP addr in memory
 func (core *CpuCore) GetCurrentCodePointer() uint32 {
-	return uint32(core.registers.CS<<4 + core.registers.IP)
+	addr := (uint32(core.registers.CS) << 16) + uint32(core.registers.IP)
+	return addr
 }
 
 // Returns the address in memory of the instruction currently executing.

@@ -9,7 +9,7 @@ func (core *CpuCore) routeInstruction() uint8 {
 	core.flags.CS_OVERRIDE = 0x0
 	core.flags.CS_OVERRIDE_ENABLE = false
 
-	if core.memoryAccessController.PeekNextBytes(1)[0] == 0x2E {
+	if core.memoryAccessController.PeekNextBytes(uint32(core.currentlyExecutingInstructionPointer), 1)[0] == 0x2E {
 		// Prefix byte
 		// cs segment override
 
@@ -25,9 +25,18 @@ func (core *CpuCore) routeInstruction() uint8 {
 
 	}
 
-	core.currentByteAtCodePointer = instrByte
+	var instructionImpl OpCodeImpl
+	if core.memoryAccessController.PeekNextBytes(uint32(core.currentlyExecutingInstructionPointer), 1)[0] == 0x0F {
+		// 2 byte opcode
+		core.IncrementIP()
+		instrByte = core.memoryAccessController.ReadAddr8(uint32(core.currentlyExecutingInstructionPointer+1))
+		core.currentByteAtCodePointer = instrByte
+		instructionImpl = core.opCodeMap2Byte[core.currentByteAtCodePointer]
+	} else {
+		core.currentByteAtCodePointer = instrByte
+		instructionImpl = core.opCodeMap[core.currentByteAtCodePointer]
+	}
 
-	instructionImpl := core.opCodeMap[core.currentByteAtCodePointer]
 	if instructionImpl != nil {
 		instructionImpl(core)
 	} else {
@@ -36,6 +45,7 @@ func (core *CpuCore) routeInstruction() uint8 {
 		log.Printf("CPU CORE ERROR!!!")
 
 		doCoreDump(core)
+		panic(0)
 	}
 
 	return 0
