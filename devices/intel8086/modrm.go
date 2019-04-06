@@ -18,50 +18,47 @@ type ModRm struct {
 }
 
 
-func (core *CpuCore) consumeModRm() ModRm {
+func (core *CpuCore) consumeModRm() (ModRm, uint32) {
 
+	var bytesConsumed uint32
 	m := ModRm{}
 
-	modrmByte := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()))
+	modrmByte := core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
+	bytesConsumed++
 
 	m.mod = (modrmByte >> 6) & 0x03
 	m.reg = (modrmByte >> 3) & 0x07
 	m.rm = modrmByte & 0x07
 
-	core.IncrementIP()
 
-	if core.flags.CR0 >> 0 & 1 == 0 {
+	if core.registers.CR0 >> 0 & 1 == 0 {
 		// real mode
 		if m.mod == 1 {
-			m.disp8 = core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()))
-			core.IncrementIP()
+			m.disp8 = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr+bytesConsumed))
+			bytesConsumed++
 		} else if (m.mod == 0 && m.rm == 6) || m.mod == 2 {
-			m.disp16 = core.memoryAccessController.ReadAddr16(core.GetCurrentCodePointer())
-			core.IncrementIP()
-			core.IncrementIP()
+			m.disp16 = core.memoryAccessController.ReadAddr16(core.currentByteAddr+bytesConsumed)
+			bytesConsumed += 2
 		}
 	} else {
 		// protected mode
 		if m.mod != 3 && m.rm == 4 {
-			m.sib = core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer())
-			core.IncrementIP()
+			m.sib = core.memoryAccessController.ReadAddr8(core.currentByteAddr+bytesConsumed)
+			bytesConsumed++
 		}
 
 		if (m.mod == 0 && m.rm == 5) || m.mod == 2 {
-			m.disp32 = core.memoryAccessController.ReadAddr32(core.GetCurrentCodePointer())
+			m.disp32 = core.memoryAccessController.ReadAddr32(core.currentByteAddr+bytesConsumed)
 
-			core.IncrementIP()
-			core.IncrementIP()
-			core.IncrementIP()
-			core.IncrementIP()
+			bytesConsumed += 4
 		} else if m.mod == 1 {
-			m.disp8 = core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer())
+			m.disp8 = core.memoryAccessController.ReadAddr8(core.currentByteAddr+bytesConsumed)
 
-			core.IncrementIP()
+			bytesConsumed++
 		}
 	}
 
-	return m
+	return m, bytesConsumed
 }
 
 // derived from:
@@ -147,7 +144,7 @@ func (m *ModRm) getAddressMode32(core *CpuCore) uint32 {
 func (m *ModRm) regFromSib(core *CpuCore) uint32 {
 
 	// decode sip byte
-	m.sib = core.memoryAccessController.ReadAddr8(core.GetCurrentCodePointer())
+	m.sib = core.memoryAccessController.ReadAddr8(core.currentByteAddr)
 	if m.mod < 3 && m.rm == 4 {
 		m.base = uint8(m.sib & 0x7)
 		m.index = uint8((m.sib >> 3) & 0x7)

@@ -7,7 +7,9 @@ type RealModeAccessProvider struct {
 func (r *RealModeAccessProvider) ReadAddr8(addr uint32) uint8 {
 
 	var byteData uint8
-	if r.resetVectorBaseAddr > 0 {
+
+	inBiosSpace := (addr > uint32(len(*r.biosImage)-1) - (0xF000FFFF - addr)) && addr < 0xF000FFFF
+	if r.resetVectorBaseAddr > 0 && inBiosSpace {
 		return r.ReadFromBiosAddressSpace(addr)
 	} else {
 		byteData = (*r.backingRam)[addr]

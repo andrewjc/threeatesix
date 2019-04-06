@@ -16,7 +16,7 @@ func doCoreDump(core *CpuCore) {
 	}
 
 	// Gather next few bytes for debugging...
-	peekBytes := core.memoryAccessController.PeekNextBytes( core.currentlyExecutingInstructionPointer, 10)
+	peekBytes := core.memoryAccessController.PeekNextBytes( core.currentByteAddr, 10)
 	stb := strings.Builder{}
 	for _, b := range peekBytes {
 		stb.WriteString(fmt.Sprintf("%#2x ", b))

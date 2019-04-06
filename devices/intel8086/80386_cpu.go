@@ -1,6 +1,7 @@
 package intel8086
 
 import (
+	"fmt"
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
 	"github.com/andrewjc/threeatesix/devices/io"
@@ -58,28 +59,31 @@ type CpuCore struct {
 	partId                 uint8
 	bus                    *bus.Bus
 	memoryAccessController *memmap.MemoryAccessController
-	ioPortAccessController   *io.IOPortAccessController
+	ioPortAccessController *io.IOPortAccessController
 
-	registers *CpuRegisters
-	opCodeMap []OpCodeImpl
+	registers      *CpuRegisters
+	opCodeMap      []OpCodeImpl
 	opCodeMap2Byte []OpCodeImpl
 
-	mode      uint8
+	mode  uint8
 	flags CpuExecutionFlags
 
 	busId uint32
 
-	currentlyExecutingInstructionPointer uint32
-	lastExecutedInstructionPointer       uint32
+	currentByteDecodeStart   uint32 //the start addr of the instruction being decoded (including prefixes etc)
+	currentByteAddr                uint32 //the current address of the byte being decoded in the current instruction
+	currentOpCodeBeingExecuted uint8 //the opcode of the instruction currently being exected
+	lastExecutedInstructionPointer uint32
 
-	currentByteAtCodePointer byte
 }
 
 type CpuExecutionFlags struct {
-	CS_OVERRIDE        uint16
-	CS_OVERRIDE_ENABLE bool
 
-	CR0                uint32
+	OperandSizeOverrideEnabled bool //treat operand size as 32bit
+	AddressSizeOverrideEnabled bool //treat address size as 32bit
+
+	MemorySegmentOverride int
+	LockPrefixEnabled     bool
 }
 
 func (device *CpuCore) SetDeviceBusId(id uint32) {
@@ -161,23 +165,26 @@ func (core *CpuCore) GetCurrentCodePointer() uint32 {
 // Returns the address in memory of the instruction currently executing.
 // This is different from GetCurrentCodePointer in that the currently executing
 // instruction can update the CS and IP registers.
-func (core *CpuCore) GetCurrentlyExecutingInstructionPointer() uint32 {
-	return core.currentlyExecutingInstructionPointer
+func (core *CpuCore) GetCurrentlyExecutingInstructionAddress() uint32 {
+	return core.currentByteDecodeStart
 }
 
 func (core *CpuCore) Step() {
-	core.currentlyExecutingInstructionPointer = core.GetCurrentCodePointer()
-	if core.currentlyExecutingInstructionPointer == core.lastExecutedInstructionPointer {
+	core.currentByteAddr = core.GetCurrentCodePointer()
+	tmp := core.currentByteAddr
+	if core.currentByteAddr == core.lastExecutedInstructionPointer {
 		log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
 	}
 
-	status := core.routeInstruction()
+	core.currentByteDecodeStart = core.currentByteAddr
+
+	status := core.decodeInstruction()
 
 	if status != 0 {
 		panic(0)
 	}
 
-	core.lastExecutedInstructionPointer = core.currentlyExecutingInstructionPointer
+	core.lastExecutedInstructionPointer = tmp
 
 }
 
@@ -194,14 +201,14 @@ func (core *CpuCore) FriendlyPartName() string {
 }
 
 func (core *CpuCore) readImm8() uint8 {
-	retVal := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()))
-	core.registers.IP += 1
+	retVal := core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
+	core.currentByteAddr++
 	return retVal
 }
 
 func (core *CpuCore) readImm16() uint16 {
-	retVal := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()))
-	core.registers.IP += 2
+	retVal := core.memoryAccessController.ReadAddr16(uint32(core.currentByteAddr))
+	core.currentByteAddr+=2
 	return retVal
 }
 
@@ -218,7 +225,7 @@ func (core *CpuCore) readRm8(modrm *ModRm) (*uint8, string) {
 	} else {
 		addressMode := modrm.getAddressMode16(core)
 		destValue := core.memoryAccessController.ReadAddr8(uint32(addressMode))
-		destName := "rm/8"
+		destName := fmt.Sprintf("dword_F%#04x", addressMode)
 		return &destValue, destName
 	}
 }
@@ -232,7 +239,7 @@ func (core *CpuCore) readRm16(modrm *ModRm) (*uint16, string) {
 	} else {
 		addressMode := modrm.getAddressMode16(core)
 		destValue := core.memoryAccessController.ReadAddr16(uint32(addressMode))
-		destName := "rm/16"
+		destName := fmt.Sprintf("dword_F%#04x", addressMode)
 		return &destValue, destName
 	}
 }

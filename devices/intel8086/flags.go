@@ -1,5 +1,7 @@
 package intel8086
 
+import "log"
+
 const (
 	CarryFlag = 0x0001
 	ParityFlag = 0x0004
@@ -34,3 +36,20 @@ func (core *CpuRegisters) SetFlag(mask uint16, status bool) {
 	}
 }
 
+
+func INSTR_CLI(core *CpuCore) {
+	// Clear interrupts
+
+	log.Printf("[%#04x] CLI", core.GetCurrentCodePointer())
+	core.registers.SetFlag(InterruptFlag, false)
+	core.currentByteAddr++
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_CLD(core *CpuCore) {
+	// Clear direction flag
+	core.currentByteAddr++
+	log.Printf("[%#04x] CLD", core.GetCurrentCodePointer())
+	core.registers.SetFlag(DirectionFlag, false)
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
