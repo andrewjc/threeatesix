@@ -118,8 +118,11 @@ func (core *CpuRegisters) indexSegmentToString(i uint8) string {
 		return "SS"
 	case i == 3:
 		return "DS"
+	case i == 4:
+		return "FS"
+	case i == 5:
+		return "GS"
 	default:
 		return fmt.Sprintf("Unrecognised segment register index %d", i)
 	}
 }
-

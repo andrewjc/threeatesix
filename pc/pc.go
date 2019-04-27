@@ -8,6 +8,7 @@ import (
 	"github.com/andrewjc/threeatesix/devices/intel8259a"
 	"github.com/andrewjc/threeatesix/devices/io"
 	"github.com/andrewjc/threeatesix/devices/memmap"
+	"github.com/andrewjc/threeatesix/devices/ps2"
 	"io/ioutil"
 	"os"
 )
@@ -29,9 +30,10 @@ type PersonalComputer struct {
 	masterInterruptController *intel8259a.Intel8259a
 	slaveInterruptController  *intel8259a.Intel8259a
 
-	memController *memmap.MemoryAccessController
+	memController    *memmap.MemoryAccessController
 	ioPortController *io.IOPortAccessController
 
+	ps2Controller    *ps2.Ps2Controller
 }
 
 // BiosFilename - name of the bios image the virtual machine will boot up
@@ -75,6 +77,9 @@ func NewPc() *PersonalComputer {
 
 	pc.ioPortController.SetBus(pc.bus)
 
+	pc.ps2Controller = ps2.CreatePS2Controller()
+	pc.ps2Controller.SetBus(pc.bus)
+
 	pc.bus.RegisterDevice(pc.cpu, common.MODULE_PRIMARY_PROCESSOR)
 	pc.bus.RegisterDevice(pc.mathCoProcessor, common.MODULE_MATH_CO_PROCESSOR)
 	pc.bus.RegisterDevice(pc.masterInterruptController, common.MODULE_MASTER_INTERRUPT_CONTROLLER)
@@ -82,6 +87,8 @@ func NewPc() *PersonalComputer {
 
 	pc.bus.RegisterDevice(pc.memController, common.MODULE_MEMORY_ACCESS_CONTROLLER)
 	pc.bus.RegisterDevice(pc.ioPortController, common.MODULE_IO_PORT_ACCESS_CONTROLLER)
+
+	pc.bus.RegisterDevice(pc.ps2Controller, common.MODULE_PS2_CONTROLLER)
 
 	return pc
 }

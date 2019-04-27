@@ -70,6 +70,8 @@ func (core *CpuCore) decodeInstruction() uint8 {
 
 	if instructionImpl != nil {
 		instructionImpl(core)
+
+
 	} else {
 		log.Printf("[%#04x] Unrecognised opcode: %#2x\n", core.registers.IP, instrByte)
 

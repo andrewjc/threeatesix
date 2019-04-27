@@ -3,6 +3,7 @@ package io
 import (
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
+	"github.com/andrewjc/threeatesix/devices/ps2"
 	"log"
 )
 
@@ -28,6 +29,15 @@ func (mem *IOPortAccessController) OnReceiveMessage(message bus.BusMessage) {
 
 func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 	var byteData uint8
+
+	if addr == 0x64 {
+		// Status Register READ
+		sr := r.GetBus().FindSingleDevice(common.MODULE_PS2_CONTROLLER).(*ps2.Ps2Controller).ReadStatusRegister()
+		log.Printf("PS2 Controller status read: %v", sr)
+		return sr
+	}
+
+
 	byteData = (r.backingMemory)[addr]
 
 	return byteData
@@ -38,7 +48,18 @@ func (r *IOPortAccessController) WriteAddr8(addr uint16, value uint8) {
 	if addr == 0x00F1 {
 		// 80287 math coprocessor
 		r.GetBus().SendMessageSingle(common.MODULE_MATH_CO_PROCESSOR, bus.BusMessage{common.MESSAGE_REQUEST_CPU_MODESWITCH, []byte{common.REAL_MODE}})
-		//r.coProcessorController.EnterMode(REAL_MODE)
+		return
+	}
+
+	if addr == 0x64 {
+		// Command Register Write
+		r.GetBus().FindSingleDevice(common.MODULE_PS2_CONTROLLER).(*ps2.Ps2Controller).WriteCommandRegister(value)
+		return
+	}
+
+	if addr == 0x80 {
+		// bios post diag
+		log.Printf("BIOS POST: %v - %s", value, common.BiosPostCodeToString(value))
 		return
 	}
 

@@ -38,6 +38,12 @@ func doCoreDump(core *CpuCore) {
 		log.Printf("%v %#2x (pntr: %#2x)", core.registers.indexSegmentToString(uint8(x)), *y, y)
 	}
 
+	log.Printf("Flags:")
+	log.Printf("Z: %t", core.registers.GetFlag(ZeroFlag))
+	log.Printf("D: %t", core.registers.GetFlag(DirectionFlag))
+	log.Printf("C: %t", core.registers.GetFlag(CarryFlag))
+	log.Printf("O: %t", core.registers.GetFlag(OverFlowFlag))
+
 	log.Printf("Control flags:")
 	log.Printf("CR0[pe] = %b",  core.registers.CR0 >> 0 & 1)
 	log.Printf("CR0[mp] = %b",  core.registers.CR0 >> 1 & 1)
@@ -46,3 +52,4 @@ func doCoreDump(core *CpuCore) {
 	log.Printf("CR0[et] = %b",  core.registers.CR0 >> 4 & 1)
 	log.Printf("CR0[ne] = %b",  core.registers.CR0 >> 5 & 1)
 }
+
