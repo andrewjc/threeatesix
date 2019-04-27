@@ -10,7 +10,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 
 	var instrByte uint8
 
-	core.flags.MemorySegmentOverride = -1
+	core.flags.MemorySegmentOverride = 0
 	core.flags.OperandSizeOverrideEnabled = false
 	core.flags.AddressSizeOverrideEnabled = false
 	core.flags.LockPrefixEnabled = false

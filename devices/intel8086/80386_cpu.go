@@ -40,11 +40,13 @@ func New80386CPU() *CpuCore {
 		&cpuCore.registers.DI,
 	}
 
-	cpuCore.registers.registersSegmentRegisters = []*uint16{
+	cpuCore.registers.registersSegmentRegisters = []*SegmentRegister{
 		&cpuCore.registers.ES,
 		&cpuCore.registers.CS,
 		&cpuCore.registers.SS,
 		&cpuCore.registers.DS,
+		&cpuCore.registers.FS,
+		&cpuCore.registers.GS,
 	}
 
 	cpuCore.opCodeMap = make([]OpCodeImpl, 256)
@@ -82,7 +84,7 @@ type CpuExecutionFlags struct {
 	OperandSizeOverrideEnabled bool //treat operand size as 32bit
 	AddressSizeOverrideEnabled bool //treat address size as 32bit
 
-	MemorySegmentOverride int
+	MemorySegmentOverride uint32
 	LockPrefixEnabled     bool
 }
 
@@ -98,7 +100,7 @@ func (device *CpuCore) OnReceiveMessage(message bus.BusMessage) {
 }
 
 func (core *CpuCore) SetCS(addr uint16) {
-	core.registers.CS = addr
+	core.registers.CS.base = addr
 }
 
 func (core *CpuCore) SetIP(addr uint16) {
@@ -110,7 +112,7 @@ func (core *CpuCore) GetIP() uint16 {
 }
 
 func (core *CpuCore) GetCS() uint16 {
-	return core.registers.CS
+	return core.registers.CS.base
 }
 
 func (core *CpuCore) IncrementIP() {
@@ -136,7 +138,7 @@ func (core *CpuCore) Init(bus *bus.Bus) {
 }
 
 func (core *CpuCore) Reset() {
-	core.registers.CS = 0xF000
+	core.registers.CS.base = 0xF000
 	core.registers.IP = 0xFFF0
 	core.bus.SendMessage(bus.BusMessage{common.MESSAGE_GLOBAL_LOCK_BIOS_MEM_REGION, []byte{}})
 }
@@ -158,7 +160,34 @@ func (core *CpuCore) EnterMode(mode uint8) {
 
 // Gets the current code segment + IP addr in memory
 func (core *CpuCore) GetCurrentCodePointer() uint32 {
-	addr := (uint32(core.registers.CS) << 16) + uint32(core.registers.IP)
+	addr := core.SegmentAddressToLinearAddress(core.registers.CS, core.registers.IP)
+	return addr
+}
+
+func (core *CpuCore) SegmentAddressToLinearAddress(segment SegmentRegister, offset uint16) uint32 {
+
+	if core.flags.MemorySegmentOverride > 0 {
+		// default segment override
+		switch core.flags.MemorySegmentOverride {
+		case common.SEGMENT_CS:
+			return uint32(core.registers.CS.base) << 16 + uint32(offset)
+		case common.SEGMENT_SS:
+			return uint32(core.registers.SS.base) << 16 + uint32(offset)
+		case common.SEGMENT_DS:
+			return uint32(core.registers.DS.base) << 16 + uint32(offset)
+		case common.SEGMENT_ES:
+			return uint32(core.registers.ES.base) << 16 + uint32(offset)
+		case common.SEGMENT_FS:
+			return uint32(core.registers.FS.base) << 16 + uint32(offset)
+		case common.SEGMENT_GS:
+			return uint32(core.registers.GS.base) << 16 + uint32(offset)
+		default:
+			panic("Unhandled segment register override")
+		}
+	}
+
+	addr := uint32(segment.base) << 16 + uint32(offset)
+
 	return addr
 }
 
@@ -210,10 +239,6 @@ func (core *CpuCore) readImm16() uint16 {
 	retVal := core.memoryAccessController.ReadAddr16(uint32(core.currentByteAddr))
 	core.currentByteAddr+=2
 	return retVal
-}
-
-func (core *CpuCore) BuildAddress(segment uint16, address uint16) uint32 {
-	return uint32(segment<<4 + address)
 }
 
 func (core *CpuCore) readRm8(modrm *ModRm) (*uint8, string) {
@@ -298,3 +323,29 @@ func (core *CpuCore) GetFlagInt(mask uint16) uint16 {
 func (core *CpuCore) GetRegisters() *CpuRegisters {
 	return core.registers
 }
+
+func (core *CpuCore) writeSegmentRegister(register *SegmentRegister, value uint16) {
+	if core.flags.MemorySegmentOverride > 0 {
+		// default segment override
+		switch core.flags.MemorySegmentOverride {
+		case common.SEGMENT_CS:
+			core.registers.CS.base = value
+		case common.SEGMENT_SS:
+			core.registers.SS.base = value
+		case common.SEGMENT_DS:
+			core.registers.DS.base = value
+		case common.SEGMENT_ES:
+			core.registers.ES.base = value
+		case common.SEGMENT_FS:
+			core.registers.FS.base = value
+		case common.SEGMENT_GS:
+			core.registers.GS.base = value
+		default:
+			panic("Unhandled segment register override")
+		}
+	}
+
+	register.base = value
+
+}
+

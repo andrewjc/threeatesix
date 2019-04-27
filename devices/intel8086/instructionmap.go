@@ -150,6 +150,9 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x06] = INSTR_PUSH
 
 
+	c.opCodeMap[0xF3] = INSTR_REP
+
+
 	// 2 byte opcodes
 	c.opCodeMap2Byte[0x01] = INSTR_SMSW
 }

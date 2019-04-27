@@ -2,20 +2,27 @@ package intel8086
 
 import "fmt"
 
+type SegmentRegister struct {
+	base uint16
+	limit uint32
+	//selector uint16
+	access_information uint16
+}
+
 type CpuRegisters struct {
 	registers8Bit  []*uint8
 	registers16Bit []*uint16
 	registers32Bit []*uint32
 
-	registersSegmentRegisters []*uint16
+	registersSegmentRegisters []*SegmentRegister
 
 	// 16bit registers (real mode)
-	CS uint16 // code segment
-	DS uint16 // data segment
-	SS uint16 // stack segment
-	ES uint16 // extended segment
-	FS uint16 // ?? segment
-	GS uint16 // ?? segment
+	CS SegmentRegister // code segment
+	DS SegmentRegister // data segment
+	SS SegmentRegister // stack segment
+	ES SegmentRegister // extended segment
+	FS SegmentRegister // ?? segment
+	GS SegmentRegister // ?? segment
 
 	IP uint16 // instruction pointer
 	SP uint16

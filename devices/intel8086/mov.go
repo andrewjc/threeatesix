@@ -148,10 +148,10 @@ func INSTR_MOV(core *CpuCore) {
 			if modrm.mod == 3 {
 				dest = core.registers.registers16Bit[modrm.rm]
 				destName = core.registers.index16ToString(modrm.rm)
-				*dest = *src
+				*dest = (*src).base
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				core.memoryAccessController.WriteAddr16(uint32(addressMode), *src)
+				core.memoryAccessController.WriteAddr16(uint32(addressMode), (*src).base)
 				srcName = "rm/16"
 			}
 
@@ -172,12 +172,12 @@ func INSTR_MOV(core *CpuCore) {
 			if modrm.mod == 3 {
 				src = core.registers.registers16Bit[modrm.rm]
 				srcName = core.registers.index16ToString(modrm.rm)
-				*dest = *src
+				(*dest).base = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
 				data := core.memoryAccessController.ReadAddr16(uint32(addressMode))
 				src = &data
-				*dest = *src
+				(*dest).base = *src
 				srcName = "rm/16"
 			}
 

@@ -52,11 +52,11 @@ func INSTR_PUSH(core *CpuCore) {
 			// PUSH CS
 
 
-			val := core.registers.registers16Bit[core.registers.CS]
+			val := core.registers.CS.base
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), *val)
+			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
 
 			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionAddress(), "CS")
 		}
@@ -64,11 +64,11 @@ func INSTR_PUSH(core *CpuCore) {
 		{
 			// PUSH SS
 
-			val := core.registers.registers16Bit[core.registers.SS]
+			val := core.registers.SS.base
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), *val)
+			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
 
 			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionAddress(), "SS")
 		}
@@ -76,11 +76,11 @@ func INSTR_PUSH(core *CpuCore) {
 		{
 			// PUSH DS
 
-			val := core.registers.registers16Bit[core.registers.DS]
+			val := core.registers.DS.base
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), *val)
+			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
 
 			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionAddress(), "DS")
 		}
@@ -88,11 +88,11 @@ func INSTR_PUSH(core *CpuCore) {
 		{
 			// PUSH ES
 
-			val := core.registers.registers16Bit[core.registers.ES]
+			val := core.registers.ES.base
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), *val)
+			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
 
 			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionAddress(), "ES")
 		}

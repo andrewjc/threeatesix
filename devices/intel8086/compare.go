@@ -182,8 +182,8 @@ func INSTR_CMP(core *CpuCore) {
 	case 0xA6:
 		{
 			//  CMPS m8, m8
-			term1 = uint32(core.memoryAccessController.ReadAddr8(core.BuildAddress(core.registers.DS, core.registers.SI)))
-			term2 = uint32(core.memoryAccessController.ReadAddr8(core.BuildAddress(core.registers.DS, core.registers.DI)))
+			term1 = uint32(core.memoryAccessController.ReadAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI)))
+			term2 = uint32(core.memoryAccessController.ReadAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI)))
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp m8, m8", core.GetCurrentlyExecutingInstructionAddress())
@@ -192,8 +192,8 @@ func INSTR_CMP(core *CpuCore) {
 	case 0xA7:
 		{
 			// CMPS m16, m16
-			term1 = uint32(core.memoryAccessController.ReadAddr16(core.BuildAddress(core.registers.DS, core.registers.SI)))
-			term2 = uint32(core.memoryAccessController.ReadAddr16(core.BuildAddress(core.registers.DS, core.registers.DI)))
+			term1 = uint32(core.memoryAccessController.ReadAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI)))
+			term2 = uint32(core.memoryAccessController.ReadAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI)))
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp m16, m16", core.GetCurrentlyExecutingInstructionAddress())

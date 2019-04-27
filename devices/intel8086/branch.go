@@ -18,7 +18,7 @@ func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 	segment := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 3)
 
 	log.Printf("[%#04x] JMP %#04x:%#04x (FAR_PTR16)", core.GetCurrentlyExecutingInstructionAddress(), segment, destAddr)
-	core.registers.CS = segment
+	core.writeSegmentRegister(&core.registers.CS, segment)
 	core.registers.IP = destAddr
 }
 
