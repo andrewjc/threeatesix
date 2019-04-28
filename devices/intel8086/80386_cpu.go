@@ -140,13 +140,13 @@ func (core *CpuCore) Init(bus *bus.Bus) {
 func (core *CpuCore) Reset() {
 	core.registers.CS.base = 0xF000
 	core.registers.IP = 0xFFF0
-	core.bus.SendMessage(bus.BusMessage{common.MESSAGE_GLOBAL_LOCK_BIOS_MEM_REGION, []byte{}})
+	core.bus.SendMessage(bus.BusMessage{Subject: common.MESSAGE_GLOBAL_LOCK_BIOS_MEM_REGION, Data:[]byte{}})
 }
 
 func (core *CpuCore) EnterMode(mode uint8) {
 	core.mode = mode
 
-	core.bus.SendMessage(bus.BusMessage{common.MESSAGE_GLOBAL_CPU_MODESWITCH, []byte{mode}})
+	core.bus.SendMessage(bus.BusMessage{Subject: common.MESSAGE_GLOBAL_CPU_MODESWITCH, Data:[]byte{mode}})
 
 	processorString := core.FriendlyPartName()
 	modeString := ""
@@ -230,7 +230,8 @@ func (core *CpuCore) FriendlyPartName() string {
 }
 
 func (core *CpuCore) readImm8() uint8 {
-	retVal := core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
+	retVal,err := core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
+
 	core.currentByteAddr++
 	return retVal
 }

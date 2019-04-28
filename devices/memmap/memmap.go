@@ -23,9 +23,9 @@ type MemoryAccessController struct {
 
 
 type MemoryAccessProvider interface {
-	ReadAddr8(u uint32) uint8
-	ReadAddr16(u uint32) uint16
-	ReadAddr32(u uint32) uint32
+	ReadAddr8(u uint32) (uint8,error)
+	ReadAddr16(u uint32) (uint16,error)
+	ReadAddr32(u uint32) (uint32,error)
 	PeekNextBytesImpl(addr uint32, numBytes uint32) []byte
 }
 
@@ -60,15 +60,15 @@ func (controller *MemoryAccessController) SetBus(bus *bus.Bus) {
 	controller.bus = bus
 }
 
-func (mem *MemoryAccessController) ReadAddr8(address uint32) uint8 {
+func (mem *MemoryAccessController) ReadAddr8(address uint32) (uint8,error) {
 	return mem.memoryAccessProvider.ReadAddr8(address)
 }
 
-func (mem *MemoryAccessController) ReadAddr16(address uint32) uint16 {
+func (mem *MemoryAccessController) ReadAddr16(address uint32) (uint16,error) {
 	return mem.memoryAccessProvider.ReadAddr16(address)
 }
 
-func (mem *MemoryAccessController) ReadAddr32(address uint32) uint32 {
+func (mem *MemoryAccessController) ReadAddr32(address uint32) (uint32,error) {
 	return mem.memoryAccessProvider.ReadAddr32(address)
 }
 
