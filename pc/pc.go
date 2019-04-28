@@ -40,7 +40,7 @@ type PersonalComputer struct {
 const BiosFilename = "bios.bin"
 
 // MaxRAMBytes - the amount of ram installed in this virtual machine
-const MaxRAMBytes = 0x1E84800 //32 million (32mb)
+const MaxRAMBytes = 0x100000000 //32 million (32mb)
 
 func (pc *PersonalComputer) Power() {
 	// do stuff
@@ -53,6 +53,7 @@ func (pc *PersonalComputer) Power() {
 		if pc.cpu.GetIP() == 0x0 { break } //loop until instruction pointer equals 0
 
 		pc.cpu.Step()
+
 	}
 }
 

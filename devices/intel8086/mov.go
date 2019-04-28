@@ -75,7 +75,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
 		{
 			// mov r16, imm16
-			r16, r16Str := core.registers.registers16Bit[core.currentOpCodeBeingExecuted-0xB8], core.registers.index8ToString(core.currentOpCodeBeingExecuted-0xB8)
+			r16, r16Str := core.registers.registers16Bit[core.currentOpCodeBeingExecuted-0xB8], core.registers.index16ToString(core.currentOpCodeBeingExecuted-0xB8)
 			val := core.memoryAccessController.ReadAddr16(core.currentByteAddr)
 			core.currentByteAddr += 2
 			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), r16Str, val))

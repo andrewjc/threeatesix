@@ -80,12 +80,12 @@ type CpuCore struct {
 }
 
 type CpuExecutionFlags struct {
-
 	OperandSizeOverrideEnabled bool //treat operand size as 32bit
 	AddressSizeOverrideEnabled bool //treat address size as 32bit
 
 	MemorySegmentOverride uint32
 	LockPrefixEnabled     bool
+	RepPrefixEnabled      bool
 }
 
 func (device *CpuCore) SetDeviceBusId(id uint32) {

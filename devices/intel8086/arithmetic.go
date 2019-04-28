@@ -1,6 +1,7 @@
 package intel8086
 
 import (
+	"fmt"
 	"log"
 	"math/bits"
 )
@@ -775,7 +776,7 @@ func INSTR_XOR(core *CpuCore) {
 
 			core.writeRm8(&modrm, &tmp)
 
-			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x31:
@@ -792,7 +793,7 @@ func INSTR_XOR(core *CpuCore) {
 
 			core.writeRm16(&modrm, &tmp)
 
-			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x32:
@@ -809,7 +810,7 @@ func INSTR_XOR(core *CpuCore) {
 
 			core.writeR8(&modrm, &tmp)
 
-			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x33:
@@ -826,7 +827,7 @@ func INSTR_XOR(core *CpuCore) {
 
 			core.writeR16(&modrm, &tmp)
 
-			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	}
@@ -989,6 +990,8 @@ func INSTR_SUB(core *CpuCore) {
 			log.Printf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
+	default:
+		log.Fatal(fmt.Sprintf("Unrecognised SUB instruction: %#04x!", core.currentOpCodeBeingExecuted ))
 	}
 
 	bitLength = uint32(bits.Len32(result))

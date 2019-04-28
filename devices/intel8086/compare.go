@@ -6,13 +6,13 @@ import (
 )
 
 func INSTR_TEST(core *CpuCore) {
+	core.currentByteAddr++
 
 	var term1 uint32
 	var term2 uint32
 	var result uint32
 
 	var bitLength uint32
-	core.currentByteAddr++
 	switch core.currentOpCodeBeingExecuted {
 	case 0xA8:
 		{
@@ -21,7 +21,7 @@ func INSTR_TEST(core *CpuCore) {
 			term2 = uint32(core.readImm8())
 
 			log.Printf("[%#04x] test al, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), term2)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
 		}
 	case 0xA9:
 		{
@@ -30,7 +30,6 @@ func INSTR_TEST(core *CpuCore) {
 			term2 = uint32(core.readImm16())
 
 			log.Printf("[%#04x] test ax, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), term2)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0xF6:
 		{
@@ -44,7 +43,6 @@ func INSTR_TEST(core *CpuCore) {
 			term2 = uint32(core.readImm8())
 
 			log.Printf("[%#04x] test %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0xF7:
 		{
@@ -58,7 +56,6 @@ func INSTR_TEST(core *CpuCore) {
 			term2 = uint32(core.readImm16())
 
 			log.Printf("[%#04x] test %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x84:
 		{
@@ -74,7 +71,6 @@ func INSTR_TEST(core *CpuCore) {
 			term2 = uint32(*rm2)
 
 			log.Printf("[%#04x] test %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x85:
 		{
@@ -90,7 +86,6 @@ func INSTR_TEST(core *CpuCore) {
 			term2 = uint32(*rm2)
 
 			log.Printf("[%#04x] test %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	}
 
@@ -108,11 +103,12 @@ func INSTR_TEST(core *CpuCore) {
 
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
 
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 
 func INSTR_XCHG(core *CpuCore) {
-	core.IncrementIP()
+	core.currentByteAddr++
 
 	switch core.currentOpCodeBeingExecuted {
 	case 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98:
@@ -123,7 +119,6 @@ func INSTR_XCHG(core *CpuCore) {
 			term2 := *r16
 			core.registers.AX = term2
 			*r16 = term1
-
 			log.Printf("[%#04x] xchg AX, %s", core.GetCurrentlyExecutingInstructionAddress(), r16Str)
 		}
 	case 0x86:
@@ -142,7 +137,6 @@ func INSTR_XCHG(core *CpuCore) {
 			*r8 = tmp
 
 			log.Printf("[%#04x] xchg %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, r8Str)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x87:
 		{
@@ -160,13 +154,13 @@ func INSTR_XCHG(core *CpuCore) {
 			*r8 = tmp
 
 			log.Printf("[%#04x] xchg %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, r8Str)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	default:
 		log.Println("Unrecognised xchg instruction!")
 		doCoreDump(core)
 	}
 
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_CMP(core *CpuCore) {
@@ -187,7 +181,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp m8, m8", core.GetCurrentlyExecutingInstructionAddress())
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0xA7:
 		{
@@ -197,7 +190,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp m16, m16", core.GetCurrentlyExecutingInstructionAddress())
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x3C:
 		{
@@ -207,7 +199,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp AL, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), term2)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x3D:
 		{
@@ -217,7 +208,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp AX, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), term2)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x80:
 		{
@@ -230,7 +220,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, term2)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x81:
 		{
@@ -243,7 +232,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, term2)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x83:
 		{
@@ -256,7 +244,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, term2)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x38:
 		{
@@ -270,7 +257,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, r8Str)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x39:
 		{
@@ -284,7 +270,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, r8Str)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x3A:
 		{
@@ -299,7 +284,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionAddress(), r8Str, rm8Str)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	case 0x3B:
 		{
@@ -314,7 +298,6 @@ func INSTR_CMP(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 
 			log.Printf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionAddress(), r8Str, rm8Str)
-			core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 		}
 	}
 
@@ -333,4 +316,5 @@ func INSTR_CMP(core *CpuCore) {
 
 	core.registers.SetFlag(OverFlowFlag,  (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
 
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }

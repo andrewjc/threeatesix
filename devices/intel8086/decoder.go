@@ -14,6 +14,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	core.flags.OperandSizeOverrideEnabled = false
 	core.flags.AddressSizeOverrideEnabled = false
 	core.flags.LockPrefixEnabled = false
+	core.flags.RepPrefixEnabled = false
 
 	core.currentPrefixBytes = []byte{}
 	for isPrefixByte(core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0]) {
@@ -46,6 +47,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 			// repne/repnz prefix
 		case 0xf3:
 			// rep or repe/repz prefix
+			core.flags.RepPrefixEnabled = true
 		case 0x66:
 			// operand size override
 			core.flags.OperandSizeOverrideEnabled = true
@@ -73,7 +75,6 @@ func (core *CpuCore) decodeInstruction() uint8 {
 
 	if instructionImpl != nil {
 		instructionImpl(core)
-
 	} else {
 		log.Printf("[%#04x] Unrecognised opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte)
 
@@ -144,8 +145,8 @@ func INSTR_FF_OPCODES(core *CpuCore) {
 	modrm, _ := core.consumeModRm()
 	core.currentByteAddr--
 
-	switch {
-	case modrm.rm == 0:
+	switch modrm.reg {
+	/*case modrm.rm == 0:
 		{
 			// inc rm32
 		}
@@ -160,22 +161,25 @@ func INSTR_FF_OPCODES(core *CpuCore) {
 	case modrm.rm == 3:
 		{
 			// call m16
-		}
-	case modrm.rm == 4:
+		}*/
+	case 4:
 		{
 			// jmp rm32
 			INSTR_JMP_FAR_M16(core, &modrm)
 		}
-	case modrm.rm == 5:
+	case 5:
 		{
 			// jmp m16
 			INSTR_JMP_FAR_M16(core, &modrm)
 		}
-	case modrm.rm == 6:
+	case 6:
 		{
 			// push rm32
 			INSTR_PUSH(core)
 		}
+	default:
+		log.Println(fmt.Sprintf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
+		doCoreDump(core)
 	}
 }
 
@@ -190,12 +194,14 @@ func INSTR_80_OPCODES(core *CpuCore) {
 		INSTR_OR(core)
 	case 4:
 		INSTR_AND(core)
+	case 5:
+		INSTR_SUB(core)
 	case 6:
 		INSTR_XOR(core)
 	case 7:
 		INSTR_CMP(core)
 	default:
-		log.Println(fmt.Sprintf("INSTR_80_OPCODE UNHANDLED OPTION %d\n\n", modrm))
+		log.Println(fmt.Sprintf("INSTR_80_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
 	}
 }
@@ -218,7 +224,7 @@ func INSTR_81_OPCODES(core *CpuCore) {
 	case 7:
 		INSTR_CMP(core)
 	default:
-		log.Println(fmt.Sprintf("INSTR_81_OPCODE UNHANDLED OPTION %d\n\n", modrm))
+		log.Println(fmt.Sprintf("INSTR_81_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
 	}
 }
@@ -243,7 +249,7 @@ func INSTR_83_OPCODES(core *CpuCore) {
 	case 7:
 		INSTR_CMP(core)
 	default:
-		log.Println(fmt.Sprintf("INSTR_83_OPCODE UNHANDLED OPTION %d\n\n", modrm))
+		log.Println(fmt.Sprintf("INSTR_83_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
 	}
 }
