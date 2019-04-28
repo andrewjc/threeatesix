@@ -3,6 +3,7 @@ package io
 import (
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
+	"github.com/andrewjc/threeatesix/devices/intel82335"
 	"github.com/andrewjc/threeatesix/devices/ps2"
 	"log"
 )
@@ -16,6 +17,7 @@ type IOPortAccessController struct {
 	backingMemory         []byte
 	bus                   *bus.Bus
 	busId                 uint32
+	highIntegrationInterfaceDevice *intel82335.Intel82335
 }
 
 
@@ -37,6 +39,10 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 		return sr
 	}
 
+	if addr == 0x0022 {
+		// MCR register setup
+		return r.highIntegrationInterfaceDevice.GetMcrRegister()
+	}
 
 	byteData = (r.backingMemory)[addr]
 
@@ -63,6 +69,11 @@ func (r *IOPortAccessController) WriteAddr8(addr uint16, value uint8) {
 		return
 	}
 
+	if addr == 0x0022 {
+		// MCR register setup
+		r.highIntegrationInterfaceDevice.McrRegisterInitialize(value)
+	}
+
 	/*if addr == 0x0A0 {
 		// Interrupt controller 1
 
@@ -83,7 +94,7 @@ func (r *IOPortAccessController) ReadAddr16(addr uint16) uint16 {
 }
 
 func (r *IOPortAccessController) WriteAddr16(addr uint16, value uint16) {
-	log.Fatal("TODO!")
+
 }
 
 func (controller *IOPortAccessController) GetBus() *bus.Bus {
@@ -95,5 +106,8 @@ func (controller *IOPortAccessController) SetBus(bus *bus.Bus) {
 }
 
 func CreateIOPortController() *IOPortAccessController {
-	return &IOPortAccessController{backingMemory: make([]byte, 0x10000)}
+	return &IOPortAccessController{
+		backingMemory: make([]byte, 0x10000),
+		highIntegrationInterfaceDevice:intel82335.NewIntel82335(),
+	}
 }

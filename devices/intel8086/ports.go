@@ -15,7 +15,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr8(uint16(imm))
 
 			core.registers.AL = data
-			log.Printf("[%#04x] Port IN addr: imm addr %04X to AL (data = %04X)", core.GetCurrentlyExecutingInstructionAddress(), imm, data)
+			log.Printf("[%#04x] IN AL, IMM8 (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), imm, data)
 		}
 	case 0xE5:
 		{
@@ -26,7 +26,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr8(uint16(dx))
 
 			core.registers.AL = data
-			log.Printf("[%#04x] Port IN addr: DX VAL %04X to AL (data = %04X)", core.GetCurrentlyExecutingInstructionAddress(), dx, data)
+			log.Printf("[%#04x] IN AL, DX (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), dx, data)
 		}
 	case 0xEC:
 		{
@@ -38,7 +38,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr16(imm)
 
 			core.registers.AX = data
-			log.Printf("[%#04x] Port IN addr: imm addr %04X to AX (data = %04X)", core.GetCurrentlyExecutingInstructionAddress(), imm, data)
+			log.Printf("[%#04x] IN AX, IMM16 (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), imm, data)
 		}
 	case 0xED:
 		{
@@ -49,7 +49,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr16(uint16(dx))
 
 			core.registers.AX = data
-			log.Printf("[%#04x] Port IN addr: DX VAL %04X to AX (data = %04X)", core.GetCurrentlyExecutingInstructionAddress(), dx, data)
+			log.Printf("[%#04x] IN AX, DX (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), dx, data)
 		}
 	default:
 		log.Fatal("Unrecognised IN (port read) instruction!")
@@ -69,10 +69,9 @@ func INSTR_OUT(core *CpuCore) {
 			imm := core.memoryAccessController.ReadAddr8(core.currentByteAddr + 1)
 			core.currentByteAddr++
 
-
 			core.ioPortAccessController.WriteAddr8(uint16(imm), core.registers.AL)
 
-			log.Printf("[%#04x] out %04X, al", core.GetCurrentlyExecutingInstructionAddress(), imm)
+			log.Printf("[%#04x] OUT %#04x, AL (data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), imm, core.registers.AL)
 		}
 	case 0xE7:
 		{
@@ -82,7 +81,7 @@ func INSTR_OUT(core *CpuCore) {
 
 			core.ioPortAccessController.WriteAddr16(uint16(imm), core.registers.AX)
 
-			log.Printf("[%#04x] out %04X, ax", core.GetCurrentlyExecutingInstructionAddress(), imm)
+			log.Printf("[%#04x] OUT %#04x, AX (data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), imm, core.registers.AX)
 		}
 	case 0xEE:
 		{
@@ -90,7 +89,7 @@ func INSTR_OUT(core *CpuCore) {
 
 			core.ioPortAccessController.WriteAddr8(uint16(core.registers.DX), core.registers.AL)
 
-			log.Printf("[%#04x] Port out addr: DX addr to io port imm addr %04X (data = %04X)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AL)
+			log.Printf("[%#04x] OUT DX, AL (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AL)
 		}
 	case 0xEF:
 		{
@@ -98,10 +97,10 @@ func INSTR_OUT(core *CpuCore) {
 
 			core.ioPortAccessController.WriteAddr16(uint16(core.registers.DX), core.registers.AX)
 
-			log.Printf("[%#04x] Port out addr: DX addr to io port imm addr %04X (data = %04X)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AX)
+			log.Printf("[%#04x] OUT DX, AX (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AX)
 		}
 	default:
-		log.Fatal("Unrecognised IN (port read) instruction!")
+		log.Fatal("Unrecognised OUT (port read) instruction!")
 	}
 
 

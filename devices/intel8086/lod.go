@@ -36,6 +36,7 @@ func INSTR_LODS(core *CpuCore) {
 		case 0xAD:
 			{
 				operStr = "LODSW"
+				//log.Printf("Reading from %#04x", core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
 				m8 := uint16(core.memoryAccessController.ReadAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI)))
 				core.registers.AX = m8
 				if core.registers.GetFlag(DirectionFlag) {

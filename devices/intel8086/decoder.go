@@ -68,6 +68,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 		instrByte = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr +1))
 		core.currentOpCodeBeingExecuted = instrByte
 		instructionImpl = core.opCodeMap2Byte[core.currentOpCodeBeingExecuted]
+		core.currentPrefixBytes = append(core.currentPrefixBytes, 0x0F)
 	} else {
 		core.currentOpCodeBeingExecuted = instrByte
 		instructionImpl = core.opCodeMap[core.currentOpCodeBeingExecuted]
@@ -180,6 +181,7 @@ func INSTR_FF_OPCODES(core *CpuCore) {
 	default:
 		log.Println(fmt.Sprintf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
+		panic(0)
 	}
 }
 
@@ -203,6 +205,7 @@ func INSTR_80_OPCODES(core *CpuCore) {
 	default:
 		log.Println(fmt.Sprintf("INSTR_80_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
+		panic(0)
 	}
 }
 
@@ -226,6 +229,7 @@ func INSTR_81_OPCODES(core *CpuCore) {
 	default:
 		log.Println(fmt.Sprintf("INSTR_81_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
+		panic(0)
 	}
 }
 
@@ -251,6 +255,7 @@ func INSTR_83_OPCODES(core *CpuCore) {
 	default:
 		log.Println(fmt.Sprintf("INSTR_83_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
+		panic(0)
 	}
 }
 
