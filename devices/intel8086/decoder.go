@@ -15,9 +15,12 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	core.flags.AddressSizeOverrideEnabled = false
 	core.flags.LockPrefixEnabled = false
 
+	core.currentPrefixBytes = []byte{}
 	for isPrefixByte(core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0]) {
 
-		switch core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0] {
+		prefixByte := core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0]
+		core.currentPrefixBytes = append(core.currentPrefixBytes, prefixByte)
+		switch prefixByte {
 		case 0x2e:
 			// cs segment override
 			core.flags.MemorySegmentOverride = common.SEGMENT_CS
@@ -71,9 +74,8 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	if instructionImpl != nil {
 		instructionImpl(core)
 
-
 	} else {
-		log.Printf("[%#04x] Unrecognised opcode: %#2x\n", core.registers.IP, instrByte)
+		log.Printf("[%#04x] Unrecognised opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte)
 
 		log.Printf("CPU CORE ERROR!!!")
 

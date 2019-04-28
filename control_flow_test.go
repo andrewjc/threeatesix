@@ -90,3 +90,38 @@ func Test_INSTR_JZ_SHORT_REL8(t *testing.T) {
 		})
 	}
 }
+
+func Test_LOD_INSTRUCTIONS(t *testing.T) {
+
+	tests := []struct {
+		name string
+		instruction []uint8
+
+	}{
+		// TODO: Add test cases.
+		{"Test_REP_LODSW", []uint8{0xf3, 0xad}},
+		{"Test_LODSB", []uint8{0x74, 0xac}},
+		{"Test_LODSD", []uint8{0x74, 0xad}},
+	}
+	for _, tt := range tests {
+
+		testPc := pc.NewPc() //build a new pc for each test run
+		testPc.GetPrimaryCpu().Init(testPc.GetBus())
+		testPc.GetMemoryController().UnlockBootVector()
+
+		t.Run(tt.name, func(t *testing.T) {
+			testPc.GetPrimaryCpu().SetCS(0x0)
+			testPc.GetPrimaryCpu().SetIP(0x100)
+
+			for x:=0;x< len(tt.instruction);x++ {
+				testPc.GetMemoryController().WriteAddr8(uint32(testPc.GetPrimaryCpu().GetIP()+uint16(x)), tt.instruction[x])
+			}
+
+			testPc.GetPrimaryCpu().Step()
+
+			/*if testPc.GetPrimaryCpu().GetIP() != tt.expectedIP {
+				panic(fmt.Errorf("Expected ip [%#04x] but got [%#04x]", tt.expectedIP,testPc.GetPrimaryCpu().GetIP() ))
+			}*/
+		})
+	}
+}

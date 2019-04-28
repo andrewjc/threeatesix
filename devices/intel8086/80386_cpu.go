@@ -72,11 +72,11 @@ type CpuCore struct {
 
 	busId uint32
 
-	currentByteDecodeStart   uint32 //the start addr of the instruction being decoded (including prefixes etc)
+	currentByteDecodeStart         uint32 //the start addr of the instruction being decoded (including prefixes etc)
+	currentPrefixBytes             []uint8 //current prefix bytes read for the byte being decoded in the instruction
 	currentByteAddr                uint32 //the current address of the byte being decoded in the current instruction
-	currentOpCodeBeingExecuted uint8 //the opcode of the instruction currently being exected
+	currentOpCodeBeingExecuted     uint8  //the opcode of the instruction currently being exected
 	lastExecutedInstructionPointer uint32
-
 }
 
 type CpuExecutionFlags struct {
