@@ -1,6 +1,9 @@
 package intel8086
 
-import "log"
+import (
+	"github.com/andrewjc/threeatesix/common"
+	"log"
+)
 
 func INSTR_RET_NEAR(core *CpuCore) {
 
@@ -40,7 +43,7 @@ func INSTR_JMP_FAR_M16(core *CpuCore, modrm *ModRm) {
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
-	offset, err := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
+	offset, err := common.Int16Err(core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -56,7 +59,7 @@ func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
 func INSTR_JZ_SHORT_REL8(core *CpuCore) {
 
-	offset, err := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
+	offset, err := common.Int8Err(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -78,7 +81,7 @@ func INSTR_JZ_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
 
-	offset, err := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
+	offset, err := common.Int8Err(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -101,7 +104,7 @@ func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
 
-	offset, err := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
+	offset, err := common.Int8Err(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -124,7 +127,7 @@ func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JMP_SHORT_REL8(core *CpuCore) {
 
-	offset, err := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
+	offset, err := common.Int8Err(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -138,3 +141,5 @@ func INSTR_JMP_SHORT_REL8(core *CpuCore) {
 	core.registers.IP = uint16(destAddr)
 
 }
+
+

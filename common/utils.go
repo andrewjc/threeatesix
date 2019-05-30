@@ -50,3 +50,11 @@ func Bool2Uint8(boolValue bool) uint8 {
 		return 0
 	}
 }
+
+func Int8Err(u uint8, u2 error) (int8, error) {
+	return int8(u), u2
+}
+
+func Int16Err(u uint16, u2 error) (int16, error) {
+	return int16(u), u2
+}
