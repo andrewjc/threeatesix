@@ -171,3 +171,13 @@ Current emulation progress:
 2019/04/27 17:57:11 CR0[et] = 0
 2019/04/27 17:57:11 CR0[ne] = 0
 ```
+
+
+Resources:
+- https://css.csail.mit.edu/6.858/2014/readings/i386.pdf
+- https://www.felixcloutier.com/x86/iret:iretd
+- https://wiki.osdev.org/Exceptions
+- https://wiki.osdev.org/I/O_Ports
+- https://os.phil-opp.com/cpu-exceptions/
+- http://bochs.sourceforge.net/techspec/PORTS.LST
+

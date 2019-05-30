@@ -12,53 +12,58 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xA0:
 		{
 			// mov al, moffs8*
-			offset := uint8(core.memoryAccessController.ReadAddr8(core.currentByteAddr))
+			offset, err := core.memoryAccessController.ReadAddr8(core.currentByteAddr)
+			if err != nil { goto eof }
 			core.currentByteAddr++
 
 			segOff := uint16(offset)
 
-			byteValue := core.memoryAccessController.ReadAddr8(uint32(segOff))
+			byteValue, err := core.memoryAccessController.ReadAddr8(uint32(segOff))
+			if err != nil { goto eof }
 
 			log.Print(fmt.Sprintf("[%#04x] MOV al, byte ptr cs:%#02x", core.GetCurrentlyExecutingInstructionAddress(), segOff))
 
 			core.registers.AL = byteValue
-
 		}
 	case 0xA1:
 		{
 			// mov ax, moffs16*
-			offset := uint16(core.memoryAccessController.ReadAddr16(core.currentByteAddr))
+			offset, err := core.memoryAccessController.ReadAddr16(core.currentByteAddr)
+			if err != nil { goto eof }
 			core.currentByteAddr += 2
 
-			byteValue := core.memoryAccessController.ReadAddr16(uint32(offset))
-
+			byteValue, err := core.memoryAccessController.ReadAddr16(uint32(offset))
+			if err != nil { goto eof }
 			log.Print(fmt.Sprintf("[%#04x] MOV ax, byte ptr cs:%#02x", core.GetCurrentlyExecutingInstructionAddress(), offset))
 
 			core.registers.AX = byteValue
-
 		}
 	case 0xA2:
 		{
 			// mov moffs8*, al
-			offset := uint8(core.memoryAccessController.ReadAddr8(core.currentByteAddr))
+			offset, err := core.memoryAccessController.ReadAddr8(core.currentByteAddr)
+			if err != nil { goto eof }
+
 			core.currentByteAddr++
 
 			segOff := uint16(offset)
 
-			core.memoryAccessController.WriteAddr8(uint32(segOff), core.registers.AL)
+			err = core.memoryAccessController.WriteAddr8(uint32(segOff), core.registers.AL)
+			if err != nil { goto eof }
 
 			log.Print(fmt.Sprintf("[%#04x] MOV byte ptr cs:%#02x, al", core.GetCurrentlyExecutingInstructionAddress(), segOff))
-
 		}
 	case 0xA3:
 		{
 			// mov moffs16*, ax
-			offset := uint16(core.memoryAccessController.ReadAddr16(core.currentByteAddr))
+			offset, err := core.memoryAccessController.ReadAddr16(core.currentByteAddr)
+			if err != nil { goto eof }
 			core.currentByteAddr += 2
 
 			segOff := uint16(offset)
 
-			core.memoryAccessController.WriteAddr16(uint32(segOff), core.registers.AX)
+			err = core.memoryAccessController.WriteAddr16(uint32(segOff), core.registers.AX)
+			if err != nil { goto eof }
 
 			log.Print(fmt.Sprintf("[%#04x] MOV byte ptr cs:%#02x, ax", core.GetCurrentlyExecutingInstructionAddress(), segOff))
 
@@ -67,7 +72,8 @@ func INSTR_MOV(core *CpuCore) {
 		{
 			// mov r8, imm8
 			r8, r8Str := core.registers.registers8Bit[core.currentOpCodeBeingExecuted-0xB0], core.registers.index8ToString(core.currentOpCodeBeingExecuted-0xB0)
-			val := core.memoryAccessController.ReadAddr8(core.currentByteAddr)
+			val, err := core.memoryAccessController.ReadAddr8(core.currentByteAddr)
+			if err != nil { goto eof }
 			core.currentByteAddr++
 			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), r8Str, val))
 			*r8 = val
@@ -76,7 +82,8 @@ func INSTR_MOV(core *CpuCore) {
 		{
 			// mov r16, imm16
 			r16, r16Str := core.registers.registers16Bit[core.currentOpCodeBeingExecuted-0xB8], core.registers.index16ToString(core.currentOpCodeBeingExecuted-0xB8)
-			val := core.memoryAccessController.ReadAddr16(core.currentByteAddr)
+			val, err := core.memoryAccessController.ReadAddr16(core.currentByteAddr)
+			if err != nil { goto eof }
 			core.currentByteAddr += 2
 			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), r16Str, val))
 			*r16 = val
@@ -84,7 +91,8 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x8A:
 		{
 			/* 	MOV r8,r/m8 */
-			modrm, bytesConsumed := core.consumeModRm()
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil { goto eof }
 			core.currentByteAddr += bytesConsumed
 
 			var src *uint8
@@ -99,7 +107,8 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				data := core.memoryAccessController.ReadAddr8(uint32(addressMode))
+				var data, err = core.memoryAccessController.ReadAddr8(uint32(addressMode))
+				if err != nil { goto eof }
 				src = &data
 				srcName = "r/m8"
 				*dest = *src
@@ -111,7 +120,8 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x8B:
 		{
 			/* mov r16, r/m16 */
-			modrm, bytesConsumed := core.consumeModRm()
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil { goto eof }
 			core.currentByteAddr += bytesConsumed
 
 			// dest
@@ -125,7 +135,8 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				data := core.memoryAccessController.ReadAddr16(uint32(addressMode))
+				var data, err = core.memoryAccessController.ReadAddr16(uint32(addressMode))
+				if err != nil { goto eof }
 				src = &data
 				*dest = *src
 				srcName = "rm/16"
@@ -137,7 +148,8 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x8C:
 		{
 			/* MOV r/m16,Sreg */
-			modrm, bytesConsumed := core.consumeModRm()
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil { goto eof }
 			core.currentByteAddr += bytesConsumed
 
 			src := core.registers.registersSegmentRegisters[modrm.reg]
@@ -151,7 +163,8 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = (*src).base
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				core.memoryAccessController.WriteAddr16(uint32(addressMode), (*src).base)
+				err = core.memoryAccessController.WriteAddr16(uint32(addressMode), (*src).base)
+				if err != nil { goto eof }
 				srcName = "rm/16"
 			}
 
@@ -161,7 +174,8 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x8E:
 		{
 			/* MOV Sreg,r/m16 */
-			modrm, bytesConsumed := core.consumeModRm()
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil { goto eof }
 			core.currentByteAddr += bytesConsumed
 
 			dest := core.registers.registersSegmentRegisters[modrm.reg]
@@ -175,7 +189,8 @@ func INSTR_MOV(core *CpuCore) {
 				(*dest).base = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				data := core.memoryAccessController.ReadAddr16(uint32(addressMode))
+				var data, err = core.memoryAccessController.ReadAddr16(uint32(addressMode))
+				if err != nil { goto eof }
 				src = &data
 				(*dest).base = *src
 				srcName = "rm/16"
@@ -189,6 +204,7 @@ func INSTR_MOV(core *CpuCore) {
 		log.Fatal("Unrecognised MOV instruction!")
 	}
 
+	eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 

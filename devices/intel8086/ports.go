@@ -9,7 +9,8 @@ func INSTR_IN(core *CpuCore) {
 	case 0xE4:
 		{
 			// Read from port (imm) to AL
-			imm := core.memoryAccessController.ReadAddr8(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadAddr8(core.currentByteAddr + 1)
+			if err != nil { goto eof }
 			core.currentByteAddr++
 
 			data := core.ioPortAccessController.ReadAddr8(uint16(imm))
@@ -32,7 +33,8 @@ func INSTR_IN(core *CpuCore) {
 		{
 			// Read from port (imm) to AX
 
-			imm := core.memoryAccessController.ReadAddr16(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadAddr16(core.currentByteAddr + 1)
+			if err != nil { goto eof }
 			core.currentByteAddr += 2
 
 			data := core.ioPortAccessController.ReadAddr16(imm)
@@ -55,8 +57,8 @@ func INSTR_IN(core *CpuCore) {
 		log.Fatal("Unrecognised IN (port read) instruction!")
 	}
 
+	eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart) +1
-
 }
 
 func INSTR_OUT(core *CpuCore) {
@@ -66,7 +68,8 @@ func INSTR_OUT(core *CpuCore) {
 	case 0xE6:
 		{
 			// Write value in AL to port addr imm8
-			imm := core.memoryAccessController.ReadAddr8(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadAddr8(core.currentByteAddr + 1)
+			if err != nil { goto eof }
 			core.currentByteAddr++
 
 			core.ioPortAccessController.WriteAddr8(uint16(imm), core.registers.AL)
@@ -76,7 +79,8 @@ func INSTR_OUT(core *CpuCore) {
 	case 0xE7:
 		{
 			// Write value in AX to port addr imm8
-			imm := core.memoryAccessController.ReadAddr8(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadAddr8(core.currentByteAddr + 1)
+			if err != nil { goto eof }
 			core.currentByteAddr++
 
 			core.ioPortAccessController.WriteAddr16(uint16(imm), core.registers.AX)
@@ -104,6 +108,7 @@ func INSTR_OUT(core *CpuCore) {
 	}
 
 
+	eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart) +1
 
 }

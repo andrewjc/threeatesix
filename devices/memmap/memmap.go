@@ -72,14 +72,25 @@ func (mem *MemoryAccessController) ReadAddr32(address uint32) (uint32,error) {
 	return mem.memoryAccessProvider.ReadAddr32(address)
 }
 
-func (mem *MemoryAccessController) WriteAddr8(address uint32, value uint8) {
+func (mem *MemoryAccessController) WriteAddr8(address uint32, value uint8) error {
+	if int(address) > len(*mem.backingRam) || address < 0 {
+		return common.GeneralProtectionFault{}
+	}
+
 	(*mem.backingRam)[address] = value
+
+	return nil
 }
 
-func (mem *MemoryAccessController) WriteAddr16(address uint32, value uint16) {
+func (mem *MemoryAccessController) WriteAddr16(address uint32, value uint16) error {
 	for i := uint32(0); i < 2; i++ {
-		mem.WriteAddr8(address+i, uint8(value>>uint32(i*8)&0xFF))
+		err := mem.WriteAddr8(address+i, uint8(value>>uint32(i*8)&0xFF))
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (mem *MemoryAccessController) LockBootVector() {

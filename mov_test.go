@@ -2,11 +2,10 @@ package main
 
 import (
 	"github.com/andrewjc/threeatesix/pc"
-	"log"
 	"testing"
 )
 
-func Test_DoCpuTest(t *testing.T) {
+func Test_MovTests(t *testing.T) {
 
 	testPc := pc.NewPc() //build a new pc for each test run
 	testPc.GetPrimaryCpu().Init(testPc.GetBus())
@@ -15,22 +14,14 @@ func Test_DoCpuTest(t *testing.T) {
 	testPc.GetPrimaryCpu().SetCS(0x0)
 	testPc.GetPrimaryCpu().SetIP(1)
 
-	instructions := []uint8{0x24, 0x3f, 0x86, 0xe0, 0xbf, 0x27, 0x12}
+	instructions := []uint8{0xb8, 0x00, 0x90, 0x8E, 0xD8}
 
 	for x:=0;x< len(instructions);x++ {
 		testPc.GetMemoryController().WriteAddr8(uint32(testPc.GetPrimaryCpu().GetIP()+uint16(x)), instructions[x])
 	}
 
-	var tmp uint16
 	for {
 		if testPc.GetPrimaryCpu().GetIP() == 0 { break }
 		testPc.GetPrimaryCpu().Step()
-
-
-		if tmp == testPc.GetPrimaryCpu().GetIP() {
-			log.Panic("CPU Appears Stuck!")
-		} else {
-			tmp = testPc.GetPrimaryCpu().GetIP()
-		}
 	}
 }

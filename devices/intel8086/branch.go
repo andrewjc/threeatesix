@@ -14,11 +14,14 @@ func INSTR_RET_NEAR(core *CpuCore) {
 }
 
 func INSTR_JMP_FAR_PTR16(core *CpuCore) {
-	destAddr := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
-	segment := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 3)
+	destAddr, err := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
+	segment, err := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 3)
 
 	log.Printf("[%#04x] JMP %#04x:%#04x (FAR_PTR16)", core.GetCurrentlyExecutingInstructionAddress(), segment, destAddr)
-	core.writeSegmentRegister(&core.registers.CS, segment)
+	if err == nil {
+		core.writeSegmentRegister(&core.registers.CS, segment)
+	}
+
 	core.registers.IP = destAddr
 }
 
@@ -37,7 +40,11 @@ func INSTR_JMP_FAR_M16(core *CpuCore, modrm *ModRm) {
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
-	offset := int16(core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
+
+	if err != nil {
+		return
+	}
 
 	var destAddr = int16(core.registers.IP + 3)
 
@@ -49,7 +56,11 @@ func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
 func INSTR_JZ_SHORT_REL8(core *CpuCore) {
 
-	offset := int8(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
+
+	if err != nil {
+		return
+	}
 
 	var destAddr = uint16(core.registers.IP + 2)
 
@@ -67,7 +78,11 @@ func INSTR_JZ_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
 
-	offset := int8(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
+
+	if err != nil {
+		return
+	}
 
 	var destAddr = uint16(core.registers.IP + 2)
 
@@ -86,7 +101,11 @@ func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
 
-	offset := int8(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
+
+	if err != nil {
+		return
+	}
 
 	var destAddr = uint16(core.registers.IP + 2)
 
@@ -105,7 +124,11 @@ func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JMP_SHORT_REL8(core *CpuCore) {
 
-	offset := int8(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1)
+
+	if err != nil {
+		return
+	}
 
 	var destAddr = uint16(core.registers.IP + 2)
 

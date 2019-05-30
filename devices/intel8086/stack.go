@@ -16,7 +16,8 @@ func INSTR_PUSH(core *CpuCore) {
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), *val)
+			err := core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), *val)
+			if err != nil { goto eof }
 
 			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionAddress(), valName)
 
@@ -26,11 +27,13 @@ func INSTR_PUSH(core *CpuCore) {
 			// PUSH imm8
 
 
-			val := core.readImm8()
+			val, err := core.readImm8()
+			if err != nil { goto eof }
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr8(uint32(core.registers.SP), val)
+			err = core.memoryAccessController.WriteAddr8(uint32(core.registers.SP), val)
+			if err != nil { goto eof }
 
 			log.Printf("[%#04x] push %#04x", core.GetCurrentlyExecutingInstructionAddress(), val)
 		}
@@ -39,11 +42,13 @@ func INSTR_PUSH(core *CpuCore) {
 			// PUSH imm16
 
 
-			val := core.readImm16()
+			val, err := core.readImm16()
+			if err != nil { goto eof }
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			err = core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			if err != nil { goto eof }
 
 			log.Printf("[%#04x] push %#04x", core.GetCurrentlyExecutingInstructionAddress(), val)
 		}
@@ -56,7 +61,8 @@ func INSTR_PUSH(core *CpuCore) {
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			err := core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			if err != nil { goto eof }
 
 			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionAddress(), "CS")
 		}
@@ -68,7 +74,8 @@ func INSTR_PUSH(core *CpuCore) {
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			err := core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			if err != nil { goto eof }
 
 			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionAddress(), "SS")
 		}
@@ -80,7 +87,8 @@ func INSTR_PUSH(core *CpuCore) {
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			err :=core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			if err != nil { goto eof }
 
 			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionAddress(), "DS")
 		}
@@ -92,7 +100,8 @@ func INSTR_PUSH(core *CpuCore) {
 
 			core.registers.SP = core.registers.SP - 2
 
-			core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			err := core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+			if err != nil { goto eof }
 
 			log.Printf("[%#04x] push %s", core.GetCurrentlyExecutingInstructionAddress(), "ES")
 		}
@@ -101,6 +110,7 @@ func INSTR_PUSH(core *CpuCore) {
 		doCoreDump(core)
 	}
 
+	eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 

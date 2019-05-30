@@ -229,44 +229,45 @@ func (core *CpuCore) FriendlyPartName() string {
 	return "Unknown"
 }
 
-func (core *CpuCore) readImm8() uint8 {
-	retVal,err := core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
-
+func (core *CpuCore) readImm8() (uint8, error) {
+	retVal, err := core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
+	if err != nil { return 0, err }
 	core.currentByteAddr++
-	return retVal
+	return retVal, nil
 }
 
-func (core *CpuCore) readImm16() uint16 {
-	retVal := core.memoryAccessController.ReadAddr16(uint32(core.currentByteAddr))
+func (core *CpuCore) readImm16() (uint16, error) {
+	retVal, err := core.memoryAccessController.ReadAddr16(uint32(core.currentByteAddr))
+	if err != nil { return 0, err }
 	core.currentByteAddr+=2
-	return retVal
+	return retVal, nil
 }
 
-func (core *CpuCore) readRm8(modrm *ModRm) (*uint8, string) {
+func (core *CpuCore) readRm8(modrm *ModRm) (*uint8, string, error) {
 	if modrm.mod == 3 {
 		dest := core.registers.registers8Bit[modrm.rm]
 		destName := core.registers.index8ToString(modrm.rm)
-		return dest, destName
+		return dest, destName, nil
 
 	} else {
 		addressMode := modrm.getAddressMode16(core)
-		destValue := core.memoryAccessController.ReadAddr8(uint32(addressMode))
+		destValue, err := core.memoryAccessController.ReadAddr8(uint32(addressMode))
 		destName := fmt.Sprintf("dword_F%#04x", addressMode)
-		return &destValue, destName
+		return &destValue, destName, err
 	}
 }
 
-func (core *CpuCore) readRm16(modrm *ModRm) (*uint16, string) {
+func (core *CpuCore) readRm16(modrm *ModRm) (*uint16, string, error) {
 	if modrm.mod == 3 {
 		dest := core.registers.registers16Bit[modrm.rm]
 		destName := core.registers.index16ToString(modrm.rm)
-		return dest, destName
+		return dest, destName, nil
 
 	} else {
 		addressMode := modrm.getAddressMode16(core)
-		destValue := core.memoryAccessController.ReadAddr16(uint32(addressMode))
+		destValue, err := core.memoryAccessController.ReadAddr16(uint32(addressMode))
 		destName := fmt.Sprintf("dword_F%#04x", addressMode)
-		return &destValue, destName
+		return &destValue, destName, err
 	}
 }
 
@@ -283,22 +284,32 @@ func (core *CpuCore) readR16(modrm *ModRm) (*uint16, string) {
 
 }
 
-func (core *CpuCore) writeRm8(modrm *ModRm, value *uint8) {
+func (core *CpuCore) writeRm8(modrm *ModRm, value *uint8) error {
 	if modrm.mod == 3 {
 		core.registers.registers8Bit[modrm.rm] = value
 	} else {
 		addressMode := modrm.getAddressMode16(core)
-		core.memoryAccessController.WriteAddr8(uint32(addressMode), *value)
+		err := core.memoryAccessController.WriteAddr8(uint32(addressMode), *value)
+		if err != nil {
+			return nil
+		}
 	}
+
+	return nil
 }
 
-func (core *CpuCore) writeRm16(modrm *ModRm, value *uint16) {
+func (core *CpuCore) writeRm16(modrm *ModRm, value *uint16) error {
 	if modrm.mod == 3 {
 		core.registers.registers16Bit[modrm.rm] = value
 	} else {
 		addressMode := modrm.getAddressMode16(core)
-		core.memoryAccessController.WriteAddr16(uint32(addressMode), *value)
+		err := core.memoryAccessController.WriteAddr16(uint32(addressMode), *value)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (core *CpuCore) writeR8(modrm *ModRm, value *uint8) {

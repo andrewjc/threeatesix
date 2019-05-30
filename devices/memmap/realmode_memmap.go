@@ -67,9 +67,7 @@ func (r *RealModeAccessProvider) PeekNextBytesImpl(addr uint32, numBytes uint32)
 }
 
 func (r *RealModeAccessProvider) ReadFromBiosAddressSpace(addr uint32) (uint8, error) {
-	if int(addr) > len(*r.biosImage) || addr < 0 {
-		return 0, common.GeneralProtectionFault{}
-	}
+
 
 	ddd := 0xF000FFFF - addr
 
@@ -77,6 +75,9 @@ func (r *RealModeAccessProvider) ReadFromBiosAddressSpace(addr uint32) (uint8, e
 
 	offs := biosImageLength - ddd
 
+	if int(offs) > len(*r.biosImage) || offs < 0 {
+		return 0, common.GeneralProtectionFault{}
+	}
 	byteData := (*r.biosImage)[offs]
 
 	return byteData, nil
