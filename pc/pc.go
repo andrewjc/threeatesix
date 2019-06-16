@@ -40,7 +40,8 @@ type PersonalComputer struct {
 const BiosFilename = "bios.bin"
 
 // MaxRAMBytes - the amount of ram installed in this virtual machine
-const MaxRAMBytes = 0x1E84800 //32 million (32mb)
+//const MaxRAMBytes = 0x1E84800 //32 million (32mb)
+const MaxRAMBytes = 0xF42400 //8mb
 //const MaxRAMBytes = 0x100000000 //4GB
 
 func (pc *PersonalComputer) Power() {

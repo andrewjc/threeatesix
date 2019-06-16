@@ -40,6 +40,17 @@ func New80386CPU() *CpuCore {
 		&cpuCore.registers.DI,
 	}
 
+	cpuCore.registers.registers32Bit = []*uint32{
+		&cpuCore.registers.EAX,
+		&cpuCore.registers.ECX,
+		&cpuCore.registers.EDX,
+		&cpuCore.registers.EBX,
+		&cpuCore.registers.ESP,
+		&cpuCore.registers.EBP,
+		&cpuCore.registers.ESI,
+		&cpuCore.registers.EDI,
+	}
+
 	cpuCore.registers.registersSegmentRegisters = []*SegmentRegister{
 		&cpuCore.registers.ES,
 		&cpuCore.registers.CS,

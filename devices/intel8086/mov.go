@@ -199,7 +199,39 @@ func INSTR_MOV(core *CpuCore) {
 			log.Print(fmt.Sprintf("[%#04x] MOV %s,%s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
 
 		}
+	case 0x20:
+		{
+			/* MOV r32, cr0 */
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil { goto eof }
+			core.currentByteAddr += bytesConsumed
 
+			dst := core.registers.registers32Bit[modrm.rm]
+			dstName := core.registers.index32ToString(modrm.rm)
+
+			var srcName string
+
+			switch {
+			case  modrm.reg == 4:
+				*dst = core.registers.CR0
+				srcName = "CR0"
+			case  modrm.reg == 5:
+				*dst = core.registers.CR2
+				srcName = "CR2"
+			case  modrm.reg == 6:
+				*dst = core.registers.CR3
+				srcName = "CR3"
+			case  modrm.reg == 7:
+				*dst = core.registers.CR4
+				srcName = "CR4"
+			default:
+				log.Fatal("Unknown cr mov instruction")
+			}
+
+
+			log.Print(fmt.Sprintf("[%#04x] MOV %s,%s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
+
+		}
 	default:
 		log.Fatal("Unrecognised MOV instruction!")
 	}
