@@ -69,7 +69,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	if core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0] == 0x0F {
 		// 2 byte opcode
 		core.IncrementIP()
-		instrByte, err = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr +1))
+		instrByte, err = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr + 1))
 		if err != nil {
 			panic("Core read error.")
 		}
@@ -135,20 +135,20 @@ func isPrefixByte(b byte) bool {
 	return false
 }
 
-
 func INSTR_SMSW(core *CpuCore) {
 	var value uint16
 
-
 	core.IncrementIP()
 	modrm, bytesConsumed, err := core.consumeModRm()
-	if err != nil { goto eof }
+	if err != nil {
+		goto eof
+	}
 	core.currentByteAddr += bytesConsumed
 
 	value = uint16(core.registers.CR0)
 
 	err = core.writeRm16(&modrm, &value)
-	eof:
+eof:
 	log.Printf("[%#04x] smsw %s", core.GetCurrentlyExecutingInstructionAddress(), "r/m16")
 	core.registers.IP = uint16(core.GetIP() + 1)
 }
@@ -158,25 +158,27 @@ func INSTR_FF_OPCODES(core *CpuCore) {
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
 	core.currentByteAddr--
-	if err != nil { goto eof }
+	if err != nil {
+		goto eof
+	}
 
 	switch modrm.reg {
 	/*case modrm.rm == 0:
-		{
-			// inc rm32
-		}
-	case modrm.rm == 1:
-		{
-			// dec rm32
-		}
-	case modrm.rm == 2:
-		{
-			// call rm32
-		}
-	case modrm.rm == 3:
-		{
-			// call m16
-		}*/
+	  	{
+	  		// inc rm32
+	  	}
+	  case modrm.rm == 1:
+	  	{
+	  		// dec rm32
+	  	}
+	  case modrm.rm == 2:
+	  	{
+	  		// call rm32
+	  	}
+	  case modrm.rm == 3:
+	  	{
+	  		// call m16
+	  	}*/
 	case 4:
 		{
 			// jmp rm32
@@ -197,7 +199,7 @@ func INSTR_FF_OPCODES(core *CpuCore) {
 		doCoreDump(core)
 		panic(0)
 	}
-	eof:
+eof:
 }
 
 func INSTR_80_OPCODES(core *CpuCore) {
@@ -205,7 +207,9 @@ func INSTR_80_OPCODES(core *CpuCore) {
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
 	core.currentByteAddr--
-	if err != nil { goto eof }
+	if err != nil {
+		goto eof
+	}
 
 	switch modrm.reg {
 	case 1:
@@ -224,7 +228,7 @@ func INSTR_80_OPCODES(core *CpuCore) {
 		panic(0)
 	}
 
-	eof:
+eof:
 }
 
 func INSTR_81_OPCODES(core *CpuCore) {
@@ -232,7 +236,9 @@ func INSTR_81_OPCODES(core *CpuCore) {
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
 	core.currentByteAddr--
-	if err != nil { goto eof }
+	if err != nil {
+		goto eof
+	}
 
 	switch modrm.reg {
 	case 0:
@@ -250,7 +256,7 @@ func INSTR_81_OPCODES(core *CpuCore) {
 		doCoreDump(core)
 		panic(0)
 	}
-	eof:
+eof:
 }
 
 func INSTR_83_OPCODES(core *CpuCore) {
@@ -258,7 +264,9 @@ func INSTR_83_OPCODES(core *CpuCore) {
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
 	core.currentByteAddr--
-	if err != nil { goto eof }
+	if err != nil {
+		goto eof
+	}
 
 	switch modrm.reg {
 	case 0:
@@ -278,6 +286,5 @@ func INSTR_83_OPCODES(core *CpuCore) {
 		doCoreDump(core)
 		panic(0)
 	}
-	eof:
+eof:
 }
-
