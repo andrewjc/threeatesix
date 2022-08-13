@@ -16,6 +16,41 @@ func INSTR_RET_NEAR(core *CpuCore) {
 	core.registers.SP += 2
 }
 
+func INSTR_DEC_COUNT_JMP_SHORT_ECX(core *CpuCore) {
+
+	offset, err := common.Int8Err(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+
+	if err != nil {
+		return
+	}
+
+	var destAddr = uint16(core.registers.IP + 2)
+
+	destAddr = destAddr + uint16(offset)
+
+	term1 := uint16(core.registers.CX)
+	term1 = term1 - 1
+	core.registers.CX = uint16(term1)
+
+	additional := true
+	extraStr := ""
+
+	if core.currentOpCodeBeingExecuted == 0xE0 {
+		extraStr = "ZF=0"
+		additional = !core.registers.GetFlag(ZeroFlag)
+	}
+
+	log.Printf("[%#04x] LOOP %#04x (SHORT REL8) %s", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr), extraStr)
+	if term1 != 0 && additional {
+		core.registers.IP = uint16(destAddr)
+		log.Printf("[%#04x]   |-> jumped (CX %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.CX)
+	} else {
+		core.registers.IP = uint16(uint16(core.GetIP() + 2))
+		log.Printf("[%#04x]   |-> not jumped (CX %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.CX)
+	}
+
+}
+
 func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 	destAddr, err := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
 	segment, err := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 3)
@@ -141,5 +176,3 @@ func INSTR_JMP_SHORT_REL8(core *CpuCore) {
 	core.registers.IP = uint16(destAddr)
 
 }
-
-

@@ -12,6 +12,8 @@ func mapOpCodes(c *CpuCore) {
 
 	c.opCodeMap[0xEB] = INSTR_JMP_SHORT_REL8
 
+	c.opCodeMap[0xE0] = INSTR_DEC_COUNT_JMP_SHORT_ECX
+	c.opCodeMap[0xE2] = INSTR_DEC_COUNT_JMP_SHORT_ECX
 	c.opCodeMap[0xE3] = INSTR_JCXZ_SHORT_REL8
 
 	c.opCodeMap[0x74] = INSTR_JZ_SHORT_REL8

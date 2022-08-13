@@ -83,10 +83,10 @@ type CpuCore struct {
 
 	busId uint32
 
-	currentByteDecodeStart         uint32 //the start addr of the instruction being decoded (including prefixes etc)
+	currentByteDecodeStart         uint32  //the start addr of the instruction being decoded (including prefixes etc)
 	currentPrefixBytes             []uint8 //current prefix bytes read for the byte being decoded in the instruction
-	currentByteAddr                uint32 //the current address of the byte being decoded in the current instruction
-	currentOpCodeBeingExecuted     uint8  //the opcode of the instruction currently being exected
+	currentByteAddr                uint32  //the current address of the byte being decoded in the current instruction
+	currentOpCodeBeingExecuted     uint8   //the opcode of the instruction currently being exected
 	lastExecutedInstructionPointer uint32
 }
 
@@ -142,7 +142,6 @@ func (core *CpuCore) Init(bus *bus.Bus) {
 	dev2 := core.bus.FindSingleDevice(common.MODULE_IO_PORT_ACCESS_CONTROLLER).(*io.IOPortAccessController)
 	core.ioPortAccessController = dev2
 
-
 	core.EnterMode(common.REAL_MODE)
 
 	core.Reset()
@@ -151,13 +150,13 @@ func (core *CpuCore) Init(bus *bus.Bus) {
 func (core *CpuCore) Reset() {
 	core.registers.CS.base = 0xF000
 	core.registers.IP = 0xFFF0
-	core.bus.SendMessage(bus.BusMessage{Subject: common.MESSAGE_GLOBAL_LOCK_BIOS_MEM_REGION, Data:[]byte{}})
+	core.bus.SendMessage(bus.BusMessage{Subject: common.MESSAGE_GLOBAL_LOCK_BIOS_MEM_REGION, Data: []byte{}})
 }
 
 func (core *CpuCore) EnterMode(mode uint8) {
 	core.mode = mode
 
-	core.bus.SendMessage(bus.BusMessage{Subject: common.MESSAGE_GLOBAL_CPU_MODESWITCH, Data:[]byte{mode}})
+	core.bus.SendMessage(bus.BusMessage{Subject: common.MESSAGE_GLOBAL_CPU_MODESWITCH, Data: []byte{mode}})
 
 	processorString := core.FriendlyPartName()
 	modeString := ""
@@ -181,23 +180,23 @@ func (core *CpuCore) SegmentAddressToLinearAddress(segment SegmentRegister, offs
 		// default segment override
 		switch core.flags.MemorySegmentOverride {
 		case common.SEGMENT_CS:
-			return uint32(core.registers.CS.base) << 16 + uint32(offset)
+			return uint32(core.registers.CS.base)<<16 + uint32(offset)
 		case common.SEGMENT_SS:
-			return uint32(core.registers.SS.base) << 16 + uint32(offset)
+			return uint32(core.registers.SS.base)<<16 + uint32(offset)
 		case common.SEGMENT_DS:
-			return uint32(core.registers.DS.base) << 16 + uint32(offset)
+			return uint32(core.registers.DS.base)<<16 + uint32(offset)
 		case common.SEGMENT_ES:
-			return uint32(core.registers.ES.base) << 16 + uint32(offset)
+			return uint32(core.registers.ES.base)<<16 + uint32(offset)
 		case common.SEGMENT_FS:
-			return uint32(core.registers.FS.base) << 16 + uint32(offset)
+			return uint32(core.registers.FS.base)<<16 + uint32(offset)
 		case common.SEGMENT_GS:
-			return uint32(core.registers.GS.base) << 16 + uint32(offset)
+			return uint32(core.registers.GS.base)<<16 + uint32(offset)
 		default:
 			panic("Unhandled segment register override")
 		}
 	}
 
-	addr := uint32(segment.base) << 16 + uint32(offset)
+	addr := uint32(segment.base)<<16 + uint32(offset)
 
 	return addr
 }
@@ -210,6 +209,11 @@ func (core *CpuCore) GetCurrentlyExecutingInstructionAddress() uint32 {
 }
 
 func (core *CpuCore) Step() {
+
+	register_locations_8 := core.registers.registers8Bit
+	register_locations_16 := core.registers.registers16Bit
+	register_locations_32 := core.registers.registers32Bit
+
 	core.currentByteAddr = core.GetCurrentCodePointer()
 	tmp := core.currentByteAddr
 	if core.currentByteAddr == core.lastExecutedInstructionPointer {
@@ -219,6 +223,20 @@ func (core *CpuCore) Step() {
 	core.currentByteDecodeStart = core.currentByteAddr
 
 	status := core.decodeInstruction()
+
+	// Check that no register pointers were overwritten
+	// checks for bugs
+	for i := 0; i < 8; i++ {
+		if register_locations_8[i] != core.registers.registers8Bit[i] {
+			panic(fmt.Sprintf("8-bit register %s was overwritten", core.registers.index8ToString(uint8(i))))
+		}
+		if register_locations_16[i] != core.registers.registers16Bit[i] {
+			panic(fmt.Sprintf("16-bit register %s was overwritten", core.registers.index16ToString(uint8(i))))
+		}
+		if register_locations_32[i] != core.registers.registers32Bit[i] {
+			panic(fmt.Sprintf("32-bit register %s was overwritten", core.registers.index32ToString(uint8(i))))
+		}
+	}
 
 	if status != 0 {
 		panic(0)
@@ -242,15 +260,19 @@ func (core *CpuCore) FriendlyPartName() string {
 
 func (core *CpuCore) readImm8() (uint8, error) {
 	retVal, err := core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	core.currentByteAddr++
 	return retVal, nil
 }
 
 func (core *CpuCore) readImm16() (uint16, error) {
 	retVal, err := core.memoryAccessController.ReadAddr16(uint32(core.currentByteAddr))
-	if err != nil { return 0, err }
-	core.currentByteAddr+=2
+	if err != nil {
+		return 0, err
+	}
+	core.currentByteAddr += 2
 	return retVal, nil
 }
 
@@ -297,7 +319,7 @@ func (core *CpuCore) readR16(modrm *ModRm) (*uint16, string) {
 
 func (core *CpuCore) writeRm8(modrm *ModRm, value *uint8) error {
 	if modrm.mod == 3 {
-		core.registers.registers8Bit[modrm.rm] = value
+		*core.registers.registers8Bit[modrm.rm] = *value
 	} else {
 		addressMode := modrm.getAddressMode16(core)
 		err := core.memoryAccessController.WriteAddr8(uint32(addressMode), *value)
@@ -311,7 +333,7 @@ func (core *CpuCore) writeRm8(modrm *ModRm, value *uint8) error {
 
 func (core *CpuCore) writeRm16(modrm *ModRm, value *uint16) error {
 	if modrm.mod == 3 {
-		core.registers.registers16Bit[modrm.rm] = value
+		*core.registers.registers16Bit[modrm.rm] = *value
 	} else {
 		addressMode := modrm.getAddressMode16(core)
 		err := core.memoryAccessController.WriteAddr16(uint32(addressMode), *value)
@@ -324,11 +346,11 @@ func (core *CpuCore) writeRm16(modrm *ModRm, value *uint16) error {
 }
 
 func (core *CpuCore) writeR8(modrm *ModRm, value *uint8) {
-	core.registers.registers8Bit[modrm.reg] = value
+	*core.registers.registers8Bit[modrm.reg] = *value
 }
 
 func (core *CpuCore) writeR16(modrm *ModRm, value *uint16) {
-	core.registers.registers16Bit[modrm.reg] = value
+	*core.registers.registers16Bit[modrm.reg] = *value
 }
 
 func (core *CpuCore) SetFlag(mask uint16, status bool) {
@@ -371,4 +393,3 @@ func (core *CpuCore) writeSegmentRegister(register *SegmentRegister, value uint1
 	register.base = value
 
 }
-
