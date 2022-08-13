@@ -42,6 +42,10 @@ func INSTR_DEC_COUNT_JMP_SHORT_ECX(core *CpuCore) {
 		extraStr = "ZF=0"
 		additional = !core.registers.GetFlag(ZeroFlag)
 	}
+	if core.currentOpCodeBeingExecuted == 0xE1 {
+		extraStr = "ZF=1"
+		additional = core.registers.GetFlag(ZeroFlag)
+	}
 
 	log.Printf("[%#04x] LOOP %#04x (SHORT REL8) %s", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr), extraStr)
 	if term1 != 0 && additional {

@@ -1037,6 +1037,7 @@ func INSTR_XOR(core *CpuCore) {
 			goto success
 		}
 	case 0x80:
+	case 0x82:
 		{
 			// XOR r/m8,imm8
 			core.currentByteAddr++
