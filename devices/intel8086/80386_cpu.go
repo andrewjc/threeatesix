@@ -217,6 +217,7 @@ func (core *CpuCore) Step() {
 	core.currentByteAddr = core.GetCurrentCodePointer()
 	tmp := core.currentByteAddr
 	if core.currentByteAddr == core.lastExecutedInstructionPointer {
+		doCoreDump(core)
 		log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
 	}
 

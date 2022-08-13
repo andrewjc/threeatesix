@@ -7,13 +7,16 @@ import (
 
 func INSTR_RET_NEAR(core *CpuCore) {
 
-	log.Printf("[%#04x] retn", core.GetCurrentCodePointer())
+	current_ip := core.GetCurrentCodePointer()
 
 	stackPntrAddr := core.registers.SP
 
 	core.registers.IP = uint16(stackPntrAddr)
 
 	core.registers.SP += 2
+
+	log.Printf("[%#04x] retn (current code pointer: %#08x / new ip: %#08x)", current_ip, current_ip, core.registers.IP)
+
 }
 
 func INSTR_DEC_COUNT_JMP_SHORT_ECX(core *CpuCore) {

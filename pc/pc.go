@@ -33,32 +33,32 @@ type PersonalComputer struct {
 	memController    *memmap.MemoryAccessController
 	ioPortController *io.IOPortAccessController
 
-	ps2Controller    *ps2.Ps2Controller
+	ps2Controller *ps2.Ps2Controller
 }
 
 // BiosFilename - name of the bios image the virtual machine will boot up
 const BiosFilename = "bios.bin"
 
 // MaxRAMBytes - the amount of ram installed in this virtual machine
-//const MaxRAMBytes = 0x1E84800 //32 million (32mb)
+// const MaxRAMBytes = 0x1E84800 //32 million (32mb)
 const MaxRAMBytes = 0xF42400 //8mb
 //const MaxRAMBytes = 0x100000000 //4GB
 
 func (pc *PersonalComputer) Power() {
 	// do stuff
 
-
 	pc.cpu.Init(pc.bus)
 	pc.mathCoProcessor.Init(pc.bus)
 
 	for {
-		if pc.cpu.GetIP() == 0x0 { break } //loop until instruction pointer equals 0
+		if pc.cpu.GetIP() == 0x0 {
+			break
+		} //loop until instruction pointer equals 0
 
 		pc.cpu.Step()
 
 	}
 }
-
 
 func NewPc() *PersonalComputer {
 	pc := &PersonalComputer{}
@@ -125,8 +125,8 @@ func (pc *PersonalComputer) LoadBios() {
 
 		romChipSize := int32(fileLength)
 		pc.rom.bios = make([]byte, romChipSize)
-		for i := fileLength-1;i>=0;i-- {
-			offset := romChipSize-(fileLength-i)
+		for i := fileLength - 1; i >= 0; i-- {
+			offset := romChipSize - (fileLength - i)
 			pc.rom.bios[offset] = biosData[i]
 		}
 	}

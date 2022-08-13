@@ -125,7 +125,11 @@ func mapOpCodes(c *CpuCore) {
 
 	// opcodes that handle multiple instructions (handled by modrm byte)
 	c.opCodeMap[0xFF] = INSTR_FF_OPCODES
+
+	// Confirm these, they seem to be the same???
 	c.opCodeMap[0x80] = INSTR_80_OPCODES
+	c.opCodeMap[0x82] = INSTR_80_OPCODES
+
 	c.opCodeMap[0x81] = INSTR_81_OPCODES
 	c.opCodeMap[0x83] = INSTR_83_OPCODES
 

@@ -24,7 +24,9 @@ func INSTR_ADC(core *CpuCore) {
 			// 	adc AL,imm8
 			core.currentByteAddr++
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			term1 = uint32(core.registers.AL)
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
 			core.registers.AL = uint8(term1)
@@ -37,7 +39,9 @@ func INSTR_ADC(core *CpuCore) {
 			// adc AX,imm16
 			core.currentByteAddr++
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			term1 = uint32(core.registers.AX)
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
@@ -51,18 +55,26 @@ func INSTR_ADC(core *CpuCore) {
 			// adc r/m8,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] adc %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
@@ -72,18 +84,26 @@ func INSTR_ADC(core *CpuCore) {
 			// adc r/m16,imm16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			log.Printf("[%#04x] adc %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
 		}
@@ -92,17 +112,25 @@ func INSTR_ADC(core *CpuCore) {
 			// adc r/m16,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			log.Printf("[%#04x] adc %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
 		}
@@ -111,9 +139,13 @@ func INSTR_ADC(core *CpuCore) {
 			// adc r/m8,r8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			t2, t2Name := core.readR8(&modrm)
@@ -121,7 +153,9 @@ func INSTR_ADC(core *CpuCore) {
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			log.Printf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
 		}
@@ -130,9 +164,13 @@ func INSTR_ADC(core *CpuCore) {
 			// adc r/m16,r16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			t2, t2Name := core.readR16(&modrm)
@@ -140,7 +178,9 @@ func INSTR_ADC(core *CpuCore) {
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			log.Printf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
 		}
@@ -149,17 +189,23 @@ func INSTR_ADC(core *CpuCore) {
 			// adc r8,r/m8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name := core.readR8(&modrm)
 			term1 = uint32(*t1)
 			t2, t2Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*t2)
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			log.Printf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
 		}
@@ -168,11 +214,15 @@ func INSTR_ADC(core *CpuCore) {
 			// adc r16,r/m16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name := core.readR16(&modrm)
 			term1 = uint32(*t1)
 			t2, t2Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*t2)
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
@@ -182,9 +232,11 @@ func INSTR_ADC(core *CpuCore) {
 			log.Printf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
 		}
+	default:
+		log.Fatalf("[%#04x] Unimplemented adc instruction: %#04x", core.GetCurrentlyExecutingInstructionAddress(), core.currentOpCodeBeingExecuted)
 	}
 
-	success:
+success:
 	bitLength = uint32(bits.Len32(result))
 
 	// update flags
@@ -198,12 +250,11 @@ func INSTR_ADC(core *CpuCore) {
 
 	core.registers.SetFlag(SignFlag, signr != 0)
 
-	core.registers.SetFlag(OverFlowFlag,  (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
+	core.registers.SetFlag(OverFlowFlag, (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
 
-	eof:
+eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
-
 
 func INSTR_ADD(core *CpuCore) {
 
@@ -222,7 +273,9 @@ func INSTR_ADD(core *CpuCore) {
 			// 	add AL,imm8
 			core.currentByteAddr++
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			term1 = uint32(core.registers.AL)
 			result = uint32(term1) + uint32(term2)
 			core.registers.AL = uint8(term1)
@@ -235,7 +288,9 @@ func INSTR_ADD(core *CpuCore) {
 			// 		add AX,imm16
 			core.currentByteAddr++
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			term1 = uint32(core.registers.AX)
 			result = uint32(term1) + uint32(term2)
 			core.registers.AX = uint16(term1)
@@ -248,16 +303,22 @@ func INSTR_ADD(core *CpuCore) {
 			// add r/m8,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm8()
 			result = uint32(term1) + uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			log.Printf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
 		}
@@ -266,17 +327,25 @@ func INSTR_ADD(core *CpuCore) {
 			// add r/m16,imm16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			result = uint32(term1) + uint32(term2)
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
@@ -286,17 +355,25 @@ func INSTR_ADD(core *CpuCore) {
 			// add r/m16,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			result = uint32(term1) + uint32(term2)
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
@@ -306,9 +383,13 @@ func INSTR_ADD(core *CpuCore) {
 			// add r/m8,r8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			t2, t2Name := core.readR8(&modrm)
@@ -316,7 +397,9 @@ func INSTR_ADD(core *CpuCore) {
 			result = uint32(term1) + uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
@@ -326,9 +409,13 @@ func INSTR_ADD(core *CpuCore) {
 			// add r/m16,r16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			t2, t2Name := core.readR16(&modrm)
@@ -336,7 +423,9 @@ func INSTR_ADD(core *CpuCore) {
 			result = uint32(term1) + uint32(term2)
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
@@ -346,17 +435,23 @@ func INSTR_ADD(core *CpuCore) {
 			// add r8,r/m8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name := core.readR8(&modrm)
 			term1 = uint32(*t1)
 			t2, t2Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*t2)
 			result = uint32(term1) + uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
@@ -366,11 +461,15 @@ func INSTR_ADD(core *CpuCore) {
 			// add r16,r/m16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name := core.readR16(&modrm)
 			term1 = uint32(*t1)
 			t2, t2Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*t2)
@@ -381,9 +480,11 @@ func INSTR_ADD(core *CpuCore) {
 			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
 		}
+	default:
+		log.Fatalf("[%#04x] Unimplemented add instruction: %#04x", core.GetCurrentlyExecutingInstructionAddress(), core.currentOpCodeBeingExecuted)
 	}
 
-	success:
+success:
 	bitLength = uint32(bits.Len32(result))
 
 	// update flags
@@ -397,9 +498,9 @@ func INSTR_ADD(core *CpuCore) {
 
 	core.registers.SetFlag(SignFlag, signr != 0)
 
-	core.registers.SetFlag(OverFlowFlag,  (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
+	core.registers.SetFlag(OverFlowFlag, (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
 
-	eof:
+eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
@@ -421,12 +522,14 @@ func INSTR_AND(core *CpuCore) {
 			// 	and AL,imm8
 			core.currentByteAddr++
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			term1 = uint32(core.registers.AL)
 			result = uint32(term1) & uint32(term2)
 			core.registers.AL = uint8(term1)
 
-			log.Printf("[%#04x] add al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			log.Printf("[%#04x] and al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
 			goto success
 		}
 	case 0x25:
@@ -434,12 +537,14 @@ func INSTR_AND(core *CpuCore) {
 			// 	and AX,imm16
 			core.currentByteAddr++
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			term1 = uint32(core.registers.AX)
 			result = uint32(term1) & uint32(term2)
 			core.registers.AX = uint16(term1)
 
-			log.Printf("[%#04x] add ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			log.Printf("[%#04x] and ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
 			goto success
 		}
 	case 0x80:
@@ -447,18 +552,24 @@ func INSTR_AND(core *CpuCore) {
 			// and r/m8,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			result = uint32(term1) & uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
 
-			log.Printf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			log.Printf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
 		}
 	case 0x81:
@@ -466,18 +577,26 @@ func INSTR_AND(core *CpuCore) {
 			// and r/m16,imm16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			result = uint32(term1) & uint32(term2)
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof}
-			log.Printf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			if err != nil {
+				goto eof
+			}
+			log.Printf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
 		}
 	case 0x83:
@@ -485,18 +604,26 @@ func INSTR_AND(core *CpuCore) {
 			// and r/m16,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			result = uint32(term1) & uint32(term2)
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof}
-			log.Printf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			if err != nil {
+				goto eof
+			}
+			log.Printf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
 		}
 	case 0x20:
@@ -504,9 +631,13 @@ func INSTR_AND(core *CpuCore) {
 			// and r/m8,r8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			t2, t2Name := core.readR8(&modrm)
@@ -514,8 +645,10 @@ func INSTR_AND(core *CpuCore) {
 			result = uint32(term1) & uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof}
-			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			if err != nil {
+				goto eof
+			}
+			log.Printf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
 		}
 	case 0x21:
@@ -523,9 +656,13 @@ func INSTR_AND(core *CpuCore) {
 			// and r/m16,r16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			t2, t2Name := core.readR16(&modrm)
@@ -533,8 +670,10 @@ func INSTR_AND(core *CpuCore) {
 			result = uint32(term1) & uint32(term2)
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof}
-			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			if err != nil {
+				goto eof
+			}
+			log.Printf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
 		}
 	case 0x22:
@@ -542,18 +681,24 @@ func INSTR_AND(core *CpuCore) {
 			// add r8,r/m8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name := core.readR8(&modrm)
 			term1 = uint32(*t1)
 			t2, t2Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*t2)
 			result = uint32(term1) & uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof}
-			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			if err != nil {
+				goto eof
+			}
+			log.Printf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
 		}
 	case 0x23:
@@ -561,23 +706,29 @@ func INSTR_AND(core *CpuCore) {
 			// add r16,r/m16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name := core.readR16(&modrm)
 			term1 = uint32(*t1)
 			t2, t2Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*t2)
 			result = uint32(term1) & uint32(term2)
 			tmp := uint16(result)
 			core.writeR16(&modrm, &tmp)
 
-			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			log.Printf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
 		}
+	default:
+		log.Fatalf("[%#04x] Unimplemented and instruction: %#04x", core.GetCurrentlyExecutingInstructionAddress(), core.currentOpCodeBeingExecuted)
 	}
 
-	success:
+success:
 	bitLength = uint32(bits.Len32(result))
 
 	// update flags
@@ -591,12 +742,11 @@ func INSTR_AND(core *CpuCore) {
 
 	core.registers.SetFlag(SignFlag, signr != 0)
 
-	core.registers.SetFlag(OverFlowFlag,  (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
+	core.registers.SetFlag(OverFlowFlag, (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
 
-	eof:
+eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
-
 
 func INSTR_OR(core *CpuCore) {
 
@@ -612,7 +762,9 @@ func INSTR_OR(core *CpuCore) {
 			// OR AL,imm8
 			core.currentByteAddr++
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			term1 = uint32(core.registers.AL)
 			result = uint32(term1) | uint32(term2)
 			core.registers.AL = uint8(result)
@@ -625,7 +777,9 @@ func INSTR_OR(core *CpuCore) {
 			// OR AX,imm16
 			core.currentByteAddr++
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			term1 = uint32(core.registers.AX)
 			result = uint32(term1) | uint32(term2)
@@ -639,17 +793,25 @@ func INSTR_OR(core *CpuCore) {
 			// OR r/m8,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			tmp := uint8(uint32(term1) | uint32(term2))
 
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
 			goto success
@@ -659,18 +821,26 @@ func INSTR_OR(core *CpuCore) {
 			// OR r/m16,imm16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			tmp := uint16(uint32(term1) | uint32(term2))
 
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
 			goto success
@@ -680,17 +850,25 @@ func INSTR_OR(core *CpuCore) {
 			// OR r/m16,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			tmp := uint16(uint32(term1) | uint32(term2))
 
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
 			goto success
@@ -700,9 +878,13 @@ func INSTR_OR(core *CpuCore) {
 			// OR r/m8,r8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
 			rm2, rm2Str := core.readR8(&modrm)
@@ -710,7 +892,9 @@ func INSTR_OR(core *CpuCore) {
 			tmp := uint8(uint32(term1) | uint32(term2))
 
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			goto success
@@ -720,9 +904,13 @@ func INSTR_OR(core *CpuCore) {
 			// OR r/m16,r16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
 			rm2, rm2Str := core.readR16(&modrm)
@@ -730,7 +918,9 @@ func INSTR_OR(core *CpuCore) {
 			tmp := uint16(uint32(term1) | uint32(term2))
 
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			goto success
@@ -740,11 +930,15 @@ func INSTR_OR(core *CpuCore) {
 			// OR r8,r/m8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr := core.readR8(&modrm)
 			term1 = uint32(*rm)
 			rm2, rm2Str, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*rm2)
 			tmp := uint8(uint32(term1) | uint32(term2))
@@ -759,11 +953,15 @@ func INSTR_OR(core *CpuCore) {
 			// OR r16,r/m16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr := core.readR16(&modrm)
 			term1 = uint32(*rm)
 			rm2, rm2Str, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*rm2)
@@ -774,24 +972,26 @@ func INSTR_OR(core *CpuCore) {
 			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			goto success
 		}
+	default:
+		log.Fatalf("[%#04x] Unimplemented or instruction: %#04x", core.GetCurrentlyExecutingInstructionAddress(), core.currentOpCodeBeingExecuted)
 	}
 
-	success:
+success:
 	bitLength = uint32(bits.Len32(result))
 
 	// update flags
 
-	core.registers.SetFlag(OverFlowFlag,  false)
+	core.registers.SetFlag(OverFlowFlag, false)
 
 	core.registers.SetFlag(CarryFlag, false)
 
-	core.registers.SetFlag(SignFlag, (result >> bitLength) != 0)
+	core.registers.SetFlag(SignFlag, (result>>bitLength) != 0)
 
 	core.registers.SetFlag(ZeroFlag, result == 0)
 
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
 
-	eof:
+eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
@@ -809,7 +1009,9 @@ func INSTR_XOR(core *CpuCore) {
 			// XOR AL,imm8
 			core.currentByteAddr++
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			term1 = uint32(core.registers.AL)
 			result = uint32(term1) ^ uint32(term2)
@@ -823,7 +1025,9 @@ func INSTR_XOR(core *CpuCore) {
 			// XOR AX,imm16
 			core.currentByteAddr++
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			term1 = uint32(core.registers.AX)
 			result = uint32(term1) ^ uint32(term2)
@@ -837,17 +1041,25 @@ func INSTR_XOR(core *CpuCore) {
 			// XOR r/m8,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm8(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			tmp := uint8(uint32(term1) ^ uint32(term2))
 
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
 			goto success
@@ -857,18 +1069,26 @@ func INSTR_XOR(core *CpuCore) {
 			// XOR r/m16,imm16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm16(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			tmp := uint16(uint32(term1) ^ uint32(term2))
 
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
 			goto success
@@ -878,17 +1098,25 @@ func INSTR_XOR(core *CpuCore) {
 			// XOR r/m16,imm8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm16(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			tmp := uint16(uint32(term1) ^ uint32(term2))
 
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
 			goto success
@@ -898,9 +1126,13 @@ func INSTR_XOR(core *CpuCore) {
 			// XOR r/m8,r8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm8(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
@@ -909,7 +1141,9 @@ func INSTR_XOR(core *CpuCore) {
 			tmp := uint8(uint32(term1) ^ uint32(term2))
 
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			goto success
@@ -919,9 +1153,13 @@ func INSTR_XOR(core *CpuCore) {
 			// XOR r/m16,r16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr, err := core.readRm16(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*rm)
 			rm2, rm2Str := core.readR16(&modrm)
@@ -929,7 +1167,9 @@ func INSTR_XOR(core *CpuCore) {
 			tmp := uint16(uint32(term1) ^ uint32(term2))
 
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			goto success
 		}
@@ -938,11 +1178,15 @@ func INSTR_XOR(core *CpuCore) {
 			// XOR r8,r/m8
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr := core.readR8(&modrm)
 			term1 = uint32(*rm)
 			rm2, rm2Str, err := core.readRm8(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*rm2)
 			tmp := uint8(uint32(term1) ^ uint32(term2))
@@ -957,11 +1201,15 @@ func INSTR_XOR(core *CpuCore) {
 			// XOR r16,r/m16
 			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			rm, rmStr := core.readR16(&modrm)
 			term1 = uint32(*rm)
 			rm2, rm2Str, err := core.readRm16(&modrm)
-			if err != nil { goto eof}
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*rm2)
 			tmp := uint16(uint32(term1) ^ uint32(term2))
@@ -971,26 +1219,27 @@ func INSTR_XOR(core *CpuCore) {
 			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
 			goto success
 		}
+	default:
+		log.Fatalf("[%#04x] Unimplemented xor instruction: %#04x", core.GetCurrentlyExecutingInstructionAddress(), core.currentOpCodeBeingExecuted)
 	}
 
-	success:
+success:
 	bitLength = uint32(bits.Len32(result))
 
 	// update flags
 
-	core.registers.SetFlag(OverFlowFlag,  false)
+	core.registers.SetFlag(OverFlowFlag, false)
 
 	core.registers.SetFlag(CarryFlag, false)
 
-	core.registers.SetFlag(SignFlag, (result >> bitLength) != 0)
+	core.registers.SetFlag(SignFlag, (result>>bitLength) != 0)
 
 	core.registers.SetFlag(ZeroFlag, result == 0)
 
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
-	eof:
+eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
-
 
 func INSTR_SUB(core *CpuCore) {
 	core.currentByteAddr++
@@ -1009,7 +1258,9 @@ func INSTR_SUB(core *CpuCore) {
 		{
 			// 	SUB AL,imm8
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			term1 = uint32(core.registers.AL)
 			result = uint32(term1) - uint32(term2)
 			core.registers.AL = uint8(term1)
@@ -1021,7 +1272,9 @@ func INSTR_SUB(core *CpuCore) {
 		{
 			// 		SUB AX,imm16
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			term1 = uint32(core.registers.AX)
 			result = uint32(term1) - uint32(term2)
 			core.registers.AX = uint16(term1)
@@ -1033,17 +1286,25 @@ func INSTR_SUB(core *CpuCore) {
 		{
 			// SUB r/m8,imm8
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			result = uint32(term1) - uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
@@ -1052,17 +1313,25 @@ func INSTR_SUB(core *CpuCore) {
 		{
 			// SUB r/m16,imm16
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm16()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			result = uint32(term1) - uint32(term2)
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
@@ -1071,17 +1340,25 @@ func INSTR_SUB(core *CpuCore) {
 		{
 			// SUB r/m16,imm8
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
 			term2, err := core.readImm8()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			result = uint32(term1) - uint32(term2)
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
 			goto success
@@ -1090,9 +1367,13 @@ func INSTR_SUB(core *CpuCore) {
 		{
 			// SUB r/m8,r8
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
@@ -1101,7 +1382,9 @@ func INSTR_SUB(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
@@ -1110,9 +1393,13 @@ func INSTR_SUB(core *CpuCore) {
 		{
 			// SUB r/m16,r16
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			core.currentByteAddr += bytesConsumed
 			term1 = uint32(*t1)
@@ -1121,7 +1408,9 @@ func INSTR_SUB(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 			tmp := uint16(result)
 			err = core.writeRm16(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
@@ -1130,18 +1419,24 @@ func INSTR_SUB(core *CpuCore) {
 		{
 			// SUB r8,r/m8
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name := core.readR8(&modrm)
 			term1 = uint32(*t1)
 			t2, t2Name, err := core.readRm8(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*t2)
 			result = uint32(term1) - uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			log.Printf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
 			goto success
@@ -1150,11 +1445,15 @@ func INSTR_SUB(core *CpuCore) {
 		{
 			// SUB r16,r/m16
 			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 			t1, t1Name := core.readR16(&modrm)
 			term1 = uint32(*t1)
 			t2, t2Name, err := core.readRm16(&modrm)
-			if err != nil { goto eof }
+			if err != nil {
+				goto eof
+			}
 
 			core.currentByteAddr += bytesConsumed
 			term2 = uint32(*t2)
@@ -1166,10 +1465,10 @@ func INSTR_SUB(core *CpuCore) {
 			goto success
 		}
 	default:
-		log.Fatal(fmt.Sprintf("Unrecognised SUB instruction: %#04x!", core.currentOpCodeBeingExecuted ))
+		log.Fatal(fmt.Sprintf("Unrecognised SUB instruction: %#04x!", core.currentOpCodeBeingExecuted))
 	}
 
-	success:
+success:
 	bitLength = uint32(bits.Len32(result))
 
 	// update flags
@@ -1183,9 +1482,9 @@ func INSTR_SUB(core *CpuCore) {
 
 	core.registers.SetFlag(SignFlag, signr != 0)
 
-	core.registers.SetFlag(OverFlowFlag,  (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
+	core.registers.SetFlag(OverFlowFlag, (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
 
-	eof:
+eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
@@ -1202,8 +1501,9 @@ func INSTR_SHIFT(core *CpuCore) {
 	var err error
 
 	modrm, bytesConsumed, err := core.consumeModRm()
-	if err != nil { goto eof }
-
+	if err != nil {
+		goto eof
+	}
 
 	opCode = core.currentOpCodeBeingExecuted
 
@@ -1213,28 +1513,83 @@ func INSTR_SHIFT(core *CpuCore) {
 			// sal
 			switch opCode {
 			// 8 bit versions
-			case 0xd0: destTerm, t1Str, err = core.readRm8(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed; countTerm = 1; t2Str = "1"; bitLength = 8
-			case 0xd2: destTerm, t1Str, err = core.readRm8(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm = core.registers.CL; t2Str = "CL"; bitLength = 8
-			case 0xC0: destTerm, t1Str, err = core.readRm8(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm, err := core.readImm8(); if err != nil { goto eof}; t2Str = string(countTerm); bitLength = 8
+			case 0xd0:
+				destTerm, t1Str, err = core.readRm8(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm = 1
+				t2Str = "1"
+				bitLength = 8
+			case 0xd2:
+				destTerm, t1Str, err = core.readRm8(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm = core.registers.CL
+				t2Str = "CL"
+				bitLength = 8
+			case 0xC0:
+				destTerm, t1Str, err = core.readRm8(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm, err := core.readImm8()
+				if err != nil {
+					goto eof
+				}
+				t2Str = string(countTerm)
+				bitLength = 8
 
 			// 16 bit versions
-			case 0xd1: destTerm, t1Str, err = core.readRm16(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm = 1; t2Str = "1"; bitLength = 16
-			case 0xd3: destTerm, t1Str, err = core.readRm16(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm = core.registers.CL; t2Str = "CL"; bitLength = 16
-			case 0xC1: destTerm, t1Str, err = core.readRm16(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm, err := core.readImm8(); if err != nil { goto eof}; t2Str = string(countTerm); bitLength = 16
+			case 0xd1:
+				destTerm, t1Str, err = core.readRm16(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm = 1
+				t2Str = "1"
+				bitLength = 16
+			case 0xd3:
+				destTerm, t1Str, err = core.readRm16(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm = core.registers.CL
+				t2Str = "CL"
+				bitLength = 16
+			case 0xC1:
+				destTerm, t1Str, err = core.readRm16(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm, err := core.readImm8()
+				if err != nil {
+					goto eof
+				}
+				t2Str = string(countTerm)
+				bitLength = 16
 
-			default: {
-				log.Printf("Unhandled shift sal variant")
-				doCoreDump(core)
-				panic(false)
-			}
+			default:
+				{
+					log.Printf("Unhandled shift sal variant")
+					doCoreDump(core)
+					panic(false)
+				}
 			}
 
-			for i:=uint8(0);i<countTerm;i++ {
+			for i := uint8(0); i < countTerm; i++ {
 				if bitLength == 8 {
 
-					if *destTerm.(*uint8) << 1 > (0 & 11111111) {
+					if *destTerm.(*uint8)<<1 > (0 & 11111111) {
 						// shift into carry
-						core.registers.SetFlag(CarryFlag,  *destTerm.(*uint8) >> (bitLength-1) & 1 == 1)
+						core.registers.SetFlag(CarryFlag, *destTerm.(*uint8)>>(bitLength-1)&1 == 1)
 					}
 
 					*destTerm.(*uint8) <<= 1
@@ -1242,9 +1597,9 @@ func INSTR_SHIFT(core *CpuCore) {
 
 				if bitLength == 16 {
 
-					if *destTerm.(*uint16) << 1 > (0 & 11111111) {
+					if *destTerm.(*uint16)<<1 > (0 & 11111111) {
 						// shift into carry
-						core.registers.SetFlag(CarryFlag,  *destTerm.(*uint16) >> (bitLength-1) & 1 == 1)
+						core.registers.SetFlag(CarryFlag, *destTerm.(*uint16)>>(bitLength-1)&1 == 1)
 					}
 
 					*destTerm.(*uint16) <<= 1
@@ -1260,44 +1615,99 @@ func INSTR_SHIFT(core *CpuCore) {
 			// sar - shifts to the right, preserves the most significant bit (signed)
 			switch opCode {
 			// 8 bit versions
-			case 0xd0: destTerm, t1Str, err = core.readRm8(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm = 1; t2Str = "1"; bitLength = 8
-			case 0xd2: destTerm, t1Str, err = core.readRm8(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm = core.registers.CL; t2Str = "CL"; bitLength = 8
-			case 0xC0: destTerm, t1Str, err = core.readRm8(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm, err := core.readImm8(); if err != nil { goto eof }; t2Str = string(countTerm); bitLength = 8
+			case 0xd0:
+				destTerm, t1Str, err = core.readRm8(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm = 1
+				t2Str = "1"
+				bitLength = 8
+			case 0xd2:
+				destTerm, t1Str, err = core.readRm8(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm = core.registers.CL
+				t2Str = "CL"
+				bitLength = 8
+			case 0xC0:
+				destTerm, t1Str, err = core.readRm8(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm, err := core.readImm8()
+				if err != nil {
+					goto eof
+				}
+				t2Str = string(countTerm)
+				bitLength = 8
 
 			// 16 bit versions
-			case 0xd1: destTerm, t1Str, err = core.readRm16(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm = 1; t2Str = "1"; bitLength = 16
-			case 0xd3: destTerm, t1Str, err = core.readRm16(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm = core.registers.CL; t2Str = "CL"; bitLength = 16
-			case 0xC1: destTerm, t1Str, err = core.readRm16(&modrm); if err != nil { goto eof }; core.currentByteAddr += bytesConsumed;  countTerm, err := core.readImm8(); if err != nil { goto eof }; t2Str = string(countTerm); bitLength = 16
+			case 0xd1:
+				destTerm, t1Str, err = core.readRm16(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm = 1
+				t2Str = "1"
+				bitLength = 16
+			case 0xd3:
+				destTerm, t1Str, err = core.readRm16(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm = core.registers.CL
+				t2Str = "CL"
+				bitLength = 16
+			case 0xC1:
+				destTerm, t1Str, err = core.readRm16(&modrm)
+				if err != nil {
+					goto eof
+				}
+				core.currentByteAddr += bytesConsumed
+				countTerm, err := core.readImm8()
+				if err != nil {
+					goto eof
+				}
+				t2Str = string(countTerm)
+				bitLength = 16
 
-			default: {
-				log.Printf("Unhandled shift sal variant")
-				doCoreDump(core)
-				panic(false)
-			}
+			default:
+				{
+					log.Printf("Unhandled shift sal variant")
+					doCoreDump(core)
+					panic(false)
+				}
 			}
 
 			var msbBit interface{}
-			for i:=uint8(0);i<countTerm;i++ {
+			for i := uint8(0); i < countTerm; i++ {
 
 				if bitLength == 8 {
 
-					core.registers.SetFlag(CarryFlag,  *destTerm.(*uint8) & 1 == 1)
+					core.registers.SetFlag(CarryFlag, *destTerm.(*uint8)&1 == 1)
 
 					msbBit = (*destTerm.(*uint8) >> 8) & 1
 					*destTerm.(*uint8) >>= 1
 					if modrm.mod == 7 {
-						*destTerm.(*uint8) = *destTerm.(*uint8) | (msbBit.(uint8) << (bitLength-1))
+						*destTerm.(*uint8) = *destTerm.(*uint8) | (msbBit.(uint8) << (bitLength - 1))
 					}
 				}
 
 				if bitLength == 16 {
 
-					core.registers.SetFlag(CarryFlag,  *destTerm.(*uint16) & 1 == 1)
+					core.registers.SetFlag(CarryFlag, *destTerm.(*uint16)&1 == 1)
 
 					msbBit = (*destTerm.(*uint16) >> 8) & 1
 					*destTerm.(*uint8) >>= 1
 					if modrm.mod == 7 {
-						*destTerm.(*uint16) = *destTerm.(*uint16) | (msbBit.(uint16) << (bitLength-1))
+						*destTerm.(*uint16) = *destTerm.(*uint16) | (msbBit.(uint16) << (bitLength - 1))
 					}
 				}
 			}
@@ -1312,8 +1722,6 @@ func INSTR_SHIFT(core *CpuCore) {
 		}
 	}
 
-	eof:
+eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
-
-
