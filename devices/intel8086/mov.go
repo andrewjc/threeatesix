@@ -25,7 +25,7 @@ func INSTR_MOV(core *CpuCore) {
 				goto eof
 			}
 
-			log.Print(fmt.Sprintf("[%#04x] MOV al, byte ptr cs:%#02x", core.GetCurrentlyExecutingInstructionAddress(), segOff))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV al, byte ptr cs:%#02x", core.GetCurrentlyExecutingInstructionAddress(), segOff))
 
 			core.registers.AL = byteValue
 		}
@@ -42,7 +42,7 @@ func INSTR_MOV(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Print(fmt.Sprintf("[%#04x] MOV ax, byte ptr cs:%#02x", core.GetCurrentlyExecutingInstructionAddress(), offset))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV ax, byte ptr cs:%#02x", core.GetCurrentlyExecutingInstructionAddress(), offset))
 
 			core.registers.AX = byteValue
 		}
@@ -63,7 +63,7 @@ func INSTR_MOV(core *CpuCore) {
 				goto eof
 			}
 
-			log.Print(fmt.Sprintf("[%#04x] MOV byte ptr cs:%#02x, al", core.GetCurrentlyExecutingInstructionAddress(), segOff))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV byte ptr cs:%#02x, al", core.GetCurrentlyExecutingInstructionAddress(), segOff))
 		}
 	case 0xA3:
 		{
@@ -81,7 +81,7 @@ func INSTR_MOV(core *CpuCore) {
 				goto eof
 			}
 
-			log.Print(fmt.Sprintf("[%#04x] MOV byte ptr cs:%#02x, ax", core.GetCurrentlyExecutingInstructionAddress(), segOff))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV byte ptr cs:%#02x, ax", core.GetCurrentlyExecutingInstructionAddress(), segOff))
 
 		}
 	case 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7:
@@ -93,7 +93,7 @@ func INSTR_MOV(core *CpuCore) {
 				goto eof
 			}
 			core.currentByteAddr++
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), r8Str, val))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), r8Str, val))
 			*r8 = val
 		}
 	case 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
@@ -106,7 +106,7 @@ func INSTR_MOV(core *CpuCore) {
 				goto eof
 			}
 			core.currentByteAddr += 2
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), r16Str, val))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), r16Str, val))
 			*r16 = val
 		}
 	case 0x8A:
@@ -139,7 +139,7 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = *src
 			}
 
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
 
 		}
 	case 0x8B:
@@ -171,7 +171,7 @@ func INSTR_MOV(core *CpuCore) {
 				srcName = "rm/16"
 			}
 
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
 
 		}
 	case 0x8C:
@@ -201,7 +201,7 @@ func INSTR_MOV(core *CpuCore) {
 				srcName = "rm/16"
 			}
 
-			log.Print(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
 
 		}
 	case 0x8E:
@@ -233,7 +233,7 @@ func INSTR_MOV(core *CpuCore) {
 				srcName = "rm/16"
 			}
 
-			log.Print(fmt.Sprintf("[%#04x] MOV %s,%s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s,%s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
 
 		}
 	case 0x20:
@@ -267,7 +267,7 @@ func INSTR_MOV(core *CpuCore) {
 				log.Fatal("Unknown cr mov instruction")
 			}
 
-			log.Print(fmt.Sprintf("[%#04x] MOV %s,%s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s,%s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
 
 		}
 	default:

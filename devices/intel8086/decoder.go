@@ -137,6 +137,7 @@ func isPrefixByte(b byte) bool {
 
 func INSTR_SMSW(core *CpuCore) {
 	var value uint16
+	var rm_str string
 
 	core.IncrementIP()
 	modrm, bytesConsumed, err := core.consumeModRm()
@@ -148,8 +149,14 @@ func INSTR_SMSW(core *CpuCore) {
 	value = uint16(core.registers.CR0)
 
 	err = core.writeRm16(&modrm, &value)
+
+	if modrm.mod == 3 {
+		rm_str = core.registers.index16ToString(modrm.rm)
+	} else {
+		rm_str = "r/m16"
+	}
 eof:
-	log.Printf("[%#04x] smsw %s", core.GetCurrentlyExecutingInstructionAddress(), "r/m16")
+	core.logInstruction(fmt.Sprintf("[%#04x] smsw %s", core.GetCurrentlyExecutingInstructionAddress(), rm_str))
 	core.registers.IP = uint16(core.GetIP() + 1)
 }
 

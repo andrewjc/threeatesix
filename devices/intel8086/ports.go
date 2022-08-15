@@ -1,6 +1,7 @@
 package intel8086
 
 import (
+	"fmt"
 	"log"
 )
 
@@ -20,7 +21,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr8(uint16(imm))
 
 			core.registers.AL = data
-			log.Printf("[%#04x] IN AL, IMM8 (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), imm, data)
+			core.logInstruction(fmt.Sprintf("[%#04x] IN AL, IMM8 (Port: %#04x, data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), imm, data))
 		}
 	case 0xE5:
 		{
@@ -31,7 +32,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr8(uint16(dx))
 
 			core.registers.AL = data
-			log.Printf("[%#04x] IN AL, DX (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), dx, data)
+			core.logInstruction(fmt.Sprintf("[%#04x] IN AL, DX (Port: %#04x, data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), dx, data))
 		}
 	case 0xEC:
 		{
@@ -46,7 +47,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr16(imm)
 
 			core.registers.AX = data
-			log.Printf("[%#04x] IN AX, IMM16 (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), imm, data)
+			core.logInstruction(fmt.Sprintf("[%#04x] IN AX, IMM16 (Port: %#04x, data = %#16x)", core.GetCurrentlyExecutingInstructionAddress(), imm, data))
 		}
 	case 0xED:
 		{
@@ -57,7 +58,7 @@ func INSTR_IN(core *CpuCore) {
 			data := core.ioPortAccessController.ReadAddr16(uint16(dx))
 
 			core.registers.AX = data
-			log.Printf("[%#04x] IN AX, DX (Port: %#04x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), dx, data)
+			core.logInstruction(fmt.Sprintf("[%#04x] IN AX, DX (Port: %#04x, data = %#16x)", core.GetCurrentlyExecutingInstructionAddress(), dx, data))
 		}
 	default:
 		log.Fatal("Unrecognised IN (port read) instruction!")
@@ -78,11 +79,11 @@ func INSTR_OUT(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			core.currentByteAddr++
 
-			log.Printf("[%#04x] OUT %#08x, AL (data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), imm, core.registers.AL)
+			core.logInstruction(fmt.Sprintf("[%#04x] OUT %#08x, AL (data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), imm, core.registers.AL))
 			core.ioPortAccessController.WriteAddr8(uint16(imm), core.registers.AL)
 
+			core.currentByteAddr++
 		}
 	case 0xE7:
 		{
@@ -91,17 +92,17 @@ func INSTR_OUT(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			core.currentByteAddr++
 
-			log.Printf("[%#04x] OUT %#04x, AX (data = %#16x)", core.GetCurrentlyExecutingInstructionAddress(), imm, core.registers.AX)
+			core.logInstruction(fmt.Sprintf("[%#04x] OUT %#04x, AX (data = %#16x)", core.GetCurrentlyExecutingInstructionAddress(), imm, core.registers.AX))
 			core.ioPortAccessController.WriteAddr16(uint16(imm), core.registers.AX)
+			core.currentByteAddr++
 
 		}
 	case 0xEE:
 		{
 			// Use value of DX as io port addr, and write value in AL
 
-			log.Printf("[%#04x] OUT DX, AL (Port: %#16x, data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AL)
+			core.logInstruction(fmt.Sprintf("[%#04x] OUT DX, AL (Port: %#16x, data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AL))
 			core.ioPortAccessController.WriteAddr8(uint16(core.registers.DX), core.registers.AL)
 
 		}
@@ -109,7 +110,7 @@ func INSTR_OUT(core *CpuCore) {
 		{
 			// Use value of DX as io port addr, and write value in AX
 
-			log.Printf("[%#04x] OUT DX, AX (Port: %#16x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AX)
+			core.logInstruction(fmt.Sprintf("[%#04x] OUT DX, AX (Port: %#16x, data = %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AX))
 			core.ioPortAccessController.WriteAddr16(uint16(core.registers.DX), core.registers.AX)
 
 		}

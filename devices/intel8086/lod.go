@@ -2,7 +2,6 @@ package intel8086
 
 import (
 	"fmt"
-	"log"
 )
 
 func INSTR_LODS(core *CpuCore) {
@@ -26,7 +25,9 @@ func INSTR_LODS(core *CpuCore) {
 			{
 				operStr = "LODSB"
 				m8, err := core.memoryAccessController.ReadAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
-				if err != nil { goto eof }
+				if err != nil {
+					goto eof
+				}
 				core.registers.AL = m8
 				if core.registers.GetFlag(DirectionFlag) {
 					core.registers.SI -= 1
@@ -39,7 +40,9 @@ func INSTR_LODS(core *CpuCore) {
 				operStr = "LODSW"
 				//log.Printf("Reading from %#04x", core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
 				m8, err := core.memoryAccessController.ReadAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
-				if err != nil { goto eof }
+				if err != nil {
+					goto eof
+				}
 				core.registers.AX = m8
 				if core.registers.GetFlag(DirectionFlag) {
 					core.registers.SI -= 2
@@ -56,10 +59,8 @@ func INSTR_LODS(core *CpuCore) {
 		}
 	}
 
-	log.Print(fmt.Sprintf("[%#04x] %s %s %s", core.GetCurrentlyExecutingInstructionAddress(), prefixStr, operStr, extras))
+	core.logInstruction(fmt.Sprintf("[%#04x] %s %s %s", core.GetCurrentlyExecutingInstructionAddress(), prefixStr, operStr, extras))
 
-	eof:
+eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
-
-

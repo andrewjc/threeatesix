@@ -217,8 +217,8 @@ func (core *CpuCore) Step() {
 	core.currentByteAddr = core.GetCurrentCodePointer()
 	tmp := core.currentByteAddr
 	if core.currentByteAddr == core.lastExecutedInstructionPointer {
-		doCoreDump(core)
 		log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
+		doCoreDump(core)
 	}
 
 	core.currentByteDecodeStart = core.currentByteAddr
@@ -393,4 +393,11 @@ func (core *CpuCore) writeSegmentRegister(register *SegmentRegister, value uint1
 
 	register.base = value
 
+}
+
+func (cpuCore *CpuCore) logInstruction(logMessage string) {
+	// encode logMessage to utf-8 bytes
+	logMessageBytes := []byte(logMessage)
+
+	cpuCore.bus.SendMessageToAll(common.MODULE_DEBUG_MONITOR, bus.BusMessage{Subject: common.MESSAGE_GLOBAL_CPU_INSTRUCTION_LOG, Data: logMessageBytes})
 }

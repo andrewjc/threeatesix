@@ -30,7 +30,7 @@ func INSTR_ADC(core *CpuCore) {
 			term1 = uint32(core.registers.AL)
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
 			core.registers.AL = uint8(term1)
-			log.Printf("[%#04x] adc al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] adc al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 
 			goto success
 		}
@@ -47,7 +47,7 @@ func INSTR_ADC(core *CpuCore) {
 			result = uint32(term1) + uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag))
 			core.registers.AX = uint16(term1)
 
-			log.Printf("[%#04x] adc ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] adc ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x80:
@@ -76,7 +76,7 @@ func INSTR_ADC(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] adc %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] adc %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x81:
@@ -104,7 +104,7 @@ func INSTR_ADC(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] adc %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] adc %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x83:
@@ -131,7 +131,7 @@ func INSTR_ADC(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] adc %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] adc %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x10:
@@ -156,7 +156,7 @@ func INSTR_ADC(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x11:
@@ -181,7 +181,7 @@ func INSTR_ADC(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x12:
@@ -206,7 +206,7 @@ func INSTR_ADC(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x13:
@@ -229,7 +229,7 @@ func INSTR_ADC(core *CpuCore) {
 			tmp := uint16(result)
 			core.writeR16(&modrm, &tmp)
 
-			log.Printf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] adc %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	default:
@@ -280,7 +280,7 @@ func INSTR_ADD(core *CpuCore) {
 			result = uint32(term1) + uint32(term2)
 			core.registers.AL = uint8(term1)
 
-			log.Printf("[%#04x] add al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] add al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x05:
@@ -295,7 +295,7 @@ func INSTR_ADD(core *CpuCore) {
 			result = uint32(term1) + uint32(term2)
 			core.registers.AX = uint16(term1)
 
-			log.Printf("[%#04x] add ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] add ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x80:
@@ -319,7 +319,7 @@ func INSTR_ADD(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x81:
@@ -347,7 +347,7 @@ func INSTR_ADD(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x83:
@@ -375,7 +375,7 @@ func INSTR_ADD(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] add %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x00:
@@ -401,7 +401,7 @@ func INSTR_ADD(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x01:
@@ -427,7 +427,7 @@ func INSTR_ADD(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x02:
@@ -453,7 +453,7 @@ func INSTR_ADD(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x03:
@@ -477,7 +477,7 @@ func INSTR_ADD(core *CpuCore) {
 			tmp := uint16(result)
 			core.writeR16(&modrm, &tmp)
 
-			log.Printf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] add %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	default:
@@ -529,7 +529,7 @@ func INSTR_AND(core *CpuCore) {
 			result = uint32(term1) & uint32(term2)
 			core.registers.AL = uint8(term1)
 
-			log.Printf("[%#04x] and al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] and al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x25:
@@ -544,7 +544,7 @@ func INSTR_AND(core *CpuCore) {
 			result = uint32(term1) & uint32(term2)
 			core.registers.AX = uint16(term1)
 
-			log.Printf("[%#04x] and ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] and ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x80:
@@ -569,7 +569,7 @@ func INSTR_AND(core *CpuCore) {
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
 
-			log.Printf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x81:
@@ -596,7 +596,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x83:
@@ -623,7 +623,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x20:
@@ -648,7 +648,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x21:
@@ -673,7 +673,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x22:
@@ -698,7 +698,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x23:
@@ -721,7 +721,7 @@ func INSTR_AND(core *CpuCore) {
 			tmp := uint16(result)
 			core.writeR16(&modrm, &tmp)
 
-			log.Printf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	default:
@@ -769,7 +769,7 @@ func INSTR_OR(core *CpuCore) {
 			result = uint32(term1) | uint32(term2)
 			core.registers.AL = uint8(result)
 
-			log.Printf("[%#04x] or al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] or al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x0d:
@@ -785,7 +785,7 @@ func INSTR_OR(core *CpuCore) {
 			result = uint32(term1) | uint32(term2)
 			core.registers.AX = uint16(result)
 
-			log.Printf("[%#04x] or ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] or ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x80:
@@ -813,7 +813,7 @@ func INSTR_OR(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
 			goto success
 		}
 	case 0x81:
@@ -842,7 +842,7 @@ func INSTR_OR(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
 			goto success
 		}
 	case 0x83:
@@ -870,7 +870,7 @@ func INSTR_OR(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
 			goto success
 		}
 	case 0x08:
@@ -896,7 +896,7 @@ func INSTR_OR(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
 			goto success
 		}
 	case 0x09:
@@ -922,7 +922,7 @@ func INSTR_OR(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
 			goto success
 		}
 	case 0x0A:
@@ -945,7 +945,7 @@ func INSTR_OR(core *CpuCore) {
 
 			core.writeR8(&modrm, &tmp)
 
-			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
 			goto success
 		}
 	case 0x0B:
@@ -969,7 +969,7 @@ func INSTR_OR(core *CpuCore) {
 
 			core.writeR16(&modrm, &tmp)
 
-			log.Printf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
 			goto success
 		}
 	default:
@@ -1017,7 +1017,7 @@ func INSTR_XOR(core *CpuCore) {
 			result = uint32(term1) ^ uint32(term2)
 			core.registers.AL = uint8(result)
 
-			log.Printf("[%#04x] xor al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] xor al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x35:
@@ -1033,7 +1033,7 @@ func INSTR_XOR(core *CpuCore) {
 			result = uint32(term1) ^ uint32(term2)
 			core.registers.AX = uint16(result)
 
-			log.Printf("[%#04x] xor ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] xor ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x80:
@@ -1062,7 +1062,7 @@ func INSTR_XOR(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
 			goto success
 		}
 	case 0x81:
@@ -1091,7 +1091,7 @@ func INSTR_XOR(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
 			goto success
 		}
 	case 0x83:
@@ -1119,7 +1119,7 @@ func INSTR_XOR(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] xor %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
 			goto success
 		}
 	case 0x30:
@@ -1146,7 +1146,7 @@ func INSTR_XOR(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
 			goto success
 		}
 	case 0x31:
@@ -1171,7 +1171,7 @@ func INSTR_XOR(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
 			goto success
 		}
 	case 0x32:
@@ -1194,7 +1194,7 @@ func INSTR_XOR(core *CpuCore) {
 
 			core.writeR8(&modrm, &tmp)
 
-			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
 			goto success
 		}
 	case 0x33:
@@ -1217,7 +1217,7 @@ func INSTR_XOR(core *CpuCore) {
 
 			core.writeR16(&modrm, &tmp)
 
-			log.Printf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] xor %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
 			goto success
 		}
 	default:
@@ -1266,7 +1266,7 @@ func INSTR_SUB(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 			core.registers.AL = uint8(term1)
 
-			log.Printf("[%#04x] sub al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] sub al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x2d:
@@ -1280,7 +1280,7 @@ func INSTR_SUB(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 			core.registers.AX = uint16(term1)
 
-			log.Printf("[%#04x] sub ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] sub ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x80:
@@ -1307,7 +1307,7 @@ func INSTR_SUB(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x81:
@@ -1334,7 +1334,7 @@ func INSTR_SUB(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x83:
@@ -1361,7 +1361,7 @@ func INSTR_SUB(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2)
+			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x28:
@@ -1387,7 +1387,7 @@ func INSTR_SUB(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x29:
@@ -1413,7 +1413,7 @@ func INSTR_SUB(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x2A:
@@ -1439,7 +1439,7 @@ func INSTR_SUB(core *CpuCore) {
 				goto eof
 			}
 
-			log.Printf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	case 0x2B:
@@ -1462,7 +1462,7 @@ func INSTR_SUB(core *CpuCore) {
 			tmp := uint16(result)
 			core.writeR16(&modrm, &tmp)
 
-			log.Printf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name)
+			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
 	default:
@@ -1486,6 +1486,36 @@ success:
 	core.registers.SetFlag(OverFlowFlag, (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
 
 eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_INC_SHORT_REL8(core *CpuCore) {
+
+	var dest *uint16
+	var destName string
+
+	core.currentByteAddr++
+
+	modrm, bytesConsumed, err := core.consumeModRm()
+	if err != nil {
+		goto eof
+	}
+	core.currentByteAddr += bytesConsumed
+
+	if modrm.mod == 3 {
+		dest = core.registers.registers16Bit[modrm.rm]
+		destName = core.registers.index16ToString(modrm.rm)
+		*dest = *dest + 1
+	} else {
+		addressMode := modrm.getAddressMode16(core)
+		err = core.memoryAccessController.WriteAddr16(uint32(addressMode), *dest+1)
+		if err != nil {
+			goto eof
+		}
+		destName = "rm/16"
+	}
+eof:
+	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", destName))
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
@@ -1607,7 +1637,7 @@ func INSTR_SHIFT(core *CpuCore) {
 				}
 			}
 
-			log.Printf("[%#04x] sal %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Str, t2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] sal %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Str, t2Str))
 
 		}
 	case 5, 7:
@@ -1718,7 +1748,7 @@ func INSTR_SHIFT(core *CpuCore) {
 				opCode = "SAR"
 			}
 
-			log.Printf("[%#04x] %s %s, %s", core.GetCurrentlyExecutingInstructionAddress(), opCode, t1Str, t2Str)
+			core.logInstruction(fmt.Sprintf("[%#04x] %s %s, %s", core.GetCurrentlyExecutingInstructionAddress(), opCode, t1Str, t2Str))
 
 		}
 	}
