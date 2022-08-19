@@ -107,6 +107,7 @@ func (controller *IOPortAccessController) GetBus() *bus.Bus {
 
 func (controller *IOPortAccessController) SetBus(bus *bus.Bus) {
 	controller.bus = bus
+	controller.highIntegrationInterfaceDevice.SetBus(bus)
 }
 
 func CreateIOPortController() *IOPortAccessController {

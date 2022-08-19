@@ -529,22 +529,48 @@ func INSTR_AND(core *CpuCore) {
 			result = uint32(term1) & uint32(term2)
 			core.registers.AL = uint8(term1)
 
-			core.logInstruction(fmt.Sprintf("[%#04x] and al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
+			core.logInstruction(fmt.Sprintf("[%#04x] and al, %#08x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
 	case 0x25:
 		{
 			// 	and AX,imm16
 			core.currentByteAddr++
-			term2, err := core.readImm16()
-			if err != nil {
-				goto eof
-			}
-			term1 = uint32(core.registers.AX)
-			result = uint32(term1) & uint32(term2)
-			core.registers.AX = uint16(term1)
 
-			core.logInstruction(fmt.Sprintf("[%#04x] and ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
+			var result uint32
+			var term1_name string
+
+			if core.Is32BitOperand() {
+				term2, err := core.readImm32()
+				term1 = core.registers.EAX
+				term1_name = "EAX"
+
+				if err != nil {
+					goto eof
+				}
+
+				result = term1 & term2
+				core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#32x", core.GetCurrentlyExecutingInstructionAddress(), term1_name, term2))
+
+			} else {
+				term2, err := core.readImm16()
+				term1 = uint32(core.registers.AX)
+				term1_name = "AX"
+
+				if err != nil {
+					goto eof
+				}
+
+				result = term1 & uint32(term2)
+				core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#16x", core.GetCurrentlyExecutingInstructionAddress(), term1_name, term2))
+			}
+
+			if core.Is32BitOperand() {
+				core.registers.EAX = uint32(result)
+			} else {
+				core.registers.AX = uint16(result)
+			}
+
 			goto success
 		}
 	case 0x80:
@@ -596,7 +622,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
+			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#16x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
 	case 0x83:

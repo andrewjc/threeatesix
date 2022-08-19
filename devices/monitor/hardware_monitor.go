@@ -13,7 +13,7 @@ type HardwareMonitor struct {
 
 func NewHardwareMonitor() *HardwareMonitor {
 	device := &HardwareMonitor{}
-	device.logCpuInstructions = false
+	device.logCpuInstructions = true
 
 	return device
 }

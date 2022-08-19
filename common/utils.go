@@ -1,6 +1,5 @@
 package common
 
-
 // Test if a bit is set.
 func Test(value byte, bit byte) bool {
 	return (value>>bit)&1 == 1
@@ -33,7 +32,6 @@ func B(val bool) byte {
 	}
 	return 0
 }
-
 
 func GetMSB(value uint8) uint8 {
 	return (value >> 8) & 1

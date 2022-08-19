@@ -135,6 +135,18 @@ func isPrefixByte(b byte) bool {
 	return false
 }
 
+func (core *CpuCore) Is32BitOperand() bool {
+	if core.mode == common.REAL_MODE && core.flags.OperandSizeOverrideEnabled {
+		return true
+	}
+
+	if core.mode == common.PROTECTED_MODE && !core.flags.OperandSizeOverrideEnabled {
+		return true
+	}
+
+	return false
+}
+
 func INSTR_SMSW(core *CpuCore) {
 	var value uint16
 	var rm_str string
@@ -186,6 +198,11 @@ func INSTR_FF_OPCODES(core *CpuCore) {
 	  	{
 	  		// call m16
 	  	}*/
+	//case 3:
+	//	{
+	// call m16
+	//		INSTR_CALLF_M16(core, &modrm)
+	//	}
 	case 4:
 		{
 			// jmp rm32

@@ -17,15 +17,14 @@ type MemoryAccessController struct {
 
 	resetVectorBaseAddr uint32
 
-	bus                 *bus.Bus
-	busId               uint32
+	bus   *bus.Bus
+	busId uint32
 }
 
-
 type MemoryAccessProvider interface {
-	ReadAddr8(u uint32) (uint8,error)
-	ReadAddr16(u uint32) (uint16,error)
-	ReadAddr32(u uint32) (uint32,error)
+	ReadAddr8(u uint32) (uint8, error)
+	ReadAddr16(u uint32) (uint16, error)
+	ReadAddr32(u uint32) (uint32, error)
 	PeekNextBytesImpl(addr uint32, numBytes uint32) []byte
 }
 
@@ -44,7 +43,6 @@ func (mem *MemoryAccessController) OnReceiveMessage(message bus.BusMessage) {
 	}
 }
 
-
 func CreateMemoryController(ram *[]byte, bios *[]byte) *MemoryAccessController {
 	return &MemoryAccessController{ram, bios, nil, 0, nil, 0}
 }
@@ -60,15 +58,15 @@ func (controller *MemoryAccessController) SetBus(bus *bus.Bus) {
 	controller.bus = bus
 }
 
-func (mem *MemoryAccessController) ReadAddr8(address uint32) (uint8,error) {
+func (mem *MemoryAccessController) ReadAddr8(address uint32) (uint8, error) {
 	return mem.memoryAccessProvider.ReadAddr8(address)
 }
 
-func (mem *MemoryAccessController) ReadAddr16(address uint32) (uint16,error) {
+func (mem *MemoryAccessController) ReadAddr16(address uint32) (uint16, error) {
 	return mem.memoryAccessProvider.ReadAddr16(address)
 }
 
-func (mem *MemoryAccessController) ReadAddr32(address uint32) (uint32,error) {
+func (mem *MemoryAccessController) ReadAddr32(address uint32) (uint32, error) {
 	return mem.memoryAccessProvider.ReadAddr32(address)
 }
 
@@ -99,7 +97,6 @@ func (mem *MemoryAccessController) LockBootVector() {
 func (mem *MemoryAccessController) UnlockBootVector() {
 	mem.resetVectorBaseAddr = 0x0
 }
-
 
 func (mem *MemoryAccessController) PeekNextBytes(addr uint32, numBytes uint32) []byte {
 	return mem.memoryAccessProvider.PeekNextBytesImpl(addr, numBytes)

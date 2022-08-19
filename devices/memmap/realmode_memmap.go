@@ -6,10 +6,10 @@ type RealModeAccessProvider struct {
 	*MemoryAccessController
 }
 
-func (r *RealModeAccessProvider) ReadAddr8(addr uint32) (uint8,error) {
+func (r *RealModeAccessProvider) ReadAddr8(addr uint32) (uint8, error) {
 
 	var byteData uint8
-	inBiosSpace := (addr > uint32(len(*r.biosImage)-1) - (0xF000FFFF - addr)) && addr < 0xF000FFFF
+	inBiosSpace := (addr > uint32(len(*r.biosImage)-1)-(0xF000FFFF-addr)) && addr < 0xF000FFFF
 	if r.resetVectorBaseAddr > 0 && inBiosSpace {
 		return r.ReadFromBiosAddressSpace(addr)
 	} else {
@@ -19,16 +19,16 @@ func (r *RealModeAccessProvider) ReadAddr8(addr uint32) (uint8,error) {
 		byteData = (*r.backingRam)[addr]
 	}
 
-	return byteData,nil
+	return byteData, nil
 }
 
-func (r *RealModeAccessProvider) ReadAddr16(addr uint32) (uint16,error) {
-	b1,err := r.ReadAddr8(addr)
+func (r *RealModeAccessProvider) ReadAddr16(addr uint32) (uint16, error) {
+	b1, err := r.ReadAddr8(addr)
 	if err != nil {
 		return 0, err
 	}
 
-	b2,err2 := r.ReadAddr8(addr + 1)
+	b2, err2 := r.ReadAddr8(addr + 1)
 	if err2 != nil {
 		return 0, err2
 	}
@@ -37,13 +37,13 @@ func (r *RealModeAccessProvider) ReadAddr16(addr uint32) (uint16,error) {
 
 }
 
-func (r *RealModeAccessProvider) ReadAddr32(addr uint32) (uint32,error) {
+func (r *RealModeAccessProvider) ReadAddr32(addr uint32) (uint32, error) {
 
-	b1,err := r.ReadAddr16(addr)
+	b1, err := r.ReadAddr16(addr)
 	if err != nil {
 		return 0, err
 	}
-	b2,err2 := r.ReadAddr16(addr + 1)
+	b2, err2 := r.ReadAddr16(addr + 1)
 	if err2 != nil {
 		return 0, err2
 	}
@@ -57,7 +57,7 @@ func (r *RealModeAccessProvider) PeekNextBytesImpl(addr uint32, numBytes uint32)
 	for i := uint32(0); i < numBytes; i++ {
 
 		if r.resetVectorBaseAddr > 0 {
-			buffer[i],_ = r.ReadFromBiosAddressSpace(addr+i)
+			buffer[i], _ = r.ReadFromBiosAddressSpace(addr + i)
 		} else {
 			buffer[i] = (*r.backingRam)[addr+i]
 		}
@@ -68,10 +68,9 @@ func (r *RealModeAccessProvider) PeekNextBytesImpl(addr uint32, numBytes uint32)
 
 func (r *RealModeAccessProvider) ReadFromBiosAddressSpace(addr uint32) (uint8, error) {
 
-
 	ddd := 0xF000FFFF - addr
 
-	biosImageLength := uint32(len(*r.biosImage)-1)
+	biosImageLength := uint32(len(*r.biosImage) - 1)
 
 	offs := biosImageLength - ddd
 

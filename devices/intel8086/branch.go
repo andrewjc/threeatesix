@@ -5,6 +5,23 @@ import (
 	"github.com/andrewjc/threeatesix/common"
 )
 
+func INSTR_CALLF_M16(core *CpuCore, modrm *ModRm) {
+	if modrm.mod == 3 {
+		reg, reg_str := core.registers.registers16Bit[modrm.rm], core.registers.index16ToString(modrm.rm)
+
+		stackPush16(core, uint16(uint16(core.GetIP()+2)))
+
+		core.registers.IP = *reg
+		core.logInstruction(fmt.Sprintf("[%#04x] CALLF %s (%#04x)", core.GetCurrentlyExecutingInstructionAddress(), reg_str, uint16(*reg)))
+	} else {
+		addr := modrm.getAddressMode16(core)
+		stackPush16(core, uint16(uint16(core.GetIP()+2)))
+
+		core.registers.IP = addr
+		core.logInstruction(fmt.Sprintf("[%#04x] CALLF %#04x", core.GetCurrentlyExecutingInstructionAddress(), uint16(addr)))
+	}
+}
+
 func INSTR_DEC_COUNT_JMP_SHORT_ECX(core *CpuCore) {
 
 	offset, err := common.Int8Err(core.memoryAccessController.ReadAddr8(uint32(core.GetCurrentCodePointer()) + 1))
@@ -50,10 +67,10 @@ func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 
 	core.logInstruction(fmt.Sprintf("[%#04x] JMP %#04x:%#04x (FAR_PTR16)", core.GetCurrentlyExecutingInstructionAddress(), segment, destAddr))
 	if err == nil {
-		core.writeSegmentRegister(&core.registers.CS, segment)
+		core.writeSegmentRegister(&core.registers.CS, uint16(segment))
 	}
 
-	core.registers.IP = destAddr
+	core.registers.IP = uint16(destAddr)
 }
 
 func INSTR_JMP_FAR_M16(core *CpuCore, modrm *ModRm) {

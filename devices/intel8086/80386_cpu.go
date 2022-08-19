@@ -277,6 +277,15 @@ func (core *CpuCore) readImm16() (uint16, error) {
 	return retVal, nil
 }
 
+func (core *CpuCore) readImm32() (uint32, error) {
+	retVal, err := core.memoryAccessController.ReadAddr32(uint32(core.currentByteAddr))
+	if err != nil {
+		return 0, err
+	}
+	core.currentByteAddr += 4
+	return retVal, nil
+}
+
 func (core *CpuCore) readRm8(modrm *ModRm) (*uint8, string, error) {
 	if modrm.mod == 3 {
 		dest := core.registers.registers8Bit[modrm.rm]
@@ -293,9 +302,9 @@ func (core *CpuCore) readRm8(modrm *ModRm) (*uint8, string, error) {
 
 func (core *CpuCore) readRm16(modrm *ModRm) (*uint16, string, error) {
 	if modrm.mod == 3 {
-		dest := core.registers.registers16Bit[modrm.rm]
+		dest := uint16(*core.registers.registers16Bit[modrm.rm])
 		destName := core.registers.index16ToString(modrm.rm)
-		return dest, destName, nil
+		return &dest, destName, nil
 
 	} else {
 		addressMode := modrm.getAddressMode16(core)
