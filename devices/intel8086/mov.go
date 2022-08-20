@@ -239,10 +239,13 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x20:
 		{
 			/* MOV r32, cr0 */
+			core.currentByteAddr++
+
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
 			}
+			core.currentByteAddr--
 			core.currentByteAddr += bytesConsumed
 
 			dst := core.registers.registers32Bit[modrm.rm]
@@ -250,19 +253,62 @@ func INSTR_MOV(core *CpuCore) {
 
 			var srcName string
 
-			switch {
-			case modrm.reg == 4:
+			switch { //note: these might be wrong?
+			case modrm.reg == 0:
 				*dst = core.registers.CR0
 				srcName = "CR0"
-			case modrm.reg == 5:
+			case modrm.reg == 1:
+				*dst = core.registers.CR1
+				srcName = "CR1"
+			case modrm.reg == 2:
 				*dst = core.registers.CR2
 				srcName = "CR2"
-			case modrm.reg == 6:
+			case modrm.reg == 3:
 				*dst = core.registers.CR3
 				srcName = "CR3"
-			case modrm.reg == 7:
+			case modrm.reg == 4:
 				*dst = core.registers.CR4
 				srcName = "CR4"
+			default:
+				log.Fatal("Unknown cr mov instruction")
+			}
+
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s,%s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
+
+		}
+	case 0x22:
+		{
+			core.currentByteAddr++
+			/* MOV cr0, r32 */
+
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr--
+			core.currentByteAddr += bytesConsumed
+
+			src := core.registers.registers32Bit[modrm.rm]
+			srcName := core.registers.index32ToString(modrm.rm)
+
+			var dstName string
+
+			switch { //note: these might be wrong?
+			case modrm.reg == 0:
+				core.registers.CR0 = *src
+				dstName = "CR0"
+			case modrm.reg == 1:
+				core.registers.CR1 = *src
+				dstName = "CR1"
+			case modrm.reg == 2:
+				core.registers.CR2 = *src
+				dstName = "CR2"
+			case modrm.reg == 3:
+				core.registers.CR3 = *src
+				dstName = "CR3"
+			case modrm.reg == 4:
+				core.registers.CR4 = *src
+				dstName = "CR4"
 			default:
 				log.Fatal("Unknown cr mov instruction")
 			}

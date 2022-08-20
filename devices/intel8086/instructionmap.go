@@ -171,5 +171,6 @@ func mapOpCodes(c *CpuCore) {
 	// 2 byte opcodes
 	c.opCodeMap2Byte[0x01] = INSTR_SMSW
 	c.opCodeMap2Byte[0x20] = INSTR_MOV
+	c.opCodeMap2Byte[0x22] = INSTR_MOV
 	c.opCodeMap2Byte[0x09] = INSTR_WBINVD
 }

@@ -3,11 +3,17 @@ package intel8086
 import (
 	"fmt"
 	"github.com/andrewjc/threeatesix/common"
+	"github.com/andrewjc/threeatesix/devices/monitor"
 	"log"
 	"strings"
 )
 
 func doCoreDump(core *CpuCore) {
+
+	log.Printf("Instruction log:")
+	for _, instruction := range core.bus.FindSingleDevice(common.MODULE_DEBUG_MONITOR).(*monitor.HardwareMonitor).GetInstructionLog() {
+		log.Printf("%s", instruction)
+	}
 
 	log.Println("Dumping core: " + core.FriendlyPartName())
 
@@ -16,12 +22,19 @@ func doCoreDump(core *CpuCore) {
 	}
 
 	// Gather next few bytes for debugging...
-	peekBytes := core.memoryAccessController.PeekNextBytes(core.currentByteDecodeStart-5, 10)
+	peekBytes := core.memoryAccessController.PeekNextBytes(core.currentByteDecodeStart, 10)
 	stb := strings.Builder{}
 	for _, b := range peekBytes {
 		stb.WriteString(fmt.Sprintf("%#2x ", b))
 	}
 	log.Printf("Next 10 bytes at instruction pointer: " + stb.String())
+
+	peekBytes = core.memoryAccessController.PeekNextBytes(core.currentByteDecodeStart-10, 20)
+	stb = strings.Builder{}
+	for _, b := range peekBytes {
+		stb.WriteString(fmt.Sprintf("%#2x ", b))
+	}
+	log.Printf("Previous 10 bytes at instruction pointer: " + stb.String())
 
 	log.Printf("CS: %#2x, IP: %#2x", core.registers.CS, core.registers.IP)
 
@@ -51,4 +64,9 @@ func doCoreDump(core *CpuCore) {
 	log.Printf("CR0[ts] = %b", core.registers.CR0>>3&1)
 	log.Printf("CR0[et] = %b", core.registers.CR0>>4&1)
 	log.Printf("CR0[ne] = %b", core.registers.CR0>>5&1)
+
+	log.Print("Other details:")
+	log.Printf("Is in protected mode: %t", core.mode == common.PROTECTED_MODE)
+	log.Printf("Is in real mode: %t", core.mode == common.REAL_MODE)
+	log.Printf("Is decoding 2 byte instruction: %t", core.is2ByteOperand)
 }

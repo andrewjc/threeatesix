@@ -16,6 +16,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	core.flags.AddressSizeOverrideEnabled = false
 	core.flags.LockPrefixEnabled = false
 	core.flags.RepPrefixEnabled = false
+	core.is2ByteOperand = true
 
 	core.currentPrefixBytes = []byte{}
 	for isPrefixByte(core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0]) {
@@ -76,7 +77,13 @@ func (core *CpuCore) decodeInstruction() uint8 {
 
 		core.currentOpCodeBeingExecuted = instrByte
 		instructionImpl = core.opCodeMap2Byte[core.currentOpCodeBeingExecuted]
+
+		if instructionImpl == nil {
+			log.Printf("[%#04x] Unrecognised 2-bit opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte)
+		}
+
 		core.currentPrefixBytes = append(core.currentPrefixBytes, 0x0F)
+		core.is2ByteOperand = true
 	} else {
 		core.currentOpCodeBeingExecuted = instrByte
 		instructionImpl = core.opCodeMap[core.currentOpCodeBeingExecuted]

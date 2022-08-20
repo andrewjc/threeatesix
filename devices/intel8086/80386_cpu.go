@@ -88,6 +88,7 @@ type CpuCore struct {
 	currentByteAddr                uint32  //the current address of the byte being decoded in the current instruction
 	currentOpCodeBeingExecuted     uint8   //the opcode of the instruction currently being exected
 	lastExecutedInstructionPointer uint32
+	is2ByteOperand                 bool
 }
 
 type CpuExecutionFlags struct {
@@ -150,6 +151,7 @@ func (core *CpuCore) Init(bus *bus.Bus) {
 func (core *CpuCore) Reset() {
 	core.registers.CS.base = 0xF000
 	core.registers.IP = 0xFFF0
+	core.registers.CR0 = 0x00
 	core.bus.SendMessage(bus.BusMessage{Subject: common.MESSAGE_GLOBAL_LOCK_BIOS_MEM_REGION, Data: []byte{}})
 }
 

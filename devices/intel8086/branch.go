@@ -88,7 +88,7 @@ func INSTR_JMP_FAR_M16(core *CpuCore, modrm *ModRm) {
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
-	offset, err := common.Int16Err(core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
 
 	if err != nil {
 		return
