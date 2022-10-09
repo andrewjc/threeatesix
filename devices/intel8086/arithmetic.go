@@ -871,6 +871,34 @@ func INSTR_OR(core *CpuCore) {
 			core.logInstruction(fmt.Sprintf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
 			goto success
 		}
+	case 0x82:
+		{
+			// OR r/m8,imm8
+			core.currentByteAddr++
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			rm, rmStr, err := core.readRm8(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*rm)
+			term2, err := core.readImm8()
+			if err != nil {
+				goto eof
+			}
+			tmp := uint8(uint32(term1) | uint32(term2))
+
+			err = core.writeRm8(&modrm, &tmp)
+			if err != nil {
+				goto eof
+			}
+
+			core.logInstruction(fmt.Sprintf("[%#04x] or %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
+			goto success
+		}
 	case 0x83:
 		{
 			// OR r/m16,imm8
