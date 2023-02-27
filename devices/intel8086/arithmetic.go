@@ -1832,3 +1832,10 @@ func INSTR_SHIFT(core *CpuCore) {
 eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
+
+func INSTR_STC(core *CpuCore) {
+	core.registers.SetFlag(CarryFlag, true)
+	core.logInstruction(fmt.Sprintf("[%#04x] STC", core.GetCurrentlyExecutingInstructionAddress()))
+
+	core.registers.IP += 1
+}
