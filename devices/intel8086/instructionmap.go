@@ -19,12 +19,14 @@ func mapOpCodes(c *CpuCore) {
 
 	c.opCodeMap[0x74] = INSTR_JZ_SHORT_REL8
 	c.opCodeMap[0x75] = INSTR_JNZ_SHORT_REL8
+	c.opCodeMap[0x76] = INSTR_JBE_SHORT_REL8
 	c.opCodeMap[0x78] = INSTR_JS_SHORT_REL8
 	c.opCodeMap[0x79] = INSTR_JNS_SHORT_REL8
 
 	c.opCodeMap[0xFA] = INSTR_CLI
 	c.opCodeMap[0xFC] = INSTR_CLD
 	c.opCodeMap[0xFE] = INSTR_INC_SHORT_REL8
+	c.opCodeMap[0xF9] = INSTR_STC
 
 	c.opCodeMap[0xE4] = INSTR_IN //imm to AL
 	c.opCodeMap[0xE5] = INSTR_IN //DX to AL
@@ -158,6 +160,7 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x50] = INSTR_PUSH
 
 	c.opCodeMap[0x60] = INSTR_PUSH
+	c.opCodeMap[0x61] = INSTR_POP
 	c.opCodeMap[0x6A] = INSTR_PUSH
 	c.opCodeMap[0x68] = INSTR_PUSH
 	c.opCodeMap[0x0E] = INSTR_PUSH
