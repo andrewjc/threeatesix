@@ -193,3 +193,115 @@ func INSTR_PUSH(core *CpuCore) {
 eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
+
+func INSTR_POP(core *CpuCore) {
+	core.currentByteAddr++
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F:
+		{
+			// POP r16
+			val, valName := core.registers.registers16Bit[core.currentOpCodeBeingExecuted-0x58], core.registers.index16ToString(core.currentOpCodeBeingExecuted-0x58)
+
+			pval, err := stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+
+			*val = pval
+
+			core.logInstruction(fmt.Sprintf("[%#04x] pop %s", core.GetCurrentlyExecutingInstructionAddress(), valName))
+
+		}
+	case 0x8F:
+		{
+			// POP r/m16
+
+			// Not implemented yet, dump the core
+			doCoreDump(core)
+			/*modrm := core.decodeModRM()
+
+			  if modrm.mod == 0b11 {
+			      panic("POP r/m16 cannot use a register as the destination")
+			  }
+
+			  val, err := stackPop16(core)
+			  if err != nil {
+			      goto eof
+			  }
+
+			  modrm.write16(core, val)*/
+
+		}
+	case 0x61:
+		{
+			// POP all general purpose registers
+			val, err := stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+			core.registers.DI = val
+
+			val, err = stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.SI = val
+
+			val, err = stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.BP = val
+
+			val, err = stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.SP = val
+
+			val, err = stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.BX = val
+
+			val, err = stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.DX = val
+
+			val, err = stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.CX = val
+
+			val, err = stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.AX = val
+
+			core.logInstruction(fmt.Sprintf("[%#04x] popa", core.GetCurrentlyExecutingInstructionAddress()))
+
+		}
+
+	default:
+		log.Println(fmt.Printf("Unhandled POP instruction:  %#04x", core.currentOpCodeBeingExecuted))
+
+		doCoreDump(core)
+
+	}
+
+eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
