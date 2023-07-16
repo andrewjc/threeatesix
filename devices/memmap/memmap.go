@@ -91,6 +91,17 @@ func (mem *MemoryAccessController) WriteAddr16(address uint32, value uint16) err
 	return nil
 }
 
+func (mem *MemoryAccessController) WriteAddr32(address uint32, value uint32) error {
+	for i := uint32(0); i < 4; i++ {
+		err := mem.WriteAddr8(address+i, uint8(value>>uint32(i*8)&0xFF))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (mem *MemoryAccessController) LockBootVector() {
 	mem.resetVectorBaseAddr = 0xFFFF0000
 }

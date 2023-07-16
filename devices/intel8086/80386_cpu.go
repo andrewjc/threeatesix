@@ -203,6 +203,33 @@ func (core *CpuCore) SegmentAddressToLinearAddress(segment SegmentRegister, offs
 	return addr
 }
 
+func (core *CpuCore) SegmentAddressToLinearAddress32(segment SegmentRegister, offset uint32) uint32 {
+
+	if core.flags.MemorySegmentOverride > 0 {
+		// default segment override
+		switch core.flags.MemorySegmentOverride {
+		case common.SEGMENT_CS:
+			return uint32(core.registers.CS.base)<<32 + uint32(offset)
+		case common.SEGMENT_SS:
+			return uint32(core.registers.SS.base)<<32 + uint32(offset)
+		case common.SEGMENT_DS:
+			return uint32(core.registers.DS.base)<<32 + uint32(offset)
+		case common.SEGMENT_ES:
+			return uint32(core.registers.ES.base)<<32 + uint32(offset)
+		case common.SEGMENT_FS:
+			return uint32(core.registers.FS.base)<<32 + uint32(offset)
+		case common.SEGMENT_GS:
+			return uint32(core.registers.GS.base)<<32 + uint32(offset)
+		default:
+			panic("Unhandled segment register override")
+		}
+	}
+
+	addr := uint32(segment.base)<<16 + uint32(offset)
+
+	return addr
+}
+
 // Returns the address in memory of the instruction currently executing.
 // This is different from GetCurrentCodePointer in that the currently executing
 // instruction can update the CS and IP registers.

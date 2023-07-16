@@ -17,7 +17,7 @@ const MAX_LOG_LENGTH = 64
 
 func NewHardwareMonitor() *HardwareMonitor {
 	device := &HardwareMonitor{}
-	device.logCpuInstructions = false
+	device.logCpuInstructions = true
 	device.instructionLog = make([]string, 0)
 
 	return device

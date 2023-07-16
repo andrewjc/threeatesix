@@ -61,6 +61,8 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x8B] = INSTR_MOV
 	c.opCodeMap[0x8C] = INSTR_MOV
 	c.opCodeMap[0x8E] = INSTR_MOV
+	c.opCodeMap[0x88] = INSTR_MOV
+	c.opCodeMap[0x89] = INSTR_MOV
 
 	c.opCodeMap[0x3A] = INSTR_CMP
 	c.opCodeMap[0x3B] = INSTR_CMP
@@ -168,6 +170,7 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x1E] = INSTR_PUSH
 	c.opCodeMap[0x06] = INSTR_PUSH
 
+	c.opCodeMap[0xAB] = INSTR_STOSD
 	c.opCodeMap[0xAC] = INSTR_LODS
 	c.opCodeMap[0xAD] = INSTR_LODS
 

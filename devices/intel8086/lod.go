@@ -24,7 +24,7 @@ func INSTR_LODS(core *CpuCore) {
 		case 0xAC:
 			{
 				operStr = "LODSB"
-				m8, err := core.memoryAccessController.ReadAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
+				m8, err := core.memoryAccessController.ReadAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, uint16(core.registers.SI)))
 				if err != nil {
 					goto eof
 				}
@@ -39,7 +39,7 @@ func INSTR_LODS(core *CpuCore) {
 			{
 				operStr = "LODSW"
 				//log.Printf("Reading from %#04x", core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
-				m8, err := core.memoryAccessController.ReadAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
+				m8, err := core.memoryAccessController.ReadAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, uint16(core.registers.SI)))
 				if err != nil {
 					goto eof
 				}
@@ -62,5 +62,46 @@ func INSTR_LODS(core *CpuCore) {
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s %s", core.GetCurrentlyExecutingInstructionAddress(), prefixStr, operStr, extras))
 
 eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_STOSD(core *CpuCore) {
+	core.currentByteAddr++
+
+	// Check if there is a repetition prefix
+	if core.flags.RepPrefixEnabled {
+		// Execute the operation for the number of times specified in the CX register
+		for core.registers.CX > 0 {
+			// Perform the STOSD operation
+			core.memoryAccessController.WriteAddr32(core.SegmentAddressToLinearAddress32(core.registers.ES, core.registers.EDI), core.registers.EAX)
+
+			// Update the DI register depending on the direction flag
+			if core.registers.GetFlag(DirectionFlag) {
+				core.registers.EDI -= 4
+			} else {
+				core.registers.EDI += 4
+			}
+
+			core.registers.CX--
+		}
+
+		// Reset the repetition prefix
+		core.flags.RepPrefixEnabled = false
+
+	} else {
+		// No repetition prefix, just perform the STOSD operation once
+		core.memoryAccessController.WriteAddr32(core.SegmentAddressToLinearAddress32(core.registers.ES, core.registers.EDI), core.registers.EAX)
+
+		// Update the DI register depending on the direction flag
+		if core.registers.GetFlag(DirectionFlag) {
+			core.registers.EDI -= 4
+		} else {
+			core.registers.EDI += 4
+		}
+	}
+
+	// Log the instruction
+	core.logInstruction(fmt.Sprintf("[%#04x] STOSD", core.GetCurrentlyExecutingInstructionAddress()))
+
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }

@@ -63,6 +63,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 
 	instrByte, err = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
 	if err != nil {
+		log.Fatalf("Decode error ", err)
 		panic("Core read error.")
 	}
 
@@ -318,4 +319,16 @@ func INSTR_83_OPCODES(core *CpuCore) {
 		panic(0)
 	}
 eof:
+}
+
+func (core *CpuCore) GetAddressSize() int {
+	if core.mode == common.REAL_MODE {
+		return 2
+	} else {
+		if core.flags.OperandSizeOverrideEnabled {
+			return 2
+		} else {
+			return 4
+		}
+	}
 }
