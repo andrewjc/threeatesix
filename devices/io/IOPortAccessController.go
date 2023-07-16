@@ -72,6 +72,12 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
         return
     }
 
+    if port_addr == 0x60 {
+        // Data Port Write
+        r.GetBus().FindSingleDevice(common.MODULE_PS2_CONTROLLER).(*ps2.Ps2Controller).WriteDataPort(value)
+        return
+    }
+
     if port_addr == 0x80 {
         // bios post diag
         log.Printf("BIOS POST: %#02x - %s", value, common.BiosPostCodeToString(value))
@@ -101,6 +107,18 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
         // CMOS RAM
         log.Printf("CMOS RAM WRITE: %#02x, %#02x", r.cmosRegisterSelect, value)
         r.cmosRegisterData[r.cmosRegisterSelect] = value
+        return
+    }
+
+    if port_addr == 0x92 {
+        // A20 Gate
+        log.Printf("A20 GATE: %#02x", value)
+        if value == 0x00 {
+            r.GetBus().SendMessageSingle(common.MODULE_MEMORY_ACCESS_CONTROLLER, bus.BusMessage{common.MESSAGE_DISABLE_A20_GATE, []byte{value}})
+        } else {
+            r.GetBus().SendMessageSingle(common.MODULE_MEMORY_ACCESS_CONTROLLER, bus.BusMessage{common.MESSAGE_ENABLE_A20_GATE, []byte{value}})
+        }
+
         return
     }
 

@@ -98,12 +98,12 @@ func (controller *Ps2Controller) updateStatusRegister() {
 	controller.statusRegister = 0
 
 	// Bit 0: Output Buffer Status (OBF)
-	if len(controller.bufferedOutputData) > 0 {
+	if controller.dataPortWriteEnabled == false {
 		controller.statusRegister |= 0x01 // Set OBF
 	}
 
 	// Bit 1: Input Buffer Status (IBF)
-	if len(controller.bufferedInputData) == 0 {
+	if controller.dataPortReadEnabled == false {
 		controller.statusRegister |= 0x02 // Set IBF
 	}
 
@@ -233,4 +233,14 @@ func (controller *Ps2Controller) EnableDataPortReadyForRead() {
 func (controller *Ps2Controller) DisableDataPortReadyForRead() {
 	controller.dataPortReadEnabled = false
 	controller.updateStatusRegister()
+}
+
+func (controller *Ps2Controller) WriteDataPort(value uint8) {
+	if controller.dataPortWriteEnabled {
+		log.Printf("PS2 controller write data: [%#04x]", value)
+		controller.bufferedInputData = append(controller.bufferedInputData, value)
+		controller.DisableDataPortReadyForWrite()
+	} else {
+		log.Printf("PS2 controller write data: [%#04x] (ignored)", value)
+	}
 }
