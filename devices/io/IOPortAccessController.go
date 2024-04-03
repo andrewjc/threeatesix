@@ -61,6 +61,11 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 		return sr
 	}
 
+	if addr == 0x0042 {
+		// Read from IO port 0x0042
+		return r.programmableIntervalTimer.ReadCounter0()
+	}
+
 	if addr == 0x24 {
 		// RC1 roll compare register???
 		log.Printf("RC1 roll compare register read")
@@ -177,6 +182,12 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 	if port_addr == 0x03d8 {
 		// CGA
 		r.cgaController.WriteAddr8(port_addr, value)
+		return
+	}
+
+	if port_addr == 0x0042 {
+		// Write to IO port 0x0042
+		r.programmableIntervalTimer.WriteCounter0(value)
 		return
 	}
 
