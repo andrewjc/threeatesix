@@ -26,7 +26,7 @@ type IOPortAccessController struct {
 	cmosRegisterSelect               uint8
 	cmosRegisterData                 []uint8
 
-	cgaController *cga.CgaDevice
+	cgaController *cga.Motorola6845
 }
 
 func CreateIOPortController() *IOPortAccessController {
@@ -36,7 +36,7 @@ func CreateIOPortController() *IOPortAccessController {
 		programmableInterruptController1: intel8259a.NewIntel8259a(),
 		programmableInterruptController2: intel8259a.NewIntel8259a(),
 		programmableIntervalTimer:        intel82C54.NewIntel82C54(),
-		cgaController:                    cga.NewCgaDevice(),
+		cgaController:                    cga.NewMotorola6845(),
 	}
 }
 
