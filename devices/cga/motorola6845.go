@@ -23,6 +23,9 @@ type Motorola6845 struct {
 	// CGA video memory
 	videoMemory [0x4000]uint8
 
+	// Current video memory address
+	videoMemoryAddress uint16
+
 	// CGA palette
 	palette [16]uint8
 
@@ -66,6 +69,12 @@ func (c *Motorola6845) WriteAddr8(port_addr uint16, value uint8) {
 	case 0x03DA:
 		// CGA Status Register (read-only)
 		log.Printf("Attempted write to read-only CGA Status Register")
+	case 0x03D4:
+		// CGA Address Register (Index)
+		c.WriteRegisterIndex(port_addr, value)
+	case 0x03D5:
+		// CGA Address Register (Data)
+		c.WriteRegisterData(port_addr, value)
 	default:
 		log.Printf("Unhandled CGA write to port %#04x with value %#02x", port_addr, value)
 	}
@@ -95,7 +104,7 @@ func (c *Motorola6845) SetModeControlRegister(value uint8) {
 	           bit 0  = 0  40*25 text mode
 	              = 1  80*25 text mode
 	*/
-	log.Printf("CGA Controller set mode control register: [%#04x]", value)
+	//log.Printf("CGA Controller set mode control register: [%#04x]", value)
 
 	c.BlinkEnabled = (value & 0x20) != 0
 	c.GraphicsMode640x200 = (value & 0x10) != 0
@@ -105,7 +114,7 @@ func (c *Motorola6845) SetModeControlRegister(value uint8) {
 	c.GraphicsMode320x200 = (value & 0x02) != 0
 	c.TextMode80x25 = (value & 0x01) != 0
 
-	log.Printf("CGA Controller set mode control register: BlinkEnabled: %v, GraphicsMode640x200: %v, VideoEnabled: %v, MonochromeSignal: %v, TextMode: %v, GraphicsMode320x200: %v, TextMode80x25: %v", c.BlinkEnabled, c.GraphicsMode640x200, c.VideoEnabled, c.MonochromeSignal, c.TextMode, c.GraphicsMode320x200, c.TextMode80x25)
+	//log.Printf("CGA Controller set mode control register: BlinkEnabled: %v, GraphicsMode640x200: %v, VideoEnabled: %v, MonochromeSignal: %v, TextMode: %v, GraphicsMode320x200: %v, TextMode80x25: %v", c.BlinkEnabled, c.GraphicsMode640x200, c.VideoEnabled, c.MonochromeSignal, c.TextMode, c.GraphicsMode320x200, c.TextMode80x25)
 }
 
 func (c *Motorola6845) SetColorSelectRegister(value uint8) {
@@ -144,12 +153,10 @@ func (c *Motorola6845) ReadStatusRegister() uint8 {
 }
 
 func (c *Motorola6845) GetBus() *bus.Bus {
-	// TODO: Implement GetBus method to return the bus associated with the CGA device
 	return nil
 }
 
 func (c *Motorola6845) SetBus(bus *bus.Bus) {
-	// TODO: Implement SetBus method to set the bus associated with the CGA device
 }
 
 func (c *Motorola6845) isInVerticalRetrace() bool {
@@ -202,9 +209,32 @@ func (c *Motorola6845) readRegister(index uint8) uint16 {
 	return uint16(value)
 }
 
+func (c *Motorola6845) ReadRegisterIndex(port uint16) uint8 {
+	return c.ReadPort(port)
+}
+
 func (c *Motorola6845) WriteRegisterIndex(port uint16, index uint8) {
 	// Write the register index to the specified port
 	c.WritePort(port, index)
+}
+
+func (c *Motorola6845) WriteRegisterData(port uint16, value uint8) {
+	switch c.ReadRegisterIndex(0x03D4) {
+	case 0x0C:
+		// Start Address High Register
+		c.videoMemoryAddress = (c.videoMemoryAddress & 0x00FF) | (uint16(value) << 8)
+	case 0x0D:
+		// Start Address Low Register
+		c.videoMemoryAddress = (c.videoMemoryAddress & 0xFF00) | uint16(value)
+	case 0x0E:
+		// Cursor Location High Register
+		c.cursorPosition = (c.cursorPosition & 0x00FF) | (uint16(value) << 8)
+	case 0x0F:
+		// Cursor Location Low Register
+		c.cursorPosition = (c.cursorPosition & 0xFF00) | uint16(value)
+	default:
+		log.Printf("Unhandled CGA register write: %#04x", c.ReadRegisterIndex(0x03D4))
+	}
 }
 
 func (c *Motorola6845) ReadRegisterValue(port uint16) uint8 {
@@ -212,13 +242,43 @@ func (c *Motorola6845) ReadRegisterValue(port uint16) uint8 {
 	return c.ReadPort(port)
 }
 
-func (c *Motorola6845) WritePort(port uint16, value uint8) {
-	// TODO: Implement the logic to write the value to the specified port
-	// This would involve writing the value to the port using the appropriate I/O mechanism
+func (c *Motorola6845) ReadPort(port uint16) uint8 {
+	switch port {
+	case 0x03D5:
+		// CGA Data Register
+		return c.ReadVideoMemory(c.videoMemoryAddress)
+	default:
+		log.Printf("Unhandled CGA port read: %#04x", port)
+		return 0
+	}
 }
 
-func (c *Motorola6845) ReadPort(port uint16) uint8 {
-	// TODO: Implement the logic to read the value from the specified port
-	// This would involve reading the value from the port using the appropriate I/O mechanism
-	return 0
+func (c *Motorola6845) WritePort(port uint16, value uint8) {
+	switch port {
+	case 0x03D5:
+		// CGA Data Register
+		c.WriteVideoMemory(c.videoMemoryAddress, value)
+		c.videoMemoryAddress++
+	default:
+		log.Printf("Unhandled CGA port write: %#04x", port)
+	}
+}
+
+func (c *Motorola6845) ReadVideoMemory(addr uint16) uint8 {
+	// Check if the address is within the valid range of video memory
+	if addr >= 0 && addr < 0x4000 {
+		return c.videoMemory[addr]
+	} else {
+		log.Printf("Invalid video memory read address: %#04x", addr)
+		return 0
+	}
+}
+
+func (c *Motorola6845) WriteVideoMemory(addr uint16, value uint8) {
+	// Check if the address is within the valid range of video memory
+	if addr >= 0 && addr < 0x4000 {
+		c.videoMemory[addr] = value
+	} else {
+		log.Printf("Invalid video memory write address: %#04x", addr)
+	}
 }

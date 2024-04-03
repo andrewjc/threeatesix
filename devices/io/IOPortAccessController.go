@@ -68,7 +68,7 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 
 	if addr == 0x24 {
 		// RC1 roll compare register???
-		log.Printf("RC1 roll compare register read")
+		//log.Printf("RC1 roll compare register read")
 		return r.highIntegrationInterfaceDevice.Rc1RegisterRead()
 	}
 
@@ -126,7 +126,7 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 
 	if port_addr == 0x24 {
 		// RC1 roll compare register???
-		log.Printf("RC1 roll compare register write")
+		//log.Printf("RC1 roll compare register write")
 		r.highIntegrationInterfaceDevice.Rc1RegisterWrite(value)
 		return
 	}
@@ -146,7 +146,7 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 
 	if port_addr == 0x92 {
 		// A20 Gate
-		log.Printf("A20 GATE: %#02x", value)
+		// log.Printf("A20 GATE: %#02x", value)
 		if value == 0x00 {
 			r.GetBus().SendMessageSingle(common.MODULE_MEMORY_ACCESS_CONTROLLER, bus.BusMessage{common.MESSAGE_DISABLE_A20_GATE, []byte{value}})
 		} else {

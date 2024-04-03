@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
+	"github.com/andrewjc/threeatesix/devices/hid/kb"
 	"github.com/andrewjc/threeatesix/devices/intel8086"
 	"github.com/andrewjc/threeatesix/devices/intel8259a"
 	"github.com/andrewjc/threeatesix/devices/io"
@@ -99,6 +100,8 @@ func NewPc() *PersonalComputer {
 	pc.bus.RegisterDevice(pc.ioPortController, common.MODULE_IO_PORT_ACCESS_CONTROLLER)
 
 	pc.bus.RegisterDevice(pc.ps2Controller, common.MODULE_PS2_CONTROLLER)
+
+	pc.ps2Controller.ConnectDevice(kb.NewPs2Keyboard())
 
 	return pc
 }
