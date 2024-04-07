@@ -63,8 +63,9 @@ func (core *CpuCore) decodeInstruction() uint8 {
 
 	instrByte, err = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
 	if err != nil {
-		log.Fatalf("Decode error ", err)
-		panic("Core read error.")
+		log.Printf("Error reading instruction byte: %s\n", err)
+		doCoreDump(core)
+		panic(0)
 	}
 
 	var instructionImpl OpCodeImpl
@@ -73,7 +74,9 @@ func (core *CpuCore) decodeInstruction() uint8 {
 		core.IncrementIP()
 		instrByte, err = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr + 1))
 		if err != nil {
-			panic("Core read error.")
+			log.Printf("Error reading instruction byte: %s\n", err)
+			doCoreDump(core)
+			panic(0)
 		}
 
 		core.currentOpCodeBeingExecuted = instrByte
@@ -81,6 +84,8 @@ func (core *CpuCore) decodeInstruction() uint8 {
 
 		if instructionImpl == nil {
 			log.Printf("[%#04x] Unrecognised 2-bit opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte)
+			doCoreDump(core)
+			panic(0)
 		}
 
 		core.currentPrefixBytes = append(core.currentPrefixBytes, 0x0F)
