@@ -1,0 +1,71 @@
+@startuml
+participant BIOS
+participant "PS/2 Controller" as PS2_Controller
+participant "PS/2 Keyboard" as PS2_Keyboard
+participant "Interrupt Controller" as PIC
+participant CPU
+
+BIOS -> PS2_Controller: Initialize PS/2 Controller
+activate PS2_Controller
+
+BIOS -> PS2_Controller: Disable PS/2 ports (WriteCommandRegister(0xAD))
+PS2_Controller -> PS2_Controller: Disable first PS/2 port
+PS2_Controller -> PS2_Controller: Disable data port for read/write
+
+BIOS -> PS2_Controller: Flush output buffer
+
+BIOS -> PS2_Controller: Set controller configuration byte (WriteDataPort(0x60))
+PS2_Controller -> PS2_Controller: Enable interrupt, translation, etc.
+
+BIOS -> PS2_Controller: Perform controller self-test (WriteDataPort(0xAA))
+PS2_Controller -> PS2_Controller: Perform self-test
+PS2_Controller --> BIOS: Return status (0x55 if passed)
+
+BIOS -> PS2_Controller: Test first PS/2 port (WriteDataPort(0xAB))
+PS2_Controller -> PS2_Controller: Test first PS/2 port
+PS2_Controller --> BIOS: Return status (0x00 if passed)
+
+BIOS -> PS2_Controller: Enable first PS/2 port (WriteCommandRegister(0xAE))
+PS2_Controller -> PS2_Controller: Enable first PS/2 port
+PS2_Controller -> PS2_Controller: Enable data port for read/write
+
+BIOS -> PS2_Controller: Reset keyboard (WriteDataPort(0xFF))
+PS2_Controller -> PS2_Keyboard: Reset command
+activate PS2_Keyboard
+PS2_Keyboard -> PS2_Keyboard: Reset keyboard
+PS2_Keyboard --> PS2_Controller: Return ACK (0xFA) and BAT result (0xAA if passed)
+deactivate PS2_Keyboard
+
+PS2_Controller -> BIOS: Keyboard reset status
+
+BIOS -> PS2_Controller: Set keyboard typematic rate/delay (WriteDataPort(0xF3))
+PS2_Controller -> PS2_Keyboard: Set typematic rate/delay
+activate PS2_Keyboard
+PS2_Keyboard -> PS2_Keyboard: Set typematic rate/delay
+PS2_Keyboard --> PS2_Controller: Return ACK (0xFA)
+deactivate PS2_Keyboard
+
+BIOS -> PS2_Controller: Enable keyboard scanning (WriteDataPort(0xF4))
+PS2_Controller -> PS2_Keyboard: Enable scanning
+activate PS2_Keyboard
+PS2_Keyboard -> PS2_Keyboard: Enable scanning
+PS2_Keyboard --> PS2_Controller: Return ACK (0xFA)
+deactivate PS2_Keyboard
+
+BIOS -> PIC: Enable keyboard interrupt (IRQ1)
+activate PIC
+PIC -> PIC: Enable IRQ1
+deactivate PIC
+
+PS2_Controller -> CPU: Trigger keyboard interrupt (INT 9)
+activate CPU
+CPU -> CPU: Save current state
+CPU -> CPU: Call keyboard interrupt handler
+CPU -> CPU: Read scan code from data port (ReadDataPort())
+CPU -> CPU: Process scan code
+CPU -> CPU: Restore state and return from interrupt
+deactivate CPU
+
+deactivate PS2_Controller
+
+@enduml

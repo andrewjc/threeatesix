@@ -1,0 +1,99 @@
+@startuml
+participant "PersonalComputer" as PC
+participant "CpuCore" as CPU
+participant "MemoryAccessController" as MEM
+participant "IOPortAccessController" as IO
+participant "Ps2Controller" as PS2
+participant "Intel8259a" as PIC
+participant "Intel82335" as MCR
+
+activate PC
+
+PC -> PC: Power()
+activate PC
+
+PC -> CPU: Init(bus)
+activate CPU
+CPU -> CPU: Reset()
+note left: Set CS=0xF000, IP=0xFFF0,\nCR0=0x00
+CPU -> MEM: LockBootVector()
+activate MEM
+MEM -> MEM: Set resetVectorBaseAddr=0xFFFF0000
+deactivate MEM
+CPU -> CPU: EnterMode(REAL_MODE)
+deactivate CPU
+
+PC -> MEM: LoadBios()
+activate MEM
+MEM -> MEM: Load BIOS image into memory
+deactivate MEM
+
+PC -> PC: ExecuteCpuLoop()
+activate PC
+
+loop until IP == 0
+PC -> CPU: Step()
+activate CPU
+CPU -> CPU: GetCurrentCodePointer()
+note left: CS:IP points to current instruction
+
+CPU -> MEM: ReadAddr8(CS:IP)
+activate MEM
+MEM -> CPU: Instruction byte
+deactivate MEM
+
+CPU -> CPU: DecodeInstruction()
+note left: Decode x86 instruction
+
+alt Instruction requires memory access
+    CPU -> MEM: ReadAddr8/16/32()
+    activate MEM
+    MEM -> CPU: Data from memory
+    deactivate MEM
+end
+
+CPU -> CPU: ExecuteInstruction()
+note left: Execute x86 instruction
+
+alt Instruction involves I/O operation
+    CPU -> IO: ReadAddr8/16/32() or WriteAddr8/16/32()
+    activate IO
+    IO -> CPU: Data from I/O port or write to I/O port
+    deactivate IO
+end
+
+CPU -> CPU: UpdateRegisters()
+note left: Update registers based on instruction
+
+alt Instruction triggers interrupt
+    CPU -> PIC: SetInterruptRequest()
+    activate PIC
+    PIC -> CPU: TriggerInterrupt()
+    deactivate PIC
+end
+
+CPU -> CPU: IncrementIP()
+note left: Move to next instruction
+
+deactivate CPU
+end
+
+PC -> PS2: Initialize()
+activate PS2
+PS2 -> PS2: Set up PS/2 controller and devices
+deactivate PS2
+
+PC -> MCR: Initialize()
+activate MCR
+MCR -> MCR: Set up MCR registers and configuration
+deactivate MCR
+
+PC -> PIC: Initialize()
+activate PIC
+PIC -> PIC: Set up interrupt controllers (PIC1 and PIC2)
+deactivate PIC
+
+deactivate PC
+deactivate PC
+
+@enduml

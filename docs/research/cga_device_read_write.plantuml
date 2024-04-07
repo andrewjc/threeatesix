@@ -1,0 +1,50 @@
+@startuml
+participant CPU
+participant RAM
+participant "CGA Device" as CGA
+participant "Interrupt Controller" as IC
+participant "SDL2 Window" as SDL2
+
+== Emulator Initialization ==
+CPU -> CGA: Initialize CGA Device
+CGA -> RAM: Initialize CGA Frame Buffer
+
+== Emulation Loop ==
+loop Emulate CPU Instructions
+  CPU -> CPU: Fetch and Decode Instruction
+  alt IN/OUT Port Instruction
+    CPU -> CGA: IN/OUT Port Access
+    alt Port 0x3D8 (Mode Control Register)
+      CPU -> CGA: Write to Mode Control Register
+      CGA -> CGA: Update CGA Mode
+    else Port 0x3D9 (Color Select Register)
+      CPU -> CGA: Write to Color Select Register
+      CGA -> CGA: Update CGA Color Palette
+    else Port 0x3DA (Status Register)
+      CPU -> CGA: Read from Status Register
+      CGA --> CPU: Return CGA Status
+    end
+  else Memory Write Instruction
+    alt Frame Buffer Memory Range
+      CPU -> RAM: Write to Frame Buffer Memory
+      RAM -> CGA: Update CGA Frame Buffer
+    else
+      CPU -> RAM: Write to Other Memory Location
+    end
+  end
+end
+
+== Vertical Retrace Interrupt ==
+IC -> CPU: Trigger Vertical Retrace Interrupt
+activate CPU
+CPU -> IC: Acknowledge Interrupt
+CPU -> CGA: Vertical Retrace Interrupt Handler
+activate CGA
+CGA -> RAM: Read Frame Buffer Data
+CGA -> SDL2: Update SDL2 Texture
+CGA -> SDL2: Render SDL2 Texture to Window
+deactivate CGA
+CPU -> IC: End of Interrupt (EOI)
+deactivate CPU
+
+@enduml
