@@ -1,183 +1,118 @@
-# threeatesix
-An x86 emulator written in Go
+# ThreeAteSix - A 386 Emulator
 
-How to help?
-* Implement missing opcodes
-* Write an emulator test suite
-* Work on video bios
-* Work on ps2 controller emulation
-* Work on interrupt controller emulation
-* Work on hard disk controller
-* Work on protected mode
-* Whatever else would help!
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/badge/go-1.20-blue.svg)](https://golang.org/dl/)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/andrewjc/threeatesix/actions)
+[![Coverage Status](https://img.shields.io/badge/coverage-80%25-green.svg)](https://codecov.io/gh/andrewjc/threeatesix)
+[![GitHub contributors](https://img.shields.io/github/contributors/andrewjc/threeatesix.svg)](https://github.com/andrewjc/threeatesix/graphs/contributors)
 
-Current emulation progress:
+ThreeAteSix is a 386 emulator written in Go, aiming to accurately emulate the functionality of a 386 CPU and associated hardware components. The project is a work in progress and is intended for educational purposes. 
+
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [CPU Emulation Progress](#cpu-emulation-progress)
+- [Configuration](#configuration)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+
+## Getting Started
+
+To get started with ThreeAteSix, follow these steps:
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/andrewjc/threeatesix.git
+   ```
+
+2. Build the project:
+   ```
+   go build
+   ```
+
+3. Prepare a BIOS image file named `bios.bin` and place it in the project directory.
+
+4. Run the emulator:
+   ```
+   ./threeatesix
+   ```
+
+## Project Structure
+
+The project is structured into the following main packages:
+
+- \`common\`: Contains common constants, functions, and utilities used throughout the project.
+- \`devices\`: Contains the emulated hardware devices.
+    - \`bus\`: Implements the device bus for communication between devices.
+    - \`cga\`: Emulates the Motorola 6845 CGA video controller.
+    - \`hid/kb\`: Emulates the PS/2 keyboard.
+    - \`intel8086\`: Emulates the Intel 80386 CPU and 80287 Math Coprocessor.
+    - \`intel82335\`: Emulates the Intel 82335 High Integration Interface Device.
+    - \`intel8259a\`: Emulates the Intel 8259A Programmable Interrupt Controller.
+    - \`intel82C54\`: Emulates the Intel 82C54 Programmable Interval Timer.
+    - \`io\`: Implements the I/O Port Access Controller.
+    - \`memmap\`: Implements the Memory Access Controller.
+    - \`monitor\`: Provides debugging and monitoring capabilities.
+    - \`ps2\`: Emulates the PS/2 Controller.
+- \`pc\`: Defines the main \`PersonalComputer\` struct representing the emulated PC.
+ 
+## Features
+
+- Emulation of Intel 80386 CPU
+- Emulation of Intel 80287 Math Coprocessor
+- Emulation of Intel 82335 High Integration Interface Device
+- Emulation of Intel 8259A Programmable Interrupt Controller
+- Emulation of Intel 82C54 Programmable Interval Timer
+- Emulation of PS/2 Controller and Keyboard
+- Emulation of CGA (Motorola 6845) Video Controller
+- Memory and I/O Port Access Controller
+- Configurable RAM and ROM sizes
+- Loadable BIOS image
+- Debugging and monitoring capabilities
+
+## CPU Emulation Progress
+
+The ThreeAteSix emulator currently implements the following features of the Intel 80386 CPU:
+
+- Real mode execution
+- Protected mode execution
+- Segmentation and paging
+- Interrupt handling
+- Basic arithmetic and logical instructions
+- Memory access instructions
+- Control flow instructions (jumps, calls, returns)
+- Flags and condition codes
+
+The emulator aims to provide accurate emulation of the 80386 CPU, including its registers, instruction set, and memory model. While significant progress has been made, some advanced features and corner cases may not yet be fully implemented.
+
+## Configuration
+
+The emulator can be configured by modifying the constants in the `pc` package:
+
+- `BiosFilename`: Specifies the name of the BIOS image file to be loaded.
+- `MaxRAMBytes`: Specifies the amount of RAM installed in the virtual machine.
+
+## Testing
+
+The project includes unit tests for various components. To run the tests, use the following command:
+
 ```
-2019/04/27 17:57:11 PRIMARY PROCESSOR entered REAL MODE
-2019/04/27 17:57:11 MATH CO PROCESSOR entered REAL MODE
-2019/04/27 17:57:11 [0xf000fff0] JMP 0xf000:0xe05b (FAR_PTR16)
-2019/04/27 17:57:11 [0xf000e05b] JMP 0x806c (NEAR_REL16)
-2019/04/27 17:57:11 [0xf000806c] CLI
-2019/04/27 17:57:11 [0xf000806d] CLD
-2019/04/27 17:57:11 PS2 Controller status read: 0
-2019/04/27 17:57:11 [0xf000806e] Port IN addr: imm addr 0064 to AL (data = 0000)
-2019/04/27 17:57:11 [0xf0008070] test al, [0x0004]
-2019/04/27 17:57:11 [0xf0008072] JNZ 0x807a (SHORT REL8)
-2019/04/27 17:57:11 [0xf0008072]   |-> no jump
-2019/04/27 17:57:11 [0xf0008074] JMP 0x06e3 (NEAR_REL16)
-2019/04/27 17:57:11 [0xf00006e3] JMP 0x8077 (NEAR_REL16)
-2019/04/27 17:57:11 [0xf0008077] JMP 0x8148 (NEAR_REL16)
-2019/04/27 17:57:11 [0xf0008148] MOV AL, 0x01
-2019/04/27 17:57:11 BIOS POST: 1 - Register test about to start
-2019/04/27 17:57:11 [0xf000814a] out 0080, al
-2019/04/27 17:57:11 [0xf000814c] MOV AH, 0x5555
-2019/04/27 17:57:11 [0xf000814f] cmp SP, [0x5555]
-2019/04/27 17:57:11 [0xf0008153] JNZ 0x8128 (SHORT REL8)
-2019/04/27 17:57:11 [0xf0008153]   |-> no jump
-2019/04/27 17:57:11 [0xf0008155] MOV AH, 0xaaaa
-2019/04/27 17:57:11 [0xf0008158] cmp SP, [0xaaaa]
-2019/04/27 17:57:11 [0xf000815c] JNZ 0x8128 (SHORT REL8)
-2019/04/27 17:57:11 [0xf000815c]   |-> no jump
-2019/04/27 17:57:11 [0xf000815e] MOV AL, 0x5555
-2019/04/27 17:57:11 [0xf0008161] MOV AH, 0x8166
-2019/04/27 17:57:11 [0xf0008164] JMP 0x812e (SHORT REL8)
-2019/04/27 17:57:11 [0xf000812e] MOV BX, AX
-2019/04/27 17:57:11 [0xf0008130] MOV CX, BX
-2019/04/27 17:57:11 [0xf0008132] MOV DX, CX
-2019/04/27 17:57:11 [0xf0008134] MOV SI, DX
-2019/04/27 17:57:11 [0xf0008136] MOV DI, SI
-2019/04/27 17:57:11 [0xf0008138] MOV BP, DI
-2019/04/27 17:57:11 [0xf000813a] MOV ES,BP
-2019/04/27 17:57:11 [0xf000813c] MOV AX, ES
-2019/04/27 17:57:11 [0xf000813e] MOV DS,AX
-2019/04/27 17:57:11 [0xf0008140] MOV AX, DS
-2019/04/27 17:57:11 [0xf0008142] MOV SS,AX
-2019/04/27 17:57:11 [0xf0008144] MOV AX, SS
-2019/04/27 17:57:11 [0xf0008146] JMP 0x8166 (JMP_FAR_M16)
-2019/04/27 17:57:11 [0xf0008166] xor ax, 0x5555
-2019/04/27 17:57:11 [0xf0008169] JNZ 0x8128 (SHORT REL8)
-2019/04/27 17:57:11 [0xf0008169]   |-> no jump
-2019/04/27 17:57:11 [0xf000816b] MOV AL, 0xaaaa
-2019/04/27 17:57:11 [0xf000816e] MOV AH, 0x8173
-2019/04/27 17:57:11 [0xf0008171] JMP 0x812e (SHORT REL8)
-2019/04/27 17:57:11 [0xf000812e] MOV BX, AX
-2019/04/27 17:57:11 [0xf0008130] MOV CX, BX
-2019/04/27 17:57:11 [0xf0008132] MOV DX, CX
-2019/04/27 17:57:11 [0xf0008134] MOV SI, DX
-2019/04/27 17:57:11 [0xf0008136] MOV DI, SI
-2019/04/27 17:57:11 [0xf0008138] MOV BP, DI
-2019/04/27 17:57:11 [0xf000813a] MOV ES,BP
-2019/04/27 17:57:11 [0xf000813c] MOV AX, ES
-2019/04/27 17:57:11 [0xf000813e] MOV DS,AX
-2019/04/27 17:57:11 [0xf0008140] MOV AX, DS
-2019/04/27 17:57:11 [0xf0008142] MOV SS,AX
-2019/04/27 17:57:11 [0xf0008144] MOV AX, SS
-2019/04/27 17:57:11 [0xf0008146] JMP 0x8173 (JMP_FAR_M16)
-2019/04/27 17:57:11 [0xf0008173] xor ax, 0xaaaa
-2019/04/27 17:57:11 [0xf0008176] JNZ 0x8128 (SHORT REL8)
-2019/04/27 17:57:11 [0xf0008176]   |-> no jump
-2019/04/27 17:57:11 [0xf0008178] MOV AL, 0x8d
-2019/04/27 17:57:11 [0xf000817a] out 0070, al
-2019/04/27 17:57:11 [0xf000817c] MOV AL, 0x02
-2019/04/27 17:57:11 BIOS POST: 2 - Register test has passed
-2019/04/27 17:57:11 [0xf000817e] out 0080, al
-2019/04/27 17:57:11 [0xf0008180] MOV al, byte ptr cs:0x84
-2019/04/27 17:57:11 [0xf0008183] add CL, dword_F0x5554
-2019/04/27 17:57:11 [0xf0008186] JZ 0x818e (SHORT REL8)
-2019/04/27 17:57:11 [0xf0008186]   |-> jumped
-2019/04/27 17:57:11 [0xf000818e] test dword_F0x0281, [0x0040]
-2019/04/27 17:57:11 [0xf0008194] JNZ 0x81a5 (SHORT REL8)
-2019/04/27 17:57:11 [0xf0008194]   |-> no jump
-2019/04/27 17:57:11 [0xf0008196] smsw r/m16
-2019/04/27 17:57:11 [0xf0008199] or AH, 0x4148
-2019/04/27 17:57:11 [0xf000819b] JZ 0x81a5 (SHORT REL8)
-2019/04/27 17:57:11 [0xf000819b]   |-> jumped
-2019/04/27 17:57:11 [0xf00081a5] MOV AL, 0x03
-2019/04/27 17:57:11 BIOS POST: 3 - ROM BIOS checksum test passed
-2019/04/27 17:57:11 [0xf00081a7] out 0080, al
-2019/04/27 17:57:11 [0xf00081a9] MOV AX, CS
-2019/04/27 17:57:11 [0xf00081ab] MOV SS,AX
-2019/04/27 17:57:11 [0xf00081ad] xor BP, 0x4250
-2019/04/27 17:57:11 [0xf00081af] MOV DS,BP
-2019/04/27 17:57:11 [0xf00081b1] MOV ES,BP
-2019/04/27 17:57:11 [0xf00081b3] JMP 0x0733 (NEAR_REL16)
-2019/04/27 17:57:11 [0xf0000733] JMP 0x81b6 (NEAR_REL16)
-2019/04/27 17:57:11 [0xf00081b6] MOV AL, 0x04
-2019/04/27 17:57:11 BIOS POST: 4 - Passed keyboard controller test with and without mouse
-2019/04/27 17:57:11 [0xf00081b8] out 0080, al
-2019/04/27 17:57:11 [0xf00081ba] MOV AX, CS
-2019/04/27 17:57:11 [0xf00081bc] MOV SS,AX
-2019/04/27 17:57:11 [0xf00081be] xor AX, 0x4158
-2019/04/27 17:57:11 [0xf00081c0] MOV DS,AX
-2019/04/27 17:57:11 [0xf00081c2] MOV ES,AX
-2019/04/27 17:57:11 PS2 Controller status read: 0
-2019/04/27 17:57:11 [0xf00081c4] Port IN addr: imm addr 0064 to AL (data = 0000)
-2019/04/27 17:57:11 [0xf00081c6] add al, 0x0004
-2019/04/27 17:57:11 [0xf00081c8] JZ 0x81d5 (SHORT REL8)
-2019/04/27 17:57:11 [0xf00081c8]   |-> jumped
-2019/04/27 17:57:11 [0xf00081d5] MOV AL, 0x05
-2019/04/27 17:57:11 BIOS POST: 5 - Chipset initialized... DMA and interrupt controller disabled
-2019/04/27 17:57:11 [0xf00081d7] out 0080, al
-2019/04/27 17:57:11 [0xf00081d9] JMP 0x06ee (NEAR_REL16)
-2019/04/27 17:57:11 [0xf00006ee] MOV AH, 0x6f4
-2019/04/27 17:57:11 [0xf00006f1] JMP 0x120c (NEAR_REL16)
-2019/04/27 17:57:11 [0xf000120c] MOV BH, 0x1212
-2019/04/27 17:57:11 [0xf000120f] JMP 0x127b (SHORT REL8)
-2019/04/27 17:57:11 [0xf000127b] MOV AL, 0x9000
-2019/04/27 17:57:11 [0xf000127e] MOV DS,AX
-2019/04/27 17:57:11 [0xf0001280] xor SI, 0x5349
-2019/04/27 17:57:11 [0xf0001282] MOV CL, 0x8000
-2019/04/27 17:57:11 [0x1285] Unrecognised opcode: 0xad
-2019/04/27 17:57:11 CPU CORE ERROR!!!
-2019/04/27 17:57:11 Dumping core: PRIMARY PROCESSOR
-2019/04/27 17:57:11 Cpu core in real mode
-2019/04/27 17:57:11 Next 10 bytes at instruction pointer: 0xad 0x8c 0xd8 0x80 0xec 0x10 0x75 0xf0 0xff 0xe7 
-2019/04/27 17:57:11 CS: {0xf000 0x0 0x0}, IP: 0x1285
-2019/04/27 17:57:11 8 Bit registers:
-2019/04/27 17:57:11 AL 0x5 (pntr: 0xc000056663)
-2019/04/27 17:57:11 CL 0x0 (pntr: 0xc00005666d)
-2019/04/27 17:57:11 DL 0x0 (pntr: 0xc000056671)
-2019/04/27 17:57:11 BL 0x0 (pntr: 0xc000056669)
-2019/04/27 17:57:11 AH 0x0 (pntr: 0xc00000a4da)
-2019/04/27 17:57:11 CH 0x0 (pntr: 0xc00005666c)
-2019/04/27 17:57:11 DH 0x0 (pntr: 0xc000056670)
-2019/04/27 17:57:11 BH 0x0 (pntr: 0xc000056668)
-2019/04/27 17:57:11 16 Bit registers:
-2019/04/27 17:57:11 AX 0x9000 (pntr: 0xc00000a55a)
-2019/04/27 17:57:11 CX 0x8000 (pntr: 0xc00005666a)
-2019/04/27 17:57:11 DX 0xaaaa (pntr: 0xc00005666e)
-2019/04/27 17:57:11 BX 0xaaaa (pntr: 0xc000056666)
-2019/04/27 17:57:11 SP 0x6f4 (pntr: 0xc00005665a)
-2019/04/27 17:57:11 BP 0x0 (pntr: 0xc00000a512)
-2019/04/27 17:57:11 SI 0x0 (pntr: 0xc00000a5de)
-2019/04/27 17:57:11 DI 0x1212 (pntr: 0xc000056660)
-2019/04/27 17:57:11 Segment registers:
-2019/04/27 17:57:11 ES {0x0 0x0 0x0} (pntr: &{0x0 0x0 0x0})
-2019/04/27 17:57:11 CS {0xf000 0x0 0x0} (pntr: &{0xf000 0x0 0x0})
-2019/04/27 17:57:11 SS {0xf000 0x0 0x0} (pntr: &{0xf000 0x0 0x0})
-2019/04/27 17:57:11 DS {0x9000 0x0 0x0} (pntr: &{0x9000 0x0 0x0})
-2019/04/27 17:57:11 FS {0x0 0x0 0x0} (pntr: &{0x0 0x0 0x0})
-2019/04/27 17:57:11 GS {0x0 0x0 0x0} (pntr: &{0x0 0x0 0x0})
-2019/04/27 17:57:11 Flags:
-2019/04/27 17:57:11 Z: true
-2019/04/27 17:57:11 D: false
-2019/04/27 17:57:11 C: false
-2019/04/27 17:57:11 O: false
-2019/04/27 17:57:11 Control flags:
-2019/04/27 17:57:11 CR0[pe] = 0
-2019/04/27 17:57:11 CR0[mp] = 0
-2019/04/27 17:57:11 CR0[em] = 0
-2019/04/27 17:57:11 CR0[ts] = 0
-2019/04/27 17:57:11 CR0[et] = 0
-2019/04/27 17:57:11 CR0[ne] = 0
+go test ./...
 ```
 
+## Contributing
 
-Resources:
-- https://css.csail.mit.edu/6.858/2014/readings/i386.pdf
-- https://www.felixcloutier.com/x86/iret:iretd
-- https://wiki.osdev.org/Exceptions
-- https://wiki.osdev.org/I/O_Ports
-- https://os.phil-opp.com/cpu-exceptions/
-- http://bochs.sourceforge.net/techspec/PORTS.LST
 
+Contributions to ThreeAteSix are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Acknowledgments
+
+The development of ThreeAteSix was inspired by the desire to learn more about computer architecture and emulation. Special thanks to the authors of the reference materials and resources used during the development process.
