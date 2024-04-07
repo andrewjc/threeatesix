@@ -1,8 +1,12 @@
 package intel82C54
 
 import (
+	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
+	"github.com/andrewjc/threeatesix/devices/intel8259a"
+
 	"log"
+	"time"
 )
 
 type Intel82C54 struct {
@@ -15,6 +19,8 @@ type Intel82C54 struct {
 	counterAccessMode  [3]uint8
 	counterInitialized [3]bool
 	counterValue       [3]uint16
+
+	previousUpdateTime int64 // used to simulate the 1.19 MHz clock
 }
 
 func NewIntel82C54() *Intel82C54 {
@@ -139,4 +145,43 @@ func (p *Intel82C54) GetBus() *bus.Bus {
 
 func (p *Intel82C54) SetBus(bus *bus.Bus) {
 	p.bus = bus
+}
+
+func (p *Intel82C54) Step() {
+	// Step the PIT counters
+	// ensure this only runs at 1.19318 MHz
+	// 1193180 Hz / 65536 = 18.2065 Hz
+	// 18.2065 Hz / 3 = 6.0688 Hz
+	// 1 / 6.0688 Hz = 0.1648 seconds
+	// 0.1648 seconds * 1000 = 164.8 milliseconds
+	// 164.8 milliseconds * 1000 = 164800 microseconds
+
+	// only run this every 164800 microseconds
+	previousUpdateTime := p.previousUpdateTime
+	currentTime := time.Now().UnixNano() / 1000
+	if currentTime-previousUpdateTime < 164800 {
+		return
+	}
+
+	p.previousUpdateTime = currentTime
+
+	for i := 0; i < 3; i++ {
+		if p.counterInitialized[i] {
+			if p.counterValue[i] == 0 {
+				// Counter has reached zero, generate an interrupt
+				interruptController := p.bus.FindSingleDevice(common.MODULE_MASTER_INTERRUPT_CONTROLLER).(*intel8259a.Intel8259a)
+				interruptController.TriggerInterrupt(uint8(common.IRQ_PIT_COUNTER0 + i))
+
+				// Reload the counter value
+				p.counterValue[i] = p.counterLatch[i]
+
+				log.Printf("PIT Counter %d Interrupt", i)
+
+			} else {
+				// Decrement the counter value
+				p.counterValue[i]--
+			}
+		}
+	}
+
 }

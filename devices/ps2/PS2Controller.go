@@ -67,51 +67,7 @@ func (controller *Ps2Controller) WriteControlPort(value uint8) {
 }
 
 func (controller *Ps2Controller) ReadStatusRegister() uint8 {
-	controller.updateStatusRegister()
 	return controller.statusRegister
-}
-
-func (controller *Ps2Controller) resetStatusRegister(value uint8) error {
-	log.Printf("PS2 controller write status register: [%#04x]", value)
-	controller.statusRegister = value
-
-	// Bit 2: System Flag
-	controller.systemFlag = false
-	if (controller.statusRegister & 0x04) != 0 {
-		controller.systemFlag = true
-	}
-
-	// Bit 3: Command/Data
-	controller.isCommand = false
-	if (controller.statusRegister & 0x08) != 0 {
-		controller.isCommand = true
-	}
-
-	// Bit 4: Keyboard Lock
-	controller.keyboardLocked = false
-	if (controller.statusRegister & 0x10) != 0 {
-		controller.keyboardLocked = true
-	}
-
-	// Bit 5: Auxiliary Output Buffer Full
-	controller.auxiliaryBufferFull = false
-	if (controller.statusRegister & 0x20) != 0 {
-		controller.auxiliaryBufferFull = true
-	}
-
-	// Bit 6: Time-out
-	controller.timeout = false
-	if (controller.statusRegister & 0x40) != 0 {
-		controller.timeout = true
-	}
-
-	// Bit 7: Parity error
-	controller.parityError = false
-	if (controller.statusRegister & 0x80) != 0 {
-		controller.parityError = true
-	}
-
-	return nil
 }
 
 func (controller *Ps2Controller) updateStatusRegister() {
@@ -185,6 +141,7 @@ func (controller *Ps2Controller) WriteCommandRegister(value uint8) {
 			controller.port1_enabled = true
 			controller.EnableDataPortReadyForRead()
 			controller.EnableDataPortReadyForWrite()
+			controller.SendBufferedResponse([]uint8{0x00}) //OK Message
 			return
 		}
 		if value == 0xA7 { // Disable second ps2 port
@@ -286,6 +243,7 @@ func (controller *Ps2Controller) WriteCommandRegister(value uint8) {
 		case 0xFC:
 			// PS2 polling command
 			controller.sendDeviceCommand(0, value)
+
 		case 0xFE:
 			// Resend command
 			controller.sendDeviceCommand(0, value)
@@ -305,6 +263,13 @@ func (controller *Ps2Controller) WriteCommandRegister(value uint8) {
 func (controller *Ps2Controller) sendDeviceCommand(port uint8, command uint8) {
 	switch port {
 	case 0:
+		if command == 0xFC {
+			// PS2 polling command
+			// Send command to device connected to PS2 PORT 0
+			controller.sendDataToDevice(0, command)
+			return
+		}
+
 		if controller.port1_enabled {
 			// Send command to device connected to PS2 PORT 0
 			controller.sendDataToDevice(0, command)
@@ -324,8 +289,57 @@ func (controller *Ps2Controller) sendDataToDevice(port uint8, data uint8) {
 	case 0:
 		// Send data to device connected to PS2 PORT 0
 		// Implement the logic to send data to the connected device
-		log.Printf("Sending data to PS2 PORT 0: [%#04x]", data)
-		os.Exit(0)
+		//log.Printf("Sending data to PS2 PORT 0: [%#04x]", data)
+
+		// Send the data to the device
+		switch data {
+		case 0xED:
+			// Set/Reset LEDs command
+			controller.SendBufferedResponse([]uint8{0xFA}) // Command Acknowledged
+		case 0xEE:
+			// Echo command
+			controller.SendBufferedResponse([]uint8{0xEE}) // Echo
+		case 0xF0:
+			// Set/Reset Typematic Delay and Rate command
+			controller.SendBufferedResponse([]uint8{0xFA}) // Command Acknowledged
+		case 0xF2:
+			// Read ID command
+			controller.SendBufferedResponse([]uint8{0xAB, 0x83}) // Keyboard ID
+		case 0xF3:
+			// Set Typematic Delay and Rate command
+			controller.SendBufferedResponse([]uint8{0xFA}) // Command Acknowledged
+		case 0xF4:
+			// Enable Scanning command
+			controller.SendBufferedResponse([]uint8{0xFA}) // Command Acknowledged
+		case 0xF5:
+			// Disable Scanning command
+			controller.SendBufferedResponse([]uint8{0xFA}) // Command Acknowledged
+		case 0xF6:
+			// Set Default Typematic Delay and Rate command
+			controller.SendBufferedResponse([]uint8{0xFA}) // Command Acknowledged
+		case 0xFC:
+			// PS2 polling command
+			controller.SendBufferedResponse([]uint8{0xFA}) // Command Acknowledged
+
+			// Send the data to the device
+			controller.SendBufferedResponse([]uint8{0x00}) // No data
+
+			// Send the data to the device
+			controller.SendBufferedResponse([]uint8{0x00}) // No data
+		case 0xFE:
+			// Resend command
+			controller.SendBufferedResponse([]uint8{0xFE}) // Resend
+		case 0xFD:
+			// Reset command
+			controller.SendBufferedResponse([]uint8{0xFA}) // Command Acknowledged
+		case 0xFF:
+			// Reset and Self-Test command
+			controller.SendBufferedResponse([]uint8{0xAA}) // Self-Test Passed
+		default:
+			log.Printf("Unknown PS2 Port Output Data: [%#04x]", data)
+			os.Exit(0)
+		}
+
 	case 1:
 		// Send data to device connected to PS2 PORT 1
 		// Implement the logic to send data to the connected device

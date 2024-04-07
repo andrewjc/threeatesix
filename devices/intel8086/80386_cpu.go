@@ -439,3 +439,41 @@ func (cpuCore *CpuCore) logInstruction(logMessage string) {
 
 	cpuCore.bus.SendMessageToAll(common.MODULE_DEBUG_MONITOR, bus.BusMessage{Subject: common.MESSAGE_GLOBAL_CPU_INSTRUCTION_LOG, Data: logMessageBytes})
 }
+
+func (core *CpuCore) AcknowledgeInterrupt() uint8 {
+	// Read the interrupt vector from the PIC
+	interruptVector := core.ioPortAccessController.ReadAddr8(0x20)
+
+	return interruptVector
+
+}
+
+func (core *CpuCore) HandleInterrupt(vector uint8) {
+	// Push the current flags and CS:IP onto the stack
+	err := stackPush16(core, core.registers.CS.base)
+	if err != nil {
+		return
+	}
+	err = stackPush16(core, core.registers.IP)
+	if err != nil {
+		return
+	}
+	err = stackPush16(core, core.registers.FLAGS)
+	if err != nil {
+		return
+	}
+
+	// Set the necessary flags
+	core.registers.SetFlag(InterruptFlag, true)
+	core.registers.SetFlag(TrapFlag, false)
+
+	// Set the CS:IP to the interrupt vector
+	core.registers.CS.base, _ = core.memoryAccessController.ReadAddr16(uint32(vector * 4))
+	core.registers.IP, _ = core.memoryAccessController.ReadAddr16(uint32(vector*4 + 2))
+
+	// Send a message to the debug monitor
+	core.logInstruction(fmt.Sprintf("Interrupt %d handled", vector))
+
+	// Clear the interrupt request
+	core.ioPortAccessController.WriteAddr8(0x20, 0x20)
+}

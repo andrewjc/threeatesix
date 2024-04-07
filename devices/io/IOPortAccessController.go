@@ -31,12 +31,7 @@ type IOPortAccessController struct {
 
 func CreateIOPortController() *IOPortAccessController {
 	return &IOPortAccessController{
-		cmosRegisterData:                 make([]byte, 0x10000),
-		highIntegrationInterfaceDevice:   intel82335.NewIntel82335(),
-		programmableInterruptController1: intel8259a.NewIntel8259a(),
-		programmableInterruptController2: intel8259a.NewIntel8259a(),
-		programmableIntervalTimer:        intel82C54.NewIntel82C54(),
-		cgaController:                    cga.NewMotorola6845(),
+		cmosRegisterData: make([]byte, 0x10000),
 	}
 }
 
@@ -169,13 +164,13 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 		return
 	}
 
-	if port_addr == 0x20 || port_addr == 0x21 {
-		r.programmableInterruptController1.CommandWordWrite(value)
+	if port_addr == 0x20 || port_addr == 0xA0 {
+		r.programmableInterruptController1.DataWrite(value)
 		return
 	}
 
-	if port_addr == 0xA0 || port_addr == 0xA1 {
-		r.programmableInterruptController2.CommandWordWrite(value)
+	if port_addr == 0x21 || port_addr == 0xA1 {
+		r.programmableInterruptController2.DataWrite(value)
 		return
 	}
 
@@ -216,5 +211,4 @@ func (controller *IOPortAccessController) GetBus() *bus.Bus {
 
 func (controller *IOPortAccessController) SetBus(bus *bus.Bus) {
 	controller.bus = bus
-	controller.highIntegrationInterfaceDevice.SetBus(bus)
 }
