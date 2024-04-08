@@ -68,8 +68,22 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 		return r.cmosRegisterData[r.cmosRegisterSelect]
 	}
 
-	if addr == 0xe3 || addr == 0xe4 {
-		return 0
+	if addr == 0xe3 {
+		// 8237 DMA controller
+		return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ReadTemporaryRegister()
+	}
+	if addr == 0xe4 {
+		// 8237 DMA controller
+		return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ReadStatusRegister()
+	}
+
+	if addr == 0x00D3 {
+		// 8237 DMA controller
+		return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).ReadTemporaryRegister()
+	}
+	if addr == 0x00D0 {
+		// 8237 DMA controller
+		return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).ReadStatusRegister()
 	}
 
 	log.Fatalf("Unhandled IO port read: PORT=[%#04x]", addr)
