@@ -8,6 +8,7 @@ import (
 )
 
 type HardwareMonitor struct {
+	bus                *bus.Bus
 	busId              uint32
 	logCpuInstructions bool
 	instructionLog     []string
@@ -23,8 +24,16 @@ func NewHardwareMonitor() *HardwareMonitor {
 	return device
 }
 
+func (device *HardwareMonitor) GetDeviceBusId() uint32 {
+	return device.busId
+}
+
 func (device *HardwareMonitor) SetDeviceBusId(id uint32) {
 	device.busId = id
+}
+
+func (device *HardwareMonitor) SetBus(bus *bus.Bus) {
+	device.bus = bus
 }
 
 func (device *HardwareMonitor) OnReceiveMessage(message bus.BusMessage) {

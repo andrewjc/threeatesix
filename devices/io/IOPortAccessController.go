@@ -5,6 +5,7 @@ import (
 	"github.com/andrewjc/threeatesix/devices/bus"
 	"github.com/andrewjc/threeatesix/devices/cga"
 	"github.com/andrewjc/threeatesix/devices/intel82335"
+	"github.com/andrewjc/threeatesix/devices/intel8237"
 	"github.com/andrewjc/threeatesix/devices/intel8259a"
 	"github.com/andrewjc/threeatesix/devices/intel82C54"
 	"github.com/andrewjc/threeatesix/devices/ps2"
@@ -17,16 +18,10 @@ import (
 */
 
 type IOPortAccessController struct {
-	bus                              *bus.Bus
-	busId                            uint32
-	highIntegrationInterfaceDevice   *intel82335.Intel82335
-	programmableInterruptController1 *intel8259a.Intel8259a
-	programmableInterruptController2 *intel8259a.Intel8259a
-	programmableIntervalTimer        *intel82C54.Intel82C54
-	cmosRegisterSelect               uint8
-	cmosRegisterData                 []uint8
-
-	cgaController *cga.Motorola6845
+	bus                *bus.Bus
+	busId              uint32
+	cmosRegisterSelect uint8
+	cmosRegisterData   []uint8
 }
 
 func CreateIOPortController() *IOPortAccessController {
@@ -58,13 +53,14 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 
 	if addr == 0x0042 {
 		// Read from IO port 0x0042
-		return r.programmableIntervalTimer.ReadCounter0()
+		return r.GetBus().FindSingleDevice(common.MODULE_PIT).(*intel82C54.Intel82C54).ReadCounter0()
 	}
 
 	if addr == 0x24 {
 		// RC1 roll compare register???
 		//log.Printf("RC1 roll compare register read")
-		return r.highIntegrationInterfaceDevice.Rc1RegisterRead()
+		sr := r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).Rc1RegisterRead()
+		return sr
 	}
 
 	if addr == 0x71 {
@@ -85,7 +81,11 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 
 	if port_addr == 0x00F1 {
 		// 80287 math coprocessor
-		r.GetBus().SendMessageSingle(common.MODULE_MATH_CO_PROCESSOR, bus.BusMessage{common.MESSAGE_REQUEST_CPU_MODESWITCH, []byte{common.REAL_MODE}})
+		err := r.GetBus().SendMessageSingle(common.MODULE_MATH_CO_PROCESSOR, bus.BusMessage{Subject: common.MESSAGE_REQUEST_CPU_MODESWITCH, Data: []byte{common.REAL_MODE}})
+		if err != nil {
+			log.Fatalf("Failed to send message to math coprocessor: %s", err)
+			return
+		}
 		return
 	}
 
@@ -115,14 +115,20 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 
 	if port_addr == 0x22 {
 		// MCR register setup
-		r.highIntegrationInterfaceDevice.McrRegisterInitialize(value)
+		r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).McrRegisterInitialize(value)
 		return
 	}
 
 	if port_addr == 0x24 {
 		// RC1 roll compare register???
 		//log.Printf("RC1 roll compare register write")
-		r.highIntegrationInterfaceDevice.Rc1RegisterWrite(value)
+		r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).Rc1RegisterWrite(value)
+		return
+	}
+
+	if port_addr == 0x26 {
+		// DMA command register write
+		r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).DmaCommandRegisterWrite(value)
 		return
 	}
 
@@ -143,52 +149,155 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 		// A20 Gate
 		// log.Printf("A20 GATE: %#02x", value)
 		if value == 0x00 {
-			r.GetBus().SendMessageSingle(common.MODULE_MEMORY_ACCESS_CONTROLLER, bus.BusMessage{common.MESSAGE_DISABLE_A20_GATE, []byte{value}})
+			err := r.GetBus().SendMessageSingle(common.MODULE_MEMORY_ACCESS_CONTROLLER, bus.BusMessage{Subject: common.MESSAGE_DISABLE_A20_GATE, Data: []byte{value}})
+			if err != nil {
+				log.Fatalf("Failed to send message to memory access controller: %s", err)
+				return
+			}
 		} else {
-			r.GetBus().SendMessageSingle(common.MODULE_MEMORY_ACCESS_CONTROLLER, bus.BusMessage{common.MESSAGE_ENABLE_A20_GATE, []byte{value}})
+			err := r.GetBus().SendMessageSingle(common.MODULE_MEMORY_ACCESS_CONTROLLER, bus.BusMessage{Subject: common.MESSAGE_ENABLE_A20_GATE, Data: []byte{value}})
+			if err != nil {
+				log.Fatalf("Failed to send message to memory access controller: %s", err)
+				return
+			}
 		}
 
 		return
 	}
 
-	if port_addr == 0x8 {
-		// DMA command register write
-		log.Printf("DMA COMMAND REGISTER WRITE: %#02x", value)
-		r.highIntegrationInterfaceDevice.DmaCommandRegisterWrite(value)
+	if port_addr == 0x08 {
+		// Write command register to DMA controller
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).WriteCommandRegister(value)
 		return
 	}
 
-	if port_addr == 0xd0 {
-		log.Printf("Interrupt Request Level Priority Controller Configuration: %#02x", value)
-		r.programmableInterruptController2.SetInterruptRequest(value)
+	if port_addr == 0x09 {
+		// Write request register to DMA controller
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).WriteRequestRegister(value)
+		return
+	}
+
+	if port_addr == 0x0A {
+		// Write single mask register to DMA controller
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).WriteSingleMaskRegister(value)
+		return
+	}
+
+	if port_addr == 0x0B {
+		// Write mode register to DMA controller
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).WriteModeRegister(value)
+		return
+	}
+
+	if port_addr == 0x0C {
+		// Clear byte pointer flip-flop in DMA controller
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ClearBytePointerFlipFlop()
+		return
+	}
+
+	if port_addr == 0x0D {
+		// Read temporary register from DMA controller
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ReadTemporaryRegister()
+		return
+	}
+
+	if port_addr == 0x0D {
+		// Master clear DMA controller
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).MasterClear()
+		return
+	}
+
+	if port_addr == 0x0E {
+		// Clear mask register in DMA controller
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ClearMaskRegister()
+		return
+	}
+
+	if port_addr == 0x0F {
+		// Write mask register to DMA controller
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).WriteMaskRegister(value)
+		return
+	}
+
+	if port_addr == 0x00D0 {
+		// Write command register to DMA controller (channels 4-7)
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).WriteCommandRegister(value)
+		return
+	}
+
+	if port_addr == 0x00D2 {
+		// Write request register to DMA controller (channels 4-7)
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).WriteRequestRegister(value)
+		return
+	}
+
+	if port_addr == 0x00D4 {
+		// Write single mask register to DMA controller (channels 4-7)
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).WriteSingleMaskRegister(value)
+		return
+	}
+
+	if port_addr == 0x00D6 {
+		// Write mode register to DMA controller (channels 4-7)
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).WriteModeRegister(value)
+		return
+	}
+
+	if port_addr == 0x00D8 {
+		// Clear byte pointer flip-flop in DMA controller (channels 4-7)
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).ClearBytePointerFlipFlop()
+		return
+	}
+
+	if port_addr == 0x00DA {
+		// Read temporary register from DMA controller (channels 4-7)
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).ReadTemporaryRegister()
+		return
+	}
+
+	if port_addr == 0x00DA {
+		// Master clear DMA controller (channels 4-7)
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).MasterClear()
+		return
+	}
+
+	if port_addr == 0x00DC {
+		// Clear mask register in DMA controller (channels 4-7)
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).ClearMaskRegister()
+		return
+	}
+
+	if port_addr == 0x00DE {
+		// Write mask register to DMA controller (channels 4-7)
+		r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).WriteMaskRegister(value)
 		return
 	}
 
 	if port_addr == 0x20 || port_addr == 0xA0 {
-		r.programmableInterruptController1.DataWrite(value)
+		r.GetBus().FindSingleDevice(common.MODULE_INTERRUPT_CONTROLLER_1).(*intel8259a.Intel8259a).DataWrite(value)
 		return
 	}
 
 	if port_addr == 0x21 || port_addr == 0xA1 {
-		r.programmableInterruptController2.DataWrite(value)
+		r.GetBus().FindSingleDevice(common.MODULE_INTERRUPT_CONTROLLER_2).(*intel8259a.Intel8259a).DataWrite(value)
 		return
 	}
 
 	if port_addr == 0x03d8 {
 		// CGA
-		r.cgaController.WriteAddr8(port_addr, value)
+		r.GetBus().FindSingleDevice(common.MODULE_CGA).(*cga.Motorola6845).WriteAddr8(port_addr, value)
 		return
 	}
 
 	if port_addr == 0x0042 {
 		// Write to IO port 0x0042
-		r.programmableIntervalTimer.WriteCounter0(value)
+		r.GetBus().FindSingleDevice(common.MODULE_PIT).(*intel82C54.Intel82C54).WriteCounter0(value)
 		return
 	}
 
 	if port_addr == 0x0043 {
 		// PIT
-		r.programmableIntervalTimer.CommandRegisterWrite(value)
+		r.GetBus().FindSingleDevice(common.MODULE_PIT).(*intel82C54.Intel82C54).CommandRegisterWrite(value)
 		return
 	}
 

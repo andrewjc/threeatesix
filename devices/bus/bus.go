@@ -1,4 +1,5 @@
 package bus
+
 import (
 	"container/list"
 	"github.com/google/uuid"
@@ -13,12 +14,13 @@ type Bus struct {
 
 type BusMessage struct {
 	Subject uint32
-	Data []byte
+	Data    []byte
 }
 
 type BusDevice interface {
 	SetDeviceBusId(id uint32)
 	OnReceiveMessage(message BusMessage)
+	SetBus(bus *Bus)
 }
 
 func NewDeviceBus() *Bus {
@@ -37,6 +39,7 @@ func (bus *Bus) RegisterDevice(device BusDevice, deviceType DeviceType) {
 
 	deviceList := bus.deviceMap[deviceType]
 	device.SetDeviceBusId(getRandomUUID())
+	device.SetBus(bus)
 
 	deviceList.PushBack(device)
 }

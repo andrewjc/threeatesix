@@ -169,7 +169,7 @@ func (p *Intel82C54) Step() {
 		if p.counterInitialized[i] {
 			if p.counterValue[i] == 0 {
 				// Counter has reached zero, generate an interrupt
-				interruptController := p.bus.FindSingleDevice(common.MODULE_MASTER_INTERRUPT_CONTROLLER).(*intel8259a.Intel8259a)
+				interruptController := p.bus.FindSingleDevice(common.MODULE_INTERRUPT_CONTROLLER_1).(*intel8259a.Intel8259a)
 				interruptController.TriggerInterrupt(uint8(common.IRQ_PIT_COUNTER0 + i))
 
 				// Reload the counter value

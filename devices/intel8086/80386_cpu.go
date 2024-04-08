@@ -69,8 +69,8 @@ func New80386CPU() *CpuCore {
 }
 
 type CpuCore struct {
-	partId                 uint8
 	bus                    *bus.Bus
+	partId                 uint8
 	memoryAccessController *memmap.MemoryAccessController
 	ioPortAccessController *io.IOPortAccessController
 
@@ -100,8 +100,16 @@ type CpuExecutionFlags struct {
 	RepPrefixEnabled      bool
 }
 
+func (device *CpuCore) GetDeviceBusId() uint32 {
+	return device.busId
+}
+
 func (device *CpuCore) SetDeviceBusId(id uint32) {
 	device.busId = id
+}
+
+func (device *CpuCore) SetBus(bus *bus.Bus) {
+	device.bus = bus
 }
 
 func (device *CpuCore) OnReceiveMessage(message bus.BusMessage) {

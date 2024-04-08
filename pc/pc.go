@@ -8,6 +8,7 @@ import (
 	"github.com/andrewjc/threeatesix/devices/hid/kb"
 	"github.com/andrewjc/threeatesix/devices/intel8086"
 	"github.com/andrewjc/threeatesix/devices/intel82335"
+	"github.com/andrewjc/threeatesix/devices/intel8237"
 	"github.com/andrewjc/threeatesix/devices/intel8259a"
 	"github.com/andrewjc/threeatesix/devices/intel82C54"
 	"github.com/andrewjc/threeatesix/devices/io"
@@ -44,6 +45,8 @@ type PersonalComputer struct {
 	hardwareMonitor                *monitor.HardwareMonitor
 	cgaController                  *cga.Motorola6845
 	highIntegrationInterfaceDevice *intel82335.Intel82335
+	dmaController                  *intel8237.Intel8237
+	dmaController2                 *intel8237.Intel8237
 }
 
 // BiosFilename - name of the bios image the virtual machine will boot up
@@ -66,7 +69,7 @@ func (pc *PersonalComputer) Power() {
 		} //loop until instruction pointer equals 0
 
 		pc.cpu.Step()
-		pc.mathCoProcessor.Step()
+		//pc.mathCoProcessor.Step()
 		pc.programmableIntervalTimer.Step()
 
 		if pc.programmableInterruptController1.HasPendingInterrupts() {
@@ -89,6 +92,8 @@ func NewPc() *PersonalComputer {
 	pc.programmableInterruptController2 = intel8259a.NewIntel8259a() //pic2
 	pc.programmableIntervalTimer = intel82C54.NewIntel82C54()        //pit
 	pc.highIntegrationInterfaceDevice = intel82335.NewIntel82335()   //hiid
+	pc.dmaController = intel8237.NewIntel8237()                      //dma
+	pc.dmaController2 = intel8237.NewIntel8237()                     //dma2
 	pc.cgaController = cga.NewMotorola6845()
 
 	pc.memController = memmap.CreateMemoryController(&pc.ram, &pc.rom.bios)
@@ -96,7 +101,6 @@ func NewPc() *PersonalComputer {
 	pc.ioPortController = io.CreateIOPortController()
 
 	pc.memController.SetBus(pc.bus)
-
 	pc.ioPortController.SetBus(pc.bus)
 
 	pc.ps2Controller = ps2.CreatePS2Controller()
@@ -108,8 +112,13 @@ func NewPc() *PersonalComputer {
 
 	pc.bus.RegisterDevice(pc.cpu, common.MODULE_PRIMARY_PROCESSOR)
 	pc.bus.RegisterDevice(pc.mathCoProcessor, common.MODULE_MATH_CO_PROCESSOR)
-	pc.bus.RegisterDevice(pc.programmableInterruptController1, common.MODULE_MASTER_INTERRUPT_CONTROLLER)
-	pc.bus.RegisterDevice(pc.programmableInterruptController2, common.MODULE_SLAVE_INTERRUPT_CONTROLLER)
+	pc.bus.RegisterDevice(pc.programmableInterruptController1, common.MODULE_INTERRUPT_CONTROLLER_1)
+	pc.bus.RegisterDevice(pc.programmableInterruptController2, common.MODULE_INTERRUPT_CONTROLLER_2)
+	pc.bus.RegisterDevice(pc.programmableIntervalTimer, common.MODULE_PIT)
+	pc.bus.RegisterDevice(pc.highIntegrationInterfaceDevice, common.MODULE_INTEL_82335)
+	pc.bus.RegisterDevice(pc.cgaController, common.MODULE_CGA)
+	pc.bus.RegisterDevice(pc.dmaController, common.MODULE_DMA_CONTROLLER)
+	pc.bus.RegisterDevice(pc.dmaController2, common.MODULE_DMA_CONTROLLER_2)
 
 	pc.bus.RegisterDevice(pc.memController, common.MODULE_MEMORY_ACCESS_CONTROLLER)
 	pc.bus.RegisterDevice(pc.ioPortController, common.MODULE_IO_PORT_ACCESS_CONTROLLER)
