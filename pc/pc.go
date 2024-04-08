@@ -100,10 +100,14 @@ func NewPc() *PersonalComputer {
 
 	pc.programmableInterruptController1 = intel8259a.NewIntel8259a() //pic1
 	pc.programmableInterruptController2 = intel8259a.NewIntel8259a() //pic2
-	pc.programmableIntervalTimer = intel82C54.NewIntel82C54()        //pit
-	pc.highIntegrationInterfaceDevice = intel82335.NewIntel82335()   //hiid
-	pc.dmaController = intel8237.NewIntel8237()                      //dma
-	pc.dmaController2 = intel8237.NewIntel8237()                     //dma2
+
+	pc.programmableIntervalTimer = intel82C54.NewIntel82C54()      //pit
+	pc.highIntegrationInterfaceDevice = intel82335.NewIntel82335() //hiid
+	pc.dmaController = intel8237.NewIntel8237()                    //dma
+	pc.dmaController2 = intel8237.NewIntel8237()                   //dma2
+	pc.dmaController.IsPrimaryDevice(true)
+	pc.dmaController2.IsSecondaryDevice(true)
+
 	pc.cgaController = cga.NewMotorola6845()
 
 	pc.memController = memmap.NewMemoryController(&pc.ram, &pc.rom.bios)

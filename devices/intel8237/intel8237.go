@@ -16,6 +16,9 @@ type Intel8237 struct {
 	bus   *bus.Bus
 	busId uint32
 
+	isPrimaryDevice   bool
+	isSecondaryDevice bool
+
 	addressRegisters  [4]uint16 // Address registers for each DMA channel
 	countRegisters    [4]uint16 // Count registers for each DMA channel
 	statusRegister    uint8     // Status register
@@ -40,12 +43,31 @@ func (d *Intel8237) OnReceiveMessage(message bus.BusMessage) {
 }
 
 func (d *Intel8237) GetPortMap() *bus.DevicePortMap {
-	return nil
+	return &bus.DevicePortMap{
+		ReadPorts: []uint16{0xe3, 0xe4},
+	}
 }
 
 func (d *Intel8237) ReadAddr8(addr uint16) uint8 {
-	//TODO implement me
-	panic("implement me")
+	if d.isPrimaryDevice && addr == 0xe3 {
+		// 8237 DMA controller
+		return d.ReadTemporaryRegister()
+	}
+	if d.isPrimaryDevice && addr == 0xe4 {
+		// 8237 DMA controller
+		return d.ReadStatusRegister()
+	}
+
+	if d.isSecondaryDevice && addr == 0x00D3 {
+		// 8237 DMA controller
+		return d.ReadTemporaryRegister()
+	}
+	if d.isSecondaryDevice && addr == 0x00D0 {
+		// 8237 DMA controller
+		return d.ReadStatusRegister()
+	}
+
+	return 0
 }
 
 func (d *Intel8237) ReadStatusRegister() uint8 {
@@ -347,4 +369,14 @@ func (d *Intel8237) HandleDMATransfer(channel uint8) {
 		d.requestRegister &= ^(1 << channel)
 		d.statusRegister &= ^(1 << channel)
 	}
+}
+
+func (d *Intel8237) IsPrimaryDevice(isPrimaryDevice bool) {
+	d.isPrimaryDevice = isPrimaryDevice
+	d.isSecondaryDevice = false
+}
+
+func (d *Intel8237) IsSecondaryDevice(isSecondaryDevice bool) {
+	d.isPrimaryDevice = false
+	d.isSecondaryDevice = isSecondaryDevice
 }
