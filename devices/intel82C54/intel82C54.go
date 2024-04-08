@@ -35,6 +35,15 @@ func (p *Intel82C54) OnReceiveMessage(message bus.BusMessage) {
 	// Handle bus messages if needed
 }
 
+func (p *Intel82C54) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
+func (p *Intel82C54) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (p *Intel82C54) CommandRegisterWrite(value uint8) {
 	p.commandRegister = value
 

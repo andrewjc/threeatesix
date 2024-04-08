@@ -5,18 +5,15 @@ type ModRm struct {
 	reg uint8
 	rm  uint8
 
-	sib uint8
-	base   uint8
-	index   uint8
-	scale   uint8
-
+	sib   uint8
+	base  uint8
+	index uint8
+	scale uint8
 
 	disp8  uint8
 	disp16 uint16
 	disp32 uint32
-
 }
-
 
 func (core *CpuCore) consumeModRm() (ModRm, uint32, error) {
 
@@ -25,8 +22,10 @@ func (core *CpuCore) consumeModRm() (ModRm, uint32, error) {
 	var modrmByte uint8
 	m := ModRm{}
 
-	modrmByte, err = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
-	if err != nil { goto eof }
+	modrmByte, err = core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr))
+	if err != nil {
+		goto eof
+	}
 
 	bytesConsumed++
 
@@ -34,43 +33,52 @@ func (core *CpuCore) consumeModRm() (ModRm, uint32, error) {
 	m.reg = (modrmByte >> 3) & 0x07
 	m.rm = modrmByte & 0x07
 
-	if core.registers.CR0 >> 0 & 1 == 0 {
+	if core.registers.CR0>>0&1 == 0 {
 		// real mode
 		if m.mod == 1 {
-			var u8, err = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr+bytesConsumed))
-			if err != nil { goto eof }
+			var u8, err = core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr + bytesConsumed))
+			if err != nil {
+				goto eof
+			}
 			m.disp8 = u8
 			bytesConsumed++
 		} else if (m.mod == 0 && m.rm == 6) || m.mod == 2 {
-			var u16, err = core.memoryAccessController.ReadAddr16(core.currentByteAddr+bytesConsumed)
-			if err != nil { goto eof }
+			var u16, err = core.memoryAccessController.ReadMemoryAddr16(core.currentByteAddr + bytesConsumed)
+			if err != nil {
+				goto eof
+			}
 			m.disp16 = u16
 			bytesConsumed += 2
 		}
 	} else {
 		// protected mode
 		if m.mod != 3 && m.rm == 4 {
-			var u8, err = core.memoryAccessController.ReadAddr8(core.currentByteAddr+bytesConsumed)
-			if err != nil { goto eof }
+			var u8, err = core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr + bytesConsumed)
+			if err != nil {
+				goto eof
+			}
 			m.sib = u8
 			bytesConsumed++
 		}
 
 		if (m.mod == 0 && m.rm == 5) || m.mod == 2 {
-			var u32, err = core.memoryAccessController.ReadAddr32(core.currentByteAddr+bytesConsumed)
-			if err != nil { goto eof }
+			var u32, err = core.memoryAccessController.ReadMemoryAddr32(core.currentByteAddr + bytesConsumed)
+			if err != nil {
+				goto eof
+			}
 			m.disp32 = u32
 			bytesConsumed += 4
 		} else if m.mod == 1 {
-			var u8, err = core.memoryAccessController.ReadAddr8(core.currentByteAddr+bytesConsumed)
-			if err != nil { goto eof }
+			var u8, err = core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr + bytesConsumed)
+			if err != nil {
+				goto eof
+			}
 			m.disp8 = u8
 			bytesConsumed++
 		}
 	}
 
-
-	eof:
+eof:
 	return m, bytesConsumed, err
 }
 
@@ -112,7 +120,6 @@ func (m *ModRm) getAddressMode16(core *CpuCore) uint16 {
 	}
 	return uint16(0)
 }
-
 
 func (m *ModRm) getAddressMode32(core *CpuCore) uint32 {
 	if m.mod == 0 {
@@ -157,7 +164,7 @@ func (m *ModRm) getAddressMode32(core *CpuCore) uint32 {
 func (m *ModRm) regFromSib(core *CpuCore) uint32 {
 
 	// decode sip byte
-	m.sib, _ = core.memoryAccessController.ReadAddr8(core.currentByteAddr)
+	m.sib, _ = core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr)
 	if m.mod < 3 && m.rm == 4 {
 		m.base = uint8(m.sib & 0x7)
 		m.index = uint8((m.sib >> 3) & 0x7)

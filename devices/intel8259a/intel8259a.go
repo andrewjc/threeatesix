@@ -56,6 +56,15 @@ func (device *Intel8259a) OnReceiveMessage(message bus.BusMessage) {
 	// Handle bus messages if needed
 }
 
+func (device *Intel8259a) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
+func (device *Intel8259a) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (device *Intel8259a) SetInterruptRequest(irq uint8) {
 	// Set the specified interrupt request bit in the request IRR
 	interruptRequestBit := uint8(1 << irq)
@@ -123,7 +132,11 @@ func (device *Intel8259a) triggerInterrupt(irq uint8) {
 			Sender:  device.busId,
 			Data:    []byte{device.interruptVector},
 		}
-		device.bus.SendMessage(interruptMessage)
+		err := device.bus.SendMessageSingle(common.MODULE_PRIMARY_PROCESSOR, interruptMessage)
+		if err != nil {
+			log.Printf("Error sending interrupt acknowledge message: %v", err)
+			return
+		}
 	}
 
 	device.log("8259A: Triggering interrupt IRQ %d with vector 0x%02X", irq, device.interruptVector)

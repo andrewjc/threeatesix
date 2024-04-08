@@ -24,7 +24,7 @@ func INSTR_LODS(core *CpuCore) {
 		case 0xAC:
 			{
 				operStr = "LODSB"
-				m8, err := core.memoryAccessController.ReadAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, uint16(core.registers.SI)))
+				m8, err := core.memoryAccessController.ReadMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, uint16(core.registers.SI)))
 				if err != nil {
 					goto eof
 				}
@@ -39,7 +39,7 @@ func INSTR_LODS(core *CpuCore) {
 			{
 				operStr = "LODSW"
 				//log.Printf("Reading from %#04x", core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
-				m8, err := core.memoryAccessController.ReadAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, uint16(core.registers.SI)))
+				m8, err := core.memoryAccessController.ReadMemoryAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, uint16(core.registers.SI)))
 				if err != nil {
 					goto eof
 				}
@@ -73,7 +73,7 @@ func INSTR_STOSD(core *CpuCore) {
 		// Execute the operation for the number of times specified in the CX register
 		for core.registers.CX > 0 {
 			// Perform the STOSD operation
-			core.memoryAccessController.WriteAddr32(core.SegmentAddressToLinearAddress32(core.registers.ES, core.registers.EDI), core.registers.EAX)
+			core.memoryAccessController.WriteMemoryAddr32(core.SegmentAddressToLinearAddress32(core.registers.ES, core.registers.EDI), core.registers.EAX)
 
 			// Update the DI register depending on the direction flag
 			if core.registers.GetFlag(DirectionFlag) {
@@ -90,7 +90,7 @@ func INSTR_STOSD(core *CpuCore) {
 
 	} else {
 		// No repetition prefix, just perform the STOSD operation once
-		core.memoryAccessController.WriteAddr32(core.SegmentAddressToLinearAddress32(core.registers.ES, core.registers.EDI), core.registers.EAX)
+		core.memoryAccessController.WriteMemoryAddr32(core.SegmentAddressToLinearAddress32(core.registers.ES, core.registers.EDI), core.registers.EAX)
 
 		// Update the DI register depending on the direction flag
 		if core.registers.GetFlag(DirectionFlag) {

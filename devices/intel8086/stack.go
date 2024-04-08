@@ -7,18 +7,18 @@ import (
 
 func stackPush8(core *CpuCore, val uint8) error {
 	core.registers.SP = core.registers.SP - 1
-	err := core.memoryAccessController.WriteAddr8(uint32(core.registers.SP), val)
+	err := core.memoryAccessController.WriteMemoryAddr8(uint32(core.registers.SP), val)
 	return err
 }
 
 func stackPush16(core *CpuCore, val uint16) error {
 	core.registers.SP = core.registers.SP - 2
-	err := core.memoryAccessController.WriteAddr16(uint32(core.registers.SP), val)
+	err := core.memoryAccessController.WriteMemoryAddr16(uint32(core.registers.SP), val)
 	return err
 }
 
 func stackPop8(core *CpuCore) (uint8, error) {
-	val, err := core.memoryAccessController.ReadAddr8(uint32(core.registers.SP))
+	val, err := core.memoryAccessController.ReadMemoryAddr8(uint32(core.registers.SP))
 	if err != nil {
 		goto eof
 	}
@@ -31,7 +31,7 @@ eof:
 func stackPop16(core *CpuCore) (uint16, error) {
 	addr := core.registers.SS.base + core.registers.SP
 
-	val, err := core.memoryAccessController.ReadAddr16(uint32(addr))
+	val, err := core.memoryAccessController.ReadMemoryAddr16(uint32(addr))
 	if err != nil {
 		goto eof
 	}

@@ -73,6 +73,15 @@ func (device *Intel82335) OnReceiveMessage(message bus.BusMessage) {
 	// Handle bus messages if needed
 }
 
+func (controller *Intel82335) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
+func (controller *Intel82335) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (device *Intel82335) McrRegisterInitialize(registerValue uint8) {
 	device.controlRegister = registerValue
 

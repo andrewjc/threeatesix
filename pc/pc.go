@@ -16,6 +16,7 @@ import (
 	"github.com/andrewjc/threeatesix/devices/monitor"
 	"github.com/andrewjc/threeatesix/devices/ps2"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -65,6 +66,7 @@ func (pc *PersonalComputer) Power() {
 
 	for {
 		if pc.cpu.GetIP() == 0x0 {
+			log.Printf("Instruction pointer is 0, halting")
 			break
 		} //loop until instruction pointer equals 0
 
@@ -76,6 +78,14 @@ func (pc *PersonalComputer) Power() {
 			interruptVector := pc.cpu.AcknowledgeInterrupt()
 			pc.cpu.HandleInterrupt(interruptVector)
 		}
+
+		if pc.programmableInterruptController2.HasPendingInterrupts() {
+			interruptVector := pc.cpu.AcknowledgeInterrupt()
+			pc.cpu.HandleInterrupt(interruptVector)
+		}
+
+		pc.cpu.CheckPendingInterruptChannel()
+
 	}
 }
 
@@ -96,9 +106,9 @@ func NewPc() *PersonalComputer {
 	pc.dmaController2 = intel8237.NewIntel8237()                     //dma2
 	pc.cgaController = cga.NewMotorola6845()
 
-	pc.memController = memmap.CreateMemoryController(&pc.ram, &pc.rom.bios)
+	pc.memController = memmap.NewMemoryController(&pc.ram, &pc.rom.bios)
 
-	pc.ioPortController = io.CreateIOPortController()
+	pc.ioPortController = io.NewIOPortController()
 
 	pc.memController.SetBus(pc.bus)
 	pc.ioPortController.SetBus(pc.bus)

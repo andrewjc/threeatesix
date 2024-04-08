@@ -16,6 +16,8 @@ func New80386CPU() *CpuCore {
 
 	cpuCore.registers = &CpuRegisters{}
 
+	cpuCore.interruptChannel = make(chan bus.BusMessage)
+
 	// index of 8 bit registers
 	cpuCore.registers.registers8Bit = []*uint8{
 		&cpuCore.registers.AL,
@@ -81,7 +83,8 @@ type CpuCore struct {
 	mode  uint8
 	flags CpuExecutionFlags
 
-	busId uint32
+	busId            uint32
+	interruptChannel chan bus.BusMessage
 
 	currentByteDecodeStart         uint32  //the start addr of the instruction being decoded (including prefixes etc)
 	currentPrefixBytes             []uint8 //current prefix bytes read for the byte being decoded in the instruction
@@ -120,6 +123,15 @@ func (device *CpuCore) OnReceiveMessage(message bus.BusMessage) {
 	case message.Subject == common.MESSAGE_INTERRUPT_REQUEST:
 		device.HandleInterrupt(message.Data[0])
 	}
+}
+
+func (core *CpuCore) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
+func (core *CpuCore) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (core *CpuCore) SetCS(addr uint16) {
@@ -300,7 +312,7 @@ func (core *CpuCore) FriendlyPartName() string {
 }
 
 func (core *CpuCore) readImm8() (uint8, error) {
-	retVal, err := core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
+	retVal, err := core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr))
 	if err != nil {
 		return 0, err
 	}
@@ -309,7 +321,7 @@ func (core *CpuCore) readImm8() (uint8, error) {
 }
 
 func (core *CpuCore) readImm16() (uint16, error) {
-	retVal, err := core.memoryAccessController.ReadAddr16(uint32(core.currentByteAddr))
+	retVal, err := core.memoryAccessController.ReadMemoryAddr16(uint32(core.currentByteAddr))
 	if err != nil {
 		return 0, err
 	}
@@ -318,7 +330,7 @@ func (core *CpuCore) readImm16() (uint16, error) {
 }
 
 func (core *CpuCore) readImm32() (uint32, error) {
-	retVal, err := core.memoryAccessController.ReadAddr32(uint32(core.currentByteAddr))
+	retVal, err := core.memoryAccessController.ReadMemoryAddr32(uint32(core.currentByteAddr))
 	if err != nil {
 		return 0, err
 	}
@@ -334,7 +346,7 @@ func (core *CpuCore) readRm8(modrm *ModRm) (*uint8, string, error) {
 
 	} else {
 		addressMode := modrm.getAddressMode16(core)
-		destValue, err := core.memoryAccessController.ReadAddr8(uint32(addressMode))
+		destValue, err := core.memoryAccessController.ReadMemoryAddr8(uint32(addressMode))
 		destName := fmt.Sprintf("dword_F%#04x", addressMode)
 		return &destValue, destName, err
 	}
@@ -348,7 +360,7 @@ func (core *CpuCore) readRm16(modrm *ModRm) (*uint16, string, error) {
 
 	} else {
 		addressMode := modrm.getAddressMode16(core)
-		destValue, err := core.memoryAccessController.ReadAddr16(uint32(addressMode))
+		destValue, err := core.memoryAccessController.ReadMemoryAddr16(uint32(addressMode))
 		destName := fmt.Sprintf("dword_F%#04x", addressMode)
 		return &destValue, destName, err
 	}
@@ -372,7 +384,7 @@ func (core *CpuCore) writeRm8(modrm *ModRm, value *uint8) error {
 		*core.registers.registers8Bit[modrm.rm] = *value
 	} else {
 		addressMode := modrm.getAddressMode16(core)
-		err := core.memoryAccessController.WriteAddr8(uint32(addressMode), *value)
+		err := core.memoryAccessController.WriteMemoryAddr8(uint32(addressMode), *value)
 		if err != nil {
 			return nil
 		}
@@ -386,7 +398,7 @@ func (core *CpuCore) writeRm16(modrm *ModRm, value *uint16) error {
 		*core.registers.registers16Bit[modrm.rm] = *value
 	} else {
 		addressMode := modrm.getAddressMode16(core)
-		err := core.memoryAccessController.WriteAddr16(uint32(addressMode), *value)
+		err := core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), *value)
 		if err != nil {
 			return err
 		}
@@ -452,8 +464,19 @@ func (cpuCore *CpuCore) logInstruction(logMessage string) {
 }
 
 func (core *CpuCore) AcknowledgeInterrupt() uint8 {
-	// Read the interrupt vector from the PIC
-	interruptVector := core.ioPortAccessController.ReadAddr8(0x20)
+	// Receive the interrupt acknowledge message from the PIC
+	interruptMessage := <-core.interruptChannel
+	interruptVector := interruptMessage.Data[0]
+
+	// Send an interrupt complete message to the PIC
+	completeMessage := bus.BusMessage{
+		Subject: common.MESSAGE_INTERRUPT_COMPLETE,
+		Sender:  core.busId,
+	}
+	err := core.bus.SendMessageSingle(common.MODULE_INTERRUPT_CONTROLLER_1, completeMessage)
+	if err != nil {
+		log.Printf("Error sending interrupt complete message: %v", err)
+	}
 
 	return interruptVector
 
@@ -461,7 +484,11 @@ func (core *CpuCore) AcknowledgeInterrupt() uint8 {
 
 func (core *CpuCore) HandleInterrupt(vector uint8) {
 	// Push the current flags and CS:IP onto the stack
-	err := stackPush16(core, core.registers.CS.base)
+	err := stackPush16(core, core.registers.FLAGS)
+	if err != nil {
+		return
+	}
+	err = stackPush16(core, core.registers.CS.base)
 	if err != nil {
 		return
 	}
@@ -469,22 +496,23 @@ func (core *CpuCore) HandleInterrupt(vector uint8) {
 	if err != nil {
 		return
 	}
-	err = stackPush16(core, core.registers.FLAGS)
-	if err != nil {
-		return
-	}
 
 	// Set the necessary flags
-	core.registers.SetFlag(InterruptFlag, true)
+	core.registers.SetFlag(InterruptFlag, false)
 	core.registers.SetFlag(TrapFlag, false)
 
 	// Set the CS:IP to the interrupt vector
-	core.registers.CS.base, _ = core.memoryAccessController.ReadAddr16(uint32(vector * 4))
-	core.registers.IP, _ = core.memoryAccessController.ReadAddr16(uint32(vector*4 + 2))
+	core.registers.CS.base, _ = core.memoryAccessController.ReadMemoryAddr16(uint32(vector * 4))
+	core.registers.IP, _ = core.memoryAccessController.ReadMemoryAddr16(uint32(vector*4 + 2))
 
 	// Send a message to the debug monitor
 	core.logInstruction(fmt.Sprintf("Interrupt %d handled", vector))
+}
 
-	// Clear the interrupt request
-	core.ioPortAccessController.WriteAddr8(0x20, 0x20)
+func (core *CpuCore) CheckPendingInterruptChannel() {
+	select {
+	case interruptMessage := <-core.interruptChannel:
+		core.HandleInterrupt(interruptMessage.Data[0])
+	default:
+	}
 }

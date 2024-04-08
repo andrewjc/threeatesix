@@ -12,7 +12,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xA0:
 		{
 			// mov al, moffs8*
-			offset, err := core.memoryAccessController.ReadAddr8(core.currentByteAddr)
+			offset, err := core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr)
 			if err != nil {
 				goto eof
 			}
@@ -20,7 +20,7 @@ func INSTR_MOV(core *CpuCore) {
 
 			segOff := uint16(offset)
 
-			byteValue, err := core.memoryAccessController.ReadAddr8(uint32(segOff))
+			byteValue, err := core.memoryAccessController.ReadMemoryAddr8(uint32(segOff))
 			if err != nil {
 				goto eof
 			}
@@ -32,13 +32,13 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xA1:
 		{
 			// mov ax, moffs16*
-			offset, err := core.memoryAccessController.ReadAddr16(core.currentByteAddr)
+			offset, err := core.memoryAccessController.ReadMemoryAddr16(core.currentByteAddr)
 			if err != nil {
 				goto eof
 			}
 			core.currentByteAddr += 2
 
-			byteValue, err := core.memoryAccessController.ReadAddr16(uint32(offset))
+			byteValue, err := core.memoryAccessController.ReadMemoryAddr16(uint32(offset))
 			if err != nil {
 				goto eof
 			}
@@ -49,7 +49,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xA2:
 		{
 			// mov moffs8*, al
-			offset, err := core.memoryAccessController.ReadAddr8(core.currentByteAddr)
+			offset, err := core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr)
 			if err != nil {
 				goto eof
 			}
@@ -58,7 +58,7 @@ func INSTR_MOV(core *CpuCore) {
 
 			segOff := uint16(offset)
 
-			err = core.memoryAccessController.WriteAddr8(uint32(segOff), core.registers.AL)
+			err = core.memoryAccessController.WriteMemoryAddr8(uint32(segOff), core.registers.AL)
 			if err != nil {
 				goto eof
 			}
@@ -68,7 +68,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xA3:
 		{
 			// mov moffs16*, ax
-			offset, err := core.memoryAccessController.ReadAddr16(core.currentByteAddr)
+			offset, err := core.memoryAccessController.ReadMemoryAddr16(core.currentByteAddr)
 			if err != nil {
 				goto eof
 			}
@@ -76,7 +76,7 @@ func INSTR_MOV(core *CpuCore) {
 
 			segOff := uint16(offset)
 
-			err = core.memoryAccessController.WriteAddr16(uint32(segOff), core.registers.AX)
+			err = core.memoryAccessController.WriteMemoryAddr16(uint32(segOff), core.registers.AX)
 			if err != nil {
 				goto eof
 			}
@@ -88,7 +88,7 @@ func INSTR_MOV(core *CpuCore) {
 		{
 			// mov r8, imm8
 			r8, r8Str := core.registers.registers8Bit[core.currentOpCodeBeingExecuted-0xB0], core.registers.index8ToString(core.currentOpCodeBeingExecuted-0xB0)
-			val, err := core.memoryAccessController.ReadAddr8(core.currentByteAddr)
+			val, err := core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr)
 			if err != nil {
 				goto eof
 			}
@@ -101,7 +101,7 @@ func INSTR_MOV(core *CpuCore) {
 
 			// mov r16, imm16
 			r16, r16Str := core.registers.registers16Bit[core.currentOpCodeBeingExecuted-0xB8], core.registers.index16ToString(core.currentOpCodeBeingExecuted-0xB8)
-			val, err := core.memoryAccessController.ReadAddr16(core.currentByteAddr)
+			val, err := core.memoryAccessController.ReadMemoryAddr16(core.currentByteAddr)
 			if err != nil {
 				goto eof
 			}
@@ -130,7 +130,7 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				var data, err = core.memoryAccessController.ReadAddr16(uint32(addressMode))
+				var data, err = core.memoryAccessController.ReadMemoryAddr16(uint32(addressMode))
 				if err != nil {
 					goto eof
 				}
@@ -162,7 +162,7 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				err := core.memoryAccessController.WriteAddr8(uint32(addressMode), *src)
+				err := core.memoryAccessController.WriteMemoryAddr8(uint32(addressMode), *src)
 				if err != nil {
 					goto eof
 				}
@@ -193,7 +193,7 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				err := core.memoryAccessController.WriteAddr16(uint32(addressMode), *src)
+				err := core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), *src)
 				if err != nil {
 					goto eof
 				}
@@ -224,7 +224,7 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				var data, err = core.memoryAccessController.ReadAddr8(uint32(addressMode))
+				var data, err = core.memoryAccessController.ReadMemoryAddr8(uint32(addressMode))
 				if err != nil {
 					goto eof
 				}
@@ -256,7 +256,7 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				var data, err = core.memoryAccessController.ReadAddr16(uint32(addressMode))
+				var data, err = core.memoryAccessController.ReadMemoryAddr16(uint32(addressMode))
 				if err != nil {
 					goto eof
 				}
@@ -288,7 +288,7 @@ func INSTR_MOV(core *CpuCore) {
 				*dest = (*src).base
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				err = core.memoryAccessController.WriteAddr16(uint32(addressMode), (*src).base)
+				err = core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), (*src).base)
 				if err != nil {
 					goto eof
 				}
@@ -335,7 +335,7 @@ func INSTR_MOV(core *CpuCore) {
 				(*dest).base = *src
 			} else {
 				addressMode := modrm.getAddressMode16(core)
-				var data, err = core.memoryAccessController.ReadAddr16(uint32(addressMode))
+				var data, err = core.memoryAccessController.ReadMemoryAddr16(uint32(addressMode))
 				if err != nil {
 					goto eof
 				}

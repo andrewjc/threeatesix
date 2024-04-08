@@ -22,10 +22,14 @@ type MemoryAccessController struct {
 }
 
 type MemoryAccessProvider interface {
-	ReadAddr8(u uint32) (uint8, error)
-	ReadAddr16(u uint32) (uint16, error)
-	ReadAddr32(u uint32) (uint32, error)
+	ReadMemoryAddr8(u uint32) (uint8, error)
+	ReadMemoryAddr16(u uint32) (uint16, error)
+	ReadMemoryAddr32(u uint32) (uint32, error)
 	PeekNextBytesImpl(addr uint32, numBytes uint32) []byte
+}
+
+func NewMemoryController(ram *[]byte, bios *[]byte) *MemoryAccessController {
+	return &MemoryAccessController{ram, bios, nil, 0, nil, 0}
 }
 
 func (mem *MemoryAccessController) SetDeviceBusId(id uint32) {
@@ -43,8 +47,13 @@ func (mem *MemoryAccessController) OnReceiveMessage(message bus.BusMessage) {
 	}
 }
 
-func CreateMemoryController(ram *[]byte, bios *[]byte) *MemoryAccessController {
-	return &MemoryAccessController{ram, bios, nil, 0, nil, 0}
+func (mem *MemoryAccessController) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
+func (controller *MemoryAccessController) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (mem *MemoryAccessController) HandleMemoryMapSwitch(modeSwitch byte) {
@@ -58,19 +67,19 @@ func (controller *MemoryAccessController) SetBus(bus *bus.Bus) {
 	controller.bus = bus
 }
 
-func (mem *MemoryAccessController) ReadAddr8(address uint32) (uint8, error) {
-	return mem.memoryAccessProvider.ReadAddr8(address)
+func (mem *MemoryAccessController) ReadMemoryAddr8(address uint32) (uint8, error) {
+	return mem.memoryAccessProvider.ReadMemoryAddr8(address)
 }
 
-func (mem *MemoryAccessController) ReadAddr16(address uint32) (uint16, error) {
-	return mem.memoryAccessProvider.ReadAddr16(address)
+func (mem *MemoryAccessController) ReadMemoryAddr16(address uint32) (uint16, error) {
+	return mem.memoryAccessProvider.ReadMemoryAddr16(address)
 }
 
-func (mem *MemoryAccessController) ReadAddr32(address uint32) (uint32, error) {
-	return mem.memoryAccessProvider.ReadAddr32(address)
+func (mem *MemoryAccessController) ReadMemoryAddr32(address uint32) (uint32, error) {
+	return mem.memoryAccessProvider.ReadMemoryAddr32(address)
 }
 
-func (mem *MemoryAccessController) WriteAddr8(address uint32, value uint8) error {
+func (mem *MemoryAccessController) WriteMemoryAddr8(address uint32, value uint8) error {
 	if int(address) > len(*mem.backingRam) || address < 0 {
 		return common.GeneralProtectionFault{}
 	}
@@ -80,9 +89,9 @@ func (mem *MemoryAccessController) WriteAddr8(address uint32, value uint8) error
 	return nil
 }
 
-func (mem *MemoryAccessController) WriteAddr16(address uint32, value uint16) error {
+func (mem *MemoryAccessController) WriteMemoryAddr16(address uint32, value uint16) error {
 	for i := uint32(0); i < 2; i++ {
-		err := mem.WriteAddr8(address+i, uint8(value>>uint32(i*8)&0xFF))
+		err := mem.WriteMemoryAddr8(address+i, uint8(value>>uint32(i*8)&0xFF))
 		if err != nil {
 			return err
 		}
@@ -91,9 +100,9 @@ func (mem *MemoryAccessController) WriteAddr16(address uint32, value uint16) err
 	return nil
 }
 
-func (mem *MemoryAccessController) WriteAddr32(address uint32, value uint32) error {
+func (mem *MemoryAccessController) WriteMemoryAddr32(address uint32, value uint32) error {
 	for i := uint32(0); i < 4; i++ {
-		err := mem.WriteAddr8(address+i, uint8(value>>uint32(i*8)&0xFF))
+		err := mem.WriteMemoryAddr8(address+i, uint8(value>>uint32(i*8)&0xFF))
 		if err != nil {
 			return err
 		}

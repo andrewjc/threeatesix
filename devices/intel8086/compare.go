@@ -239,11 +239,11 @@ func INSTR_CMP(core *CpuCore) {
 	case 0xA6:
 		{
 			//  CMPS m8, m8
-			tmp1, err := core.memoryAccessController.ReadAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
+			tmp1, err := core.memoryAccessController.ReadMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
 			if err != nil {
 				goto eof
 			}
-			tmp2, err := core.memoryAccessController.ReadAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI))
+			tmp2, err := core.memoryAccessController.ReadMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI))
 			if err != nil {
 				goto eof
 			}
@@ -257,11 +257,11 @@ func INSTR_CMP(core *CpuCore) {
 	case 0xA7:
 		{
 			// CMPS m16, m16
-			tmp1, err := core.memoryAccessController.ReadAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
+			tmp1, err := core.memoryAccessController.ReadMemoryAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
 			if err != nil {
 				goto eof
 			}
-			tmp2, err := core.memoryAccessController.ReadAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI))
+			tmp2, err := core.memoryAccessController.ReadMemoryAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI))
 			if err != nil {
 				goto eof
 			}

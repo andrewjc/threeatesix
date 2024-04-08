@@ -24,7 +24,11 @@ type IOPortAccessController struct {
 	cmosRegisterData   []uint8
 }
 
-func CreateIOPortController() *IOPortAccessController {
+func (mem *IOPortAccessController) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
+func NewIOPortController() *IOPortAccessController {
 	return &IOPortAccessController{
 		cmosRegisterData: make([]byte, 0x10000),
 	}
@@ -40,54 +44,60 @@ func (mem *IOPortAccessController) OnReceiveMessage(message bus.BusMessage) {
 
 func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 
-	if addr == 0x64 {
-		// Status Register READ
-		sr := r.GetBus().FindSingleDevice(common.MODULE_PS2_CONTROLLER).(*ps2.Ps2Controller).ReadStatusRegister()
-		return sr
-	}
+	devicePortRegistration := r.bus.GetDeviceOnPort(addr)
+	if devicePortRegistration != nil {
+		return devicePortRegistration.Device.ReadAddr8(addr)
+	} else {
+		//print("WARN: IO Port read not using device routing\n")
 
-	if addr == 0x60 {
-		sr := r.GetBus().FindSingleDevice(common.MODULE_PS2_CONTROLLER).(*ps2.Ps2Controller).ReadDataPort()
-		return sr
-	}
+		if addr == 0x64 {
+			// Status Register READ
+			sr := r.GetBus().FindSingleDevice(common.MODULE_PS2_CONTROLLER).(*ps2.Ps2Controller).ReadStatusRegister()
+			return sr
+		}
 
-	if addr == 0x0042 {
-		// Read from IO port 0x0042
-		return r.GetBus().FindSingleDevice(common.MODULE_PIT).(*intel82C54.Intel82C54).ReadCounter0()
-	}
+		if addr == 0x60 {
+			sr := r.GetBus().FindSingleDevice(common.MODULE_PS2_CONTROLLER).(*ps2.Ps2Controller).ReadDataPort()
+			return sr
+		}
 
-	if addr == 0x24 {
-		// RC1 roll compare register???
-		//log.Printf("RC1 roll compare register read")
-		sr := r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).Rc1RegisterRead()
-		return sr
-	}
+		if addr == 0x0042 {
+			// Read from IO port 0x0042
+			return r.GetBus().FindSingleDevice(common.MODULE_PIT).(*intel82C54.Intel82C54).ReadCounter0()
+		}
 
-	if addr == 0x71 {
-		// CMOS RAM
-		return r.cmosRegisterData[r.cmosRegisterSelect]
-	}
+		if addr == 0x24 {
+			// RC1 roll compare register???
+			//log.Printf("RC1 roll compare register read")
+			sr := r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).Rc1RegisterRead()
+			return sr
+		}
 
-	if addr == 0xe3 {
-		// 8237 DMA controller
-		return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ReadTemporaryRegister()
-	}
-	if addr == 0xe4 {
-		// 8237 DMA controller
-		return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ReadStatusRegister()
-	}
+		if addr == 0x71 {
+			// CMOS RAM
+			return r.cmosRegisterData[r.cmosRegisterSelect]
+		}
 
-	if addr == 0x00D3 {
-		// 8237 DMA controller
-		return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).ReadTemporaryRegister()
-	}
-	if addr == 0x00D0 {
-		// 8237 DMA controller
-		return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).ReadStatusRegister()
-	}
+		if addr == 0xe3 {
+			// 8237 DMA controller
+			return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ReadTemporaryRegister()
+		}
+		if addr == 0xe4 {
+			// 8237 DMA controller
+			return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ReadStatusRegister()
+		}
 
-	log.Fatalf("Unhandled IO port read: PORT=[%#04x]", addr)
+		if addr == 0x00D3 {
+			// 8237 DMA controller
+			return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).ReadTemporaryRegister()
+		}
+		if addr == 0x00D0 {
+			// 8237 DMA controller
+			return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER_2).(*intel8237.Intel8237).ReadStatusRegister()
+		}
 
+		log.Fatalf("Unhandled IO port read: PORT=[%#04x]", addr)
+	}
 	return 0
 }
 

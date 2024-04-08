@@ -26,6 +26,15 @@ type Ps2Controller struct {
 	parityError          bool
 }
 
+func (controller *Ps2Controller) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
+func (controller *Ps2Controller) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
+}
+
 type Ps2Device interface {
 	Connect(controller *Ps2Controller)
 	Disconnect()

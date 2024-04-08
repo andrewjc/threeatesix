@@ -1584,7 +1584,7 @@ func INSTR_INC_SHORT_REL8(core *CpuCore) {
 		*dest = *dest + 1
 	} else {
 		addressMode := modrm.getAddressMode16(core)
-		err = core.memoryAccessController.WriteAddr16(uint32(addressMode), *dest+1)
+		err = core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), *dest+1)
 		if err != nil {
 			goto eof
 		}

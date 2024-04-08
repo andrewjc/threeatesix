@@ -96,6 +96,7 @@ The project is structured into the following main packages:
     - \`intel82335\`: Emulates the Intel 82335 High Integration Interface Device.
     - \`intel8259a\`: Emulates the Intel 8259A Programmable Interrupt Controller.
     - \`intel82C54\`: Emulates the Intel 82C54 Programmable Interval Timer.
+    - \'intel8237\': Emulates the Intel 8237 DMA Controller.
     - \`io\`: Implements the I/O Port Access Controller.
     - \`memmap\`: Implements the Memory Access Controller.
     - \`monitor\`: Provides debugging and monitoring capabilities.
@@ -109,6 +110,7 @@ The project is structured into the following main packages:
 - Emulation of Intel 82335 High Integration Interface Device
 - Emulation of Intel 8259A Programmable Interrupt Controller
 - Emulation of Intel 82C54 Programmable Interval Timer
+- Emulation of Intel 8237 DMA Controller
 - Emulation of PS/2 Controller and Keyboard
 - Emulation of CGA (Motorola 6845) Video Controller
 - Memory and I/O Port Access Controller

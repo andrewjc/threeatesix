@@ -39,6 +39,15 @@ func (d *Intel8237) OnReceiveMessage(message bus.BusMessage) {
 	// Handle bus messages if needed
 }
 
+func (d *Intel8237) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
+func (d *Intel8237) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (d *Intel8237) ReadStatusRegister() uint8 {
 	return d.statusRegister
 }
@@ -305,8 +314,8 @@ func (d *Intel8237) HandleDMATransfer(channel uint8) {
 	if transferType == 0x01 {
 		// Write transfer
 		for i := uint16(0); i < count; i++ {
-			data, _ := memoryController.ReadAddr8(uint32(sourceAddr))
-			err := memoryController.WriteAddr8(uint32(destinationAddr), data)
+			data, _ := memoryController.ReadMemoryAddr8(uint32(sourceAddr))
+			err := memoryController.WriteMemoryAddr8(uint32(destinationAddr), data)
 			if err != nil {
 				log.Printf("DMA Write Error: %v", err)
 				return
@@ -317,8 +326,8 @@ func (d *Intel8237) HandleDMATransfer(channel uint8) {
 	} else if transferType == 0x02 {
 		// Read transfer
 		for i := uint16(0); i < count; i++ {
-			data, _ := memoryController.ReadAddr8(uint32(sourceAddr))
-			err := memoryController.WriteAddr8(uint32(destinationAddr), data)
+			data, _ := memoryController.ReadMemoryAddr8(uint32(sourceAddr))
+			err := memoryController.WriteMemoryAddr8(uint32(destinationAddr), data)
 			if err != nil {
 				log.Printf("DMA Read Error: %v", err)
 				return

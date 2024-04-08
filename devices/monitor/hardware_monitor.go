@@ -14,6 +14,15 @@ type HardwareMonitor struct {
 	instructionLog     []string
 }
 
+func (device *HardwareMonitor) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
+func (device *HardwareMonitor) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
+}
+
 const MAX_LOG_LENGTH = 64
 
 func NewHardwareMonitor() *HardwareMonitor {

@@ -61,7 +61,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 		core.currentByteAddr++
 	}
 
-	instrByte, err = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr))
+	instrByte, err = core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr))
 	if err != nil {
 		log.Printf("Error reading instruction byte: %s\n", err)
 		doCoreDump(core)
@@ -72,7 +72,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	if core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0] == 0x0F {
 		// 2 byte opcode
 		core.IncrementIP()
-		instrByte, err = core.memoryAccessController.ReadAddr8(uint32(core.currentByteAddr + 1))
+		instrByte, err = core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr + 1))
 		if err != nil {
 			log.Printf("Error reading instruction byte: %s\n", err)
 			doCoreDump(core)

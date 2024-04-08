@@ -9,7 +9,8 @@ import (
 type DeviceType uint8
 
 type Bus struct {
-	deviceMap map[DeviceType]*list.List
+	deviceMap     map[DeviceType]*list.List
+	devicePortMap map[uint16]*DevicePort
 }
 
 type BusMessage struct {
@@ -18,24 +19,63 @@ type BusMessage struct {
 	Data    []byte
 }
 
+type DevicePortMap struct {
+	ReadPorts  []uint16
+	WritePorts []uint16
+}
+
 type BusDevice interface {
 	SetDeviceBusId(id uint32)
 	OnReceiveMessage(message BusMessage)
 	SetBus(bus *Bus)
+	GetPortMap() *DevicePortMap
+	ReadAddr8(addr uint16) uint8
 }
 
 func NewDeviceBus() *Bus {
 	bus := &Bus{}
 
 	bus.deviceMap = make(map[DeviceType]*list.List)
+	bus.devicePortMap = make(map[uint16]*DevicePort)
 
 	return bus
 }
 
-func (bus *Bus) RegisterDevice(device BusDevice, deviceType DeviceType) {
+type DevicePortMode uint8
 
+const DEVICE_PORT_READ = DevicePortMode(0)
+const DEVICE_PORT_WRITE = DevicePortMode(1)
+
+type DevicePort struct {
+	Device BusDevice
+	Port   uint16
+	Mode   DevicePortMode
+}
+
+func (bus *Bus) GetDeviceOnPort(addr uint16) *DevicePort {
+	if dev, ok := bus.devicePortMap[addr]; ok {
+		return dev
+	}
+
+	return nil
+
+}
+
+func (bus *Bus) RegisterDevice(device BusDevice, deviceType DeviceType) {
 	if _, ok := bus.deviceMap[deviceType]; !ok {
 		bus.deviceMap[deviceType] = list.New()
+	}
+
+	// register the device ports
+	portMap := device.GetPortMap()
+	if portMap != nil {
+		for _, port := range portMap.ReadPorts {
+			bus.devicePortMap[port] = &DevicePort{Device: device, Port: port, Mode: DEVICE_PORT_READ}
+		}
+
+		for _, port := range portMap.WritePorts {
+			bus.devicePortMap[port] = &DevicePort{Device: device, Port: port, Mode: DEVICE_PORT_WRITE}
+		}
 	}
 
 	deviceList := bus.deviceMap[deviceType]

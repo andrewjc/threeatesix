@@ -58,6 +58,10 @@ func (c *Motorola6845) OnReceiveMessage(message bus.BusMessage) {
 	// Handle bus messages if needed
 }
 
+func (c *Motorola6845) GetPortMap() *bus.DevicePortMap {
+	return nil
+}
+
 func (c *Motorola6845) WriteAddr8(port_addr uint16, value uint8) {
 	switch port_addr {
 	case 0x03D8:
