@@ -40,6 +40,48 @@ To get started with ThreeAteSix, follow these steps:
    ```
    ./threeatesix
    ```
+   
+5. Use the `monitor` package to interact with the emulator and monitor its state:
+    ```
+   devices/monitor/hardware_monitor.go:
+   device.logCpuInstructions = true
+    ```
+   Setting logCpuInstructions to true will display all instructions executed by the CPU.
+
+## Sample Output
+```
+2024/04/08 11:05:11 PS/2 Keyboard connected
+2024/04/08 11:05:11 PRIMARY PROCESSOR entered REAL MODE
+2024/04/08 11:05:11 MATH CO PROCESSOR entered REAL MODE
+2024/04/08 11:05:11 BIOS POST: 0x01 - Register test about to start
+2024/04/08 11:05:11 BIOS POST: 0x02 - Register test has passed
+2024/04/08 11:05:11 BIOS POST: 0x03 - ROM BIOS checksum test passed
+2024/04/08 11:05:11 BIOS POST: 0x04 - Passed keyboard controller test with and w
+ithout mouse
+2024/04/08 11:05:11 BIOS POST: 0x05 - Chipset initialized... DMA and interrupt c
+ontroller disabled
+2024/04/08 11:05:11 CMOS RAM WRITE: 0x00, 0x00
+2024/04/08 11:05:11 BIOS POST: 0x06 - Video system disabled and the system timer
+ checks OK
+2024/04/08 11:05:11 BIOS POST: 0x07 - 8265 programmable interval timer initializ
+ed
+2024/04/08 11:05:11 BIOS POST: 0x08 - Delta counter channel 2 initialized
+2024/04/08 11:05:12 BIOS POST: 0x09 - Delta counter channel 1 initialized
+2024/04/08 11:05:12 BIOS POST: 0x0a - Delta counter channel 0 initialized
+2024/04/08 11:05:12 PS2 Port Output Data: [0x0055]                       
+2024/04/08 11:05:12 BIOS POST: 0x0b - Refresh started                    
+2024/04/08 11:05:12 BIOS POST: 0x0c - System timer started               
+2024/04/08 11:05:12 BIOS POST: 0x0d - Refresh check OK                   
+2024/04/08 11:05:12 CMOS RAM WRITE: 0x0d, 0x0c                           
+2024/04/08 11:05:12 CMOS RAM WRITE: 0x00, 0x0c                           
+2024/04/08 11:05:12 BIOS POST: 0x0e - Refresh period check OK            
+2024/04/08 11:05:12 CMOS RAM WRITE: 0x0c, 0xdc
+2024/04/08 11:05:12 BIOS POST: 0x0f - System timer check OK
+2024/04/08 11:05:12 BIOS POST: 0x10 - Ready to start 64KB base memory test      
+2024/04/08 11:05:12 CMOS RAM WRITE: 0xdc, 0x00
+2024/04/08 11:05:12 BIOS POST: 0x11 - Address line test OK
+
+```
 
 ## Project Structure
 
