@@ -1,6 +1,7 @@
 package intel8259a
 
 import (
+	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
 	"log"
 	"os"
@@ -35,6 +36,7 @@ func NewIntel8259a() *Intel8259a {
 	chip := &Intel8259a{}
 	chip.irqMask = 0xff         // All interrupts masked initially
 	chip.interruptVector = 0x08 // Default interrupt vector base
+	chip.debugMode = true
 	return chip
 }
 
@@ -105,30 +107,26 @@ func (device *Intel8259a) getHighestPriorityIrq(interrupts uint8) uint8 {
 }
 
 func (device *Intel8259a) triggerInterrupt(irq uint8) {
-	// Trigger the specified interrupt
-	device.setServiceRequest(irq)
-	device.clearInterruptRequest(irq)
-	interruptVector := device.interruptVectorBase + irq
+	// Calculate the interrupt vector based on the vector base and the IRQ
+	device.interruptVector = device.interruptVectorBase + irq
 
-	// If this is a slave PIC, send the interrupt to the master PIC
-	if device.isSlavePIC {
-		device.setServiceRequest(device.slaveIRQ)
-		device.clearInterruptRequest(device.slaveIRQ)
-		interruptVector = device.interruptVectorBase + device.slaveIRQ
-	} else {
-		// If this is a master PIC, check if there is a slave PIC
-		if device.slaveIRQ != 0xff {
-			// Send the interrupt to the slave PIC
-			device.setServiceRequest(device.slaveIRQ)
-			device.clearInterruptRequest(device.slaveIRQ)
-			interruptVector = device.interruptVectorBase + device.slaveIRQ
-		} else {
-			// No slave PIC, so just trigger the interrupt
-			interruptVector = device.interruptVectorBase + irq
+	// Set the service request for the IRQ
+	device.setServiceRequest(irq)
+
+	// Clear the interrupt request for the IRQ
+	device.clearInterruptRequest(irq)
+
+	// Trigger the interrupt on the bus
+	if device.bus != nil {
+		interruptMessage := bus.BusMessage{
+			Subject: common.MESSAGE_INTERRUPT_REQUEST,
+			Sender:  device.busId,
+			Data:    []byte{device.interruptVector},
 		}
+		device.bus.SendMessage(interruptMessage)
 	}
 
-	device.log("8259A: Triggering interrupt IRQ %d with vector 0x%02X", irq, interruptVector)
+	device.log("8259A: Triggering interrupt IRQ %d with vector 0x%02X", irq, device.interruptVector)
 }
 
 func (device *Intel8259a) EndOfInterrupt(irq uint8) {
@@ -210,11 +208,55 @@ func (device *Intel8259a) CommandWordWrite(value uint8) {
 		device.log("8259A: Interrupt mask set to 0x%02X", device.irqMask)
 		device.updateInterrupts()
 
+	} else if (value == 0x20) || (value == 0x60) {
+		// Non-specific EOI command
+		device.EndOfInterrupt(0)
+	} else if value == 0x60 {
+		// Specific EOI command
+		device.EndOfInterrupt(0)
+	} else if value == 0x0A {
+		// Rotate in Automatic EOI mode
+		device.autoEoi = true
+		device.log("8259A: Automatic EOI mode set")
+	} else if value == 0x0B {
+		// Rotate in Automatic EOI mode with a special case for EOI
+		device.autoEoi = true
+		device.specificEoi = true
+		device.log("8259A: Automatic EOI mode with specific EOI set")
+	} else if value == 0x0C {
+		// Set Interrupt Mask
+		device.irqMask = 0x01
+		device.updateInterrupts()
+		device.log("8259A: Interrupt mask set to 0x%02X", device.irqMask)
+	} else if value == 0x0D {
+		// Read Interrupt Request Register
+		device.log("8259A: Interrupt Request Register read")
+	} else if value == 0x0E {
+		// Read In-Service Register
+		device.log("8259A: In-Service Register read")
+	} else if value == 0x0F {
+		// Read Interrupt Mask Register
+		device.log("8259A: Interrupt Mask Register read")
+	} else if value == 0x70 {
+		// Read Initialization Command Word 1
+		device.log("8259A: Initialization Command Word 1 read")
+	} else if value == 0x71 {
+		// Read Initialization Command Word 2
+		device.log("8259A: Initialization Command Word 2 read")
+	} else if value == 0x72 {
+		// Read Initialization Command Word 3
+		device.log("8259A: Initialization Command Word 3 read")
+	} else if value == 0x73 {
+		// Read Initialization Command Word 4
+		device.log("8259A: Initialization Command Word 4 read")
+	} else if value == 0x74 {
+		// Read Initialization Command Word 4
+		device.log("8259A: Read Interrupt Mask Register")
 	} else if value == 0 {
 		// NOP: No Operation
 		device.log("8259A: No Operation command received")
 	} else {
-		device.log("8259A: Unhandled command word 0x%02X", value)
+		log.Printf("8259A: Unhandled command word 0x%02X", value)
 		os.Exit(0)
 	}
 }

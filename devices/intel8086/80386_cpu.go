@@ -89,6 +89,7 @@ type CpuCore struct {
 	currentOpCodeBeingExecuted     uint8   //the opcode of the instruction currently being exected
 	lastExecutedInstructionPointer uint32
 	is2ByteOperand                 bool
+	halt                           bool
 }
 
 type CpuExecutionFlags struct {
@@ -116,6 +117,8 @@ func (device *CpuCore) OnReceiveMessage(message bus.BusMessage) {
 	switch {
 	case message.Subject == common.MESSAGE_REQUEST_CPU_MODESWITCH:
 		device.EnterMode(message.Data[0])
+	case message.Subject == common.MESSAGE_INTERRUPT_REQUEST:
+		device.HandleInterrupt(message.Data[0])
 	}
 }
 

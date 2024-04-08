@@ -3,6 +3,7 @@ package intel8086
 import (
 	"fmt"
 	"github.com/andrewjc/threeatesix/common"
+	"log"
 )
 
 func INSTR_CALLF_M16(core *CpuCore, modrm *ModRm) {
@@ -101,6 +102,30 @@ func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 	destAddr2 := destAddrTest + int32(offset)
 
 	core.logInstruction(fmt.Sprintf("[%#04x] JMP %#04x (NEAR_REL16)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
+	core.registers.IP = uint16(destAddr2)
+}
+
+func INSTR_CALL_NEAR_REL16(core *CpuCore) {
+
+	offset, err := core.memoryAccessController.ReadAddr16(uint32(core.GetCurrentCodePointer()) + 1)
+
+	if err != nil {
+		return
+	}
+
+	var destAddr = core.registers.IP + 3
+
+	var destAddrTest = int32(destAddr)
+
+	destAddr2 := destAddrTest + int32(offset)
+
+	err = stackPush16(core, uint16(uint16(core.GetIP()+3)))
+	if err != nil {
+		log.Printf("Error pushing to stack: %s", err.Error())
+		return
+	}
+
+	core.logInstruction(fmt.Sprintf("[%#04x] CALL %#04x (NEAR_REL16)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
 	core.registers.IP = uint16(destAddr2)
 }
 

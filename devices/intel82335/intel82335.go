@@ -3,6 +3,7 @@ package intel82335
 import (
 	"fmt"
 	"github.com/andrewjc/threeatesix/devices/bus"
+	"log"
 	"strings"
 )
 
@@ -191,7 +192,8 @@ func getMemoryInterleaveMode(registervalue uint8) uint8 {
 	case o1 && o2:
 		return MCR_MEMORY_INTERLEAVE_4_BANK
 	default:
-		panic("Invalid memory interleave mode configuration!")
+		log.Fatalln("Invalid memory interleave mode configuration!")
+		panic(0)
 	}
 }
 

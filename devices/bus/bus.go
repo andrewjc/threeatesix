@@ -14,6 +14,7 @@ type Bus struct {
 
 type BusMessage struct {
 	Subject uint32
+	Sender  uint32
 	Data    []byte
 }
 

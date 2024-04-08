@@ -1,5 +1,7 @@
 package intel8086
 
+import "fmt"
+
 /* CPU OPCODE IMPLEMENTATIONS */
 
 type OpCodeImpl func(*CpuCore)
@@ -9,6 +11,7 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xEA] = INSTR_JMP_FAR_PTR16
 
 	c.opCodeMap[0xE9] = INSTR_JMP_NEAR_REL16
+	c.opCodeMap[0xE8] = INSTR_CALL_NEAR_REL16
 
 	c.opCodeMap[0xEB] = INSTR_JMP_SHORT_REL8
 
@@ -26,6 +29,7 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xFA] = INSTR_CLI
 	c.opCodeMap[0xFC] = INSTR_CLD
 	c.opCodeMap[0xFE] = INSTR_INC_SHORT_REL8
+	c.opCodeMap[0xF4] = INSTR_HLT
 	c.opCodeMap[0xF9] = INSTR_STC
 
 	c.opCodeMap[0xE4] = INSTR_IN //imm to AL
@@ -60,7 +64,10 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x8A] = INSTR_MOV
 	c.opCodeMap[0x8B] = INSTR_MOV
 	c.opCodeMap[0x8C] = INSTR_MOV
+	c.opCodeMap[0x8D] = INSTR_MOV
+
 	c.opCodeMap[0x8E] = INSTR_MOV
+
 	c.opCodeMap[0x88] = INSTR_MOV
 	c.opCodeMap[0x89] = INSTR_MOV
 
@@ -161,8 +168,17 @@ func mapOpCodes(c *CpuCore) {
 	}
 	c.opCodeMap[0x50] = INSTR_PUSH
 
-	c.opCodeMap[0x60] = INSTR_PUSH
+	c.opCodeMap[0x58] = INSTR_POP
+	c.opCodeMap[0x59] = INSTR_POP
+	c.opCodeMap[0x5A] = INSTR_POP
+	c.opCodeMap[0x5B] = INSTR_POP
+	c.opCodeMap[0x5C] = INSTR_POP
+	c.opCodeMap[0x5D] = INSTR_POP
+	c.opCodeMap[0x5E] = INSTR_POP
+	c.opCodeMap[0x5F] = INSTR_POP
 	c.opCodeMap[0x61] = INSTR_POP
+
+	c.opCodeMap[0x60] = INSTR_PUSH
 	c.opCodeMap[0x6A] = INSTR_PUSH
 	c.opCodeMap[0x68] = INSTR_PUSH
 	c.opCodeMap[0x0E] = INSTR_PUSH
@@ -178,5 +194,12 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap2Byte[0x01] = INSTR_SMSW
 	c.opCodeMap2Byte[0x20] = INSTR_MOV
 	c.opCodeMap2Byte[0x22] = INSTR_MOV
+	c.opCodeMap2Byte[0x85] = INSTR_TEST
 	c.opCodeMap2Byte[0x09] = INSTR_WBINVD
+}
+
+func INSTR_HLT(core *CpuCore) {
+	core.halt = true
+
+	core.logInstruction(fmt.Sprintf("[%#04x] HLT", core.GetCurrentlyExecutingInstructionAddress()))
 }
