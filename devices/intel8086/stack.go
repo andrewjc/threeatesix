@@ -242,6 +242,22 @@ func INSTR_POP(core *CpuCore) {
 				core.logInstruction(fmt.Sprintf("[%#04x] pop word ptr ds:[%#04x]", core.GetCurrentlyExecutingInstructionAddress(), addr))
 			}
 		}
+	case 0x17:
+		{
+			// PUSH SS
+
+			val := core.registers.SS.base
+
+			val, err := stackPop16(core)
+
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.SS.base = val
+			core.logInstruction(fmt.Sprintf("[%#04x] pop SS", core.GetCurrentlyExecutingInstructionAddress()))
+
+		}
 	case 0x61:
 		{
 			// POP all general purpose registers

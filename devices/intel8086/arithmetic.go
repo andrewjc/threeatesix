@@ -1549,7 +1549,7 @@ func INSTR_INC(core *CpuCore) {
 	switch core.currentOpCodeBeingExecuted {
 	case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47:
 		{
-			// PUSH r16
+			// INC r16
 			val, valName := core.registers.registers16Bit[core.currentOpCodeBeingExecuted-0x40], core.registers.index16ToString(core.currentOpCodeBeingExecuted-0x40)
 
 			*val = *val + 1
@@ -1558,7 +1558,7 @@ func INSTR_INC(core *CpuCore) {
 
 		}
 	default:
-		log.Println(fmt.Printf("Unhandled PUSH instruction:  %#04x", core.currentOpCodeBeingExecuted))
+		log.Println(fmt.Printf("Unhandled INC instruction:  %#04x", core.currentOpCodeBeingExecuted))
 		doCoreDump(core)
 	}
 
@@ -1592,6 +1592,28 @@ func INSTR_INC_SHORT_REL8(core *CpuCore) {
 	}
 eof:
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", destName))
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_DEC(core *CpuCore) {
+	core.currentByteAddr++
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F:
+		{
+			// DEC r16
+			val, valName := core.registers.registers16Bit[core.currentOpCodeBeingExecuted-0x48], core.registers.index16ToString(core.currentOpCodeBeingExecuted-0x48)
+
+			*val = *val - 1
+
+			core.logInstruction(fmt.Sprintf("[%#04x] dec %s", core.GetCurrentlyExecutingInstructionAddress(), valName))
+
+		}
+	default:
+		log.Println(fmt.Printf("Unhandled DEC instruction:  %#04x", core.currentOpCodeBeingExecuted))
+		doCoreDump(core)
+	}
+
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 

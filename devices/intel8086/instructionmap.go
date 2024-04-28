@@ -176,20 +176,14 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x40] = INSTR_INC
 
 	for i := 0; i < len(c.registers.registers16Bit); i++ {
+		c.opCodeMap[0x48+i] = INSTR_DEC
+	}
+	c.opCodeMap[0x48] = INSTR_DEC
+
+	for i := 0; i < len(c.registers.registers16Bit); i++ {
 		c.opCodeMap[0x50+i] = INSTR_PUSH
 	}
 	c.opCodeMap[0x50] = INSTR_PUSH
-
-	c.opCodeMap[0x58] = INSTR_POP
-	c.opCodeMap[0x59] = INSTR_POP
-	c.opCodeMap[0x5A] = INSTR_POP
-	c.opCodeMap[0x5B] = INSTR_POP
-	c.opCodeMap[0x5C] = INSTR_POP
-	c.opCodeMap[0x5D] = INSTR_POP
-	c.opCodeMap[0x5E] = INSTR_POP
-	c.opCodeMap[0x5F] = INSTR_POP
-	c.opCodeMap[0x61] = INSTR_POP
-	c.opCodeMap[0x8F] = INSTR_POP
 
 	c.opCodeMap[0x60] = INSTR_PUSH
 	c.opCodeMap[0x6A] = INSTR_PUSH
@@ -198,6 +192,15 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x16] = INSTR_PUSH
 	c.opCodeMap[0x1E] = INSTR_PUSH
 	c.opCodeMap[0x06] = INSTR_PUSH
+
+	for i := 0; i < len(c.registers.registers16Bit); i++ {
+		c.opCodeMap[0x58+i] = INSTR_POP
+	}
+	c.opCodeMap[0x58] = INSTR_POP
+
+	c.opCodeMap[0x61] = INSTR_POP
+	c.opCodeMap[0x8F] = INSTR_POP
+	c.opCodeMap[0x17] = INSTR_POP
 
 	c.opCodeMap[0xAB] = INSTR_STOSD
 	c.opCodeMap[0xAC] = INSTR_LODS
