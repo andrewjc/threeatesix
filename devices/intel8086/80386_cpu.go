@@ -120,8 +120,10 @@ func (device *CpuCore) OnReceiveMessage(message bus.BusMessage) {
 	switch {
 	case message.Subject == common.MESSAGE_REQUEST_CPU_MODESWITCH:
 		device.EnterMode(message.Data[0])
-	case message.Subject == common.MESSAGE_INTERRUPT_REQUEST:
-		device.HandleInterrupt(message.Data[0])
+	case message.Subject == common.MESSAGE_INTERRUPT_RAISE:
+		device.AcknowledgeInterrupt(message)
+	case message.Subject == common.MESSAGE_INTERRUPT_EXECUTE:
+		device.HandleInterrupt(message)
 	}
 }
 
@@ -130,6 +132,11 @@ func (core *CpuCore) GetPortMap() *bus.DevicePortMap {
 }
 
 func (core *CpuCore) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (core *CpuCore) WriteAddr8(addr uint16, data uint8) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -463,26 +470,25 @@ func (cpuCore *CpuCore) logInstruction(logMessage string) {
 	cpuCore.bus.SendMessageToAll(common.MODULE_DEBUG_MONITOR, bus.BusMessage{Subject: common.MESSAGE_GLOBAL_CPU_INSTRUCTION_LOG, Data: logMessageBytes})
 }
 
-func (core *CpuCore) AcknowledgeInterrupt() uint8 {
-	// Receive the interrupt acknowledge message from the PIC
-	interruptMessage := <-core.interruptChannel
-	interruptVector := interruptMessage.Data[0]
+func (cpuCore *CpuCore) logDebug(logMessage string) {
+	// encode logMessage to utf-8 bytes
+	logMessageBytes := []byte(logMessage)
 
-	// Send an interrupt complete message to the PIC
-	completeMessage := bus.BusMessage{
-		Subject: common.MESSAGE_INTERRUPT_COMPLETE,
-		Sender:  core.busId,
-	}
-	err := core.bus.SendMessageSingle(common.MODULE_INTERRUPT_CONTROLLER_1, completeMessage)
-	if err != nil {
-		log.Printf("Error sending interrupt complete message: %v", err)
-	}
-
-	return interruptVector
-
+	cpuCore.bus.SendMessageToAll(common.MODULE_DEBUG_MONITOR, bus.BusMessage{Subject: common.MESSAGE_GLOBAL_DEBUG_MESSAGE_LOG, Data: logMessageBytes})
 }
 
-func (core *CpuCore) HandleInterrupt(vector uint8) {
+func (core *CpuCore) HandleInterrupt(message bus.BusMessage) {
+
+	vector := message.Data[0]
+
+	// if vector comes from the second interrupt controller, subtract 8
+	if message.Sender == common.MODULE_INTERRUPT_CONTROLLER_2 {
+		vector -= 8
+	}
+
+	// Disable interrupts
+	core.registers.SetFlag(InterruptFlag, false)
+
 	// Push the current flags and CS:IP onto the stack
 	err := stackPush16(core, core.registers.FLAGS)
 	if err != nil {
@@ -498,21 +504,37 @@ func (core *CpuCore) HandleInterrupt(vector uint8) {
 	}
 
 	// Set the necessary flags
-	core.registers.SetFlag(InterruptFlag, false)
 	core.registers.SetFlag(TrapFlag, false)
 
 	// Set the CS:IP to the interrupt vector
 	core.registers.CS.base, _ = core.memoryAccessController.ReadMemoryAddr16(uint32(vector * 4))
 	core.registers.IP, _ = core.memoryAccessController.ReadMemoryAddr16(uint32(vector*4 + 2))
 
+	// Re-enable interrupts
+	core.registers.SetFlag(InterruptFlag, true)
+
 	// Send a message to the debug monitor
-	core.logInstruction(fmt.Sprintf("Interrupt %d handled", vector))
+	core.logDebug(fmt.Sprintf("Interrupt %d handled", vector))
+
+	// Send EOI message to the 8259A
+	//core.sendEOI(vector)
+	// Send EOI command to the 8259A
+	eoiMessage := bus.BusMessage{
+		Subject: common.MESSAGE_INTERRUPT_COMPLETE,
+		Sender:  message.Sender,
+		Data:    []byte{vector},
+	}
+	err = core.bus.SendMessageToDeviceById(message.Sender, eoiMessage)
+	if err != nil {
+		log.Printf("CPU: Error sending EOI message: %v", err)
+	}
 }
 
-func (core *CpuCore) CheckPendingInterruptChannel() {
-	select {
-	case interruptMessage := <-core.interruptChannel:
-		core.HandleInterrupt(interruptMessage.Data[0])
-	default:
+func (core *CpuCore) AcknowledgeInterrupt(message bus.BusMessage) {
+	// send message to the interrupt controller that raised the interrupt
+	err := core.bus.SendMessageToDeviceById(message.Sender, bus.BusMessage{Subject: common.MESSAGE_INTERRUPT_ACKNOWLEDGE, Data: message.Data})
+	if err != nil {
+		log.Fatalf("Failed to acknowledge interrupt: %s", err)
+		return
 	}
 }

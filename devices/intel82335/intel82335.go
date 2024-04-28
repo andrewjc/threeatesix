@@ -65,6 +65,10 @@ func (controller *Intel82335) SetBus(bus *bus.Bus) {
 	controller.bus = bus
 }
 
+func (device *Intel82335) GetDeviceBusId() uint32 {
+	return device.busId
+}
+
 func (device *Intel82335) SetDeviceBusId(id uint32) {
 	device.busId = id
 }
@@ -80,6 +84,10 @@ func (controller *Intel82335) GetPortMap() *bus.DevicePortMap {
 func (controller *Intel82335) ReadAddr8(addr uint16) uint8 {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (controller *Intel82335) WriteAddr8(addr uint16, data uint8) {
+
 }
 
 func (device *Intel82335) McrRegisterInitialize(registerValue uint8) {

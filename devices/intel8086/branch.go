@@ -90,18 +90,14 @@ func INSTR_JMP_FAR_M16(core *CpuCore, modrm *ModRm) {
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
 	offset, err := core.memoryAccessController.ReadMemoryAddr16(uint32(core.GetCurrentCodePointer()) + 1)
-
 	if err != nil {
 		return
 	}
 
-	var destAddr = core.registers.IP + 3
+	var destAddr = core.registers.IP + 2
+	destAddr2 := int32(destAddr) + int32(int16(offset))
 
-	var destAddrTest = int32(destAddr)
-
-	destAddr2 := destAddrTest + int32(offset)
-
-	core.logInstruction(fmt.Sprintf("[%#04x] JMP %#04x (NEAR_REL16)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
+	core.logInstruction(fmt.Sprintf("[%#04x] JMP %#04x (NEAR_REL16)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr2)))
 	core.registers.IP = uint16(destAddr2)
 }
 
@@ -266,4 +262,40 @@ func INSTR_JMP_SHORT_REL8(core *CpuCore) {
 	core.logInstruction(fmt.Sprintf("[%#04x] JMP %#04x (SHORT REL8)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
 	core.registers.IP = uint16(destAddr)
 
+}
+
+func INSTR_JO_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+
+	tmp := int16(core.registers.IP + 2)
+	destAddr := uint16(tmp + int16(offset))
+
+	if core.registers.GetFlag(OverFlowFlag) {
+		core.registers.IP = uint16(destAddr)
+		core.logInstruction(fmt.Sprintf("[%#04x] JO %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
+	} else {
+		core.registers.IP = uint16(core.GetIP() + 2)
+		core.logInstruction(fmt.Sprintf("[%#04x] JO %#04x (SHORT REL8) (Not Jumped)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
+	}
+}
+
+func INSTR_JNO_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+
+	tmp := int16(core.registers.IP + 2)
+	destAddr := uint16(tmp + int16(offset))
+
+	if !core.registers.GetFlag(OverFlowFlag) {
+		core.registers.IP = uint16(destAddr)
+		core.logInstruction(fmt.Sprintf("[%#04x] JNO %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
+	} else {
+		core.registers.IP = uint16(core.GetIP() + 2)
+		core.logInstruction(fmt.Sprintf("[%#04x] JNO %#04x (SHORT REL8) (Not Jumped)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
+	}
 }

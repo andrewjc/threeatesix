@@ -51,7 +51,7 @@ type PersonalComputer struct {
 }
 
 // BiosFilename - name of the bios image the virtual machine will boot up
-const BiosFilename = "bios.bin"
+const BiosFilename = "ami386.bin"
 
 // MaxRAMBytes - the amount of ram installed in this virtual machine
 // const MaxRAMBytes = 0x1E84800 //32 million (32mb)
@@ -73,19 +73,6 @@ func (pc *PersonalComputer) Power() {
 		pc.cpu.Step()
 		//pc.mathCoProcessor.Step()
 		pc.programmableIntervalTimer.Step()
-
-		if pc.programmableInterruptController1.HasPendingInterrupts() {
-			interruptVector := pc.cpu.AcknowledgeInterrupt()
-			pc.cpu.HandleInterrupt(interruptVector)
-		}
-
-		if pc.programmableInterruptController2.HasPendingInterrupts() {
-			interruptVector := pc.cpu.AcknowledgeInterrupt()
-			pc.cpu.HandleInterrupt(interruptVector)
-		}
-
-		pc.cpu.CheckPendingInterruptChannel()
-
 	}
 }
 
@@ -100,6 +87,8 @@ func NewPc() *PersonalComputer {
 
 	pc.programmableInterruptController1 = intel8259a.NewIntel8259a() //pic1
 	pc.programmableInterruptController2 = intel8259a.NewIntel8259a() //pic2
+	pc.programmableInterruptController1.IsPrimaryDevice(true)
+	pc.programmableInterruptController2.IsSecondaryDevice(true)
 
 	pc.programmableIntervalTimer = intel82C54.NewIntel82C54()      //pit
 	pc.highIntegrationInterfaceDevice = intel82335.NewIntel82335() //hiid

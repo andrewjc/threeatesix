@@ -31,8 +31,14 @@ func INSTR_MOV(core *CpuCore) {
 		}
 	case 0xA1:
 		{
+
 			// mov ax, moffs16*
 			offset, err := core.memoryAccessController.ReadMemoryAddr16(core.currentByteAddr)
+
+			if offset == 0x82da {
+				print("test")
+			}
+
 			if err != nil {
 				goto eof
 			}

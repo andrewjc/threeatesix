@@ -35,11 +35,19 @@ func (controller *Ps2Controller) ReadAddr8(addr uint16) uint8 {
 	panic("implement me")
 }
 
+func (controller *Ps2Controller) WriteAddr8(addr uint16, data uint8) {
+
+}
+
 type Ps2Device interface {
 	Connect(controller *Ps2Controller)
 	Disconnect()
 	SendData(data uint8)
 	ReceiveData(data uint8)
+}
+
+func (controller *Ps2Controller) GetDeviceBusId() uint32 {
+	return controller.busId
 }
 
 func (controller *Ps2Controller) SetDeviceBusId(id uint32) {

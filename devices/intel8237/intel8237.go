@@ -34,6 +34,10 @@ func NewIntel8237() *Intel8237 {
 	return &Intel8237{}
 }
 
+func (d *Intel8237) GetDeviceBusId() uint32 {
+	return d.busId
+}
+
 func (d *Intel8237) SetDeviceBusId(id uint32) {
 	d.busId = id
 }
@@ -68,6 +72,26 @@ func (d *Intel8237) ReadAddr8(addr uint16) uint8 {
 	}
 
 	return 0
+}
+
+func (d *Intel8237) WriteAddr8(addr uint16, data uint8) {
+	if d.isPrimaryDevice && addr == 0xe3 {
+		// 8237 DMA controller
+		d.WriteTemporaryRegister(data)
+	}
+	if d.isPrimaryDevice && addr == 0xe4 {
+		// 8237 DMA controller
+		d.WriteCommandRegister(data)
+	}
+
+	if d.isSecondaryDevice && addr == 0x00D3 {
+		// 8237 DMA controller
+		d.WriteTemporaryRegister(data)
+	}
+	if d.isSecondaryDevice && addr == 0x00D0 {
+		// 8237 DMA controller
+		d.WriteCommandRegister(data)
+	}
 }
 
 func (d *Intel8237) ReadStatusRegister() uint8 {
@@ -379,4 +403,8 @@ func (d *Intel8237) IsPrimaryDevice(isPrimaryDevice bool) {
 func (d *Intel8237) IsSecondaryDevice(isSecondaryDevice bool) {
 	d.isPrimaryDevice = false
 	d.isSecondaryDevice = isSecondaryDevice
+}
+
+func (d *Intel8237) WriteTemporaryRegister(data uint8) {
+	d.temporaryRegister = data
 }

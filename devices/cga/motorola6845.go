@@ -50,6 +50,10 @@ func NewMotorola6845() *Motorola6845 {
 	return chip
 }
 
+func (c *Motorola6845) GetDeviceBusId() uint32 {
+	return c.busId
+}
+
 func (c *Motorola6845) SetDeviceBusId(id uint32) {
 	c.busId = id
 }

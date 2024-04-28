@@ -20,6 +20,8 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0xE2] = INSTR_DEC_COUNT_JMP_SHORT_ECX
 	c.opCodeMap[0xE3] = INSTR_JCXZ_SHORT_REL8
 
+	c.opCodeMap[0x70] = INSTR_JO_SHORT_REL8
+	c.opCodeMap[0x71] = INSTR_JNO_SHORT_REL8
 	c.opCodeMap[0x74] = INSTR_JZ_SHORT_REL8
 	c.opCodeMap[0x75] = INSTR_JNZ_SHORT_REL8
 	c.opCodeMap[0x76] = INSTR_JBE_SHORT_REL8
@@ -92,6 +94,16 @@ func mapOpCodes(c *CpuCore) {
 	//c.opCodeMap[0x90] = INSTR_NOP // we don't define an NOP because NOP = xchg ax, ax
 
 	c.opCodeMap[0xC3] = INSTR_RET_NEAR
+
+	c.opCodeMap[0x1a] = INSTR_SBB
+	c.opCodeMap[0x1b] = INSTR_SBB
+	c.opCodeMap[0x1c] = INSTR_SBB
+	c.opCodeMap[0x1d] = INSTR_SBB
+	c.opCodeMap[0x80] = INSTR_SBB
+	c.opCodeMap[0x81] = INSTR_SBB
+	c.opCodeMap[0x83] = INSTR_SBB
+	c.opCodeMap[0x18] = INSTR_SBB
+	c.opCodeMap[0x19] = INSTR_SBB
 
 	c.opCodeMap[0x28] = INSTR_SUB
 	c.opCodeMap[0x29] = INSTR_SUB
@@ -177,6 +189,7 @@ func mapOpCodes(c *CpuCore) {
 	c.opCodeMap[0x5E] = INSTR_POP
 	c.opCodeMap[0x5F] = INSTR_POP
 	c.opCodeMap[0x61] = INSTR_POP
+	c.opCodeMap[0x8F] = INSTR_POP
 
 	c.opCodeMap[0x60] = INSTR_PUSH
 	c.opCodeMap[0x6A] = INSTR_PUSH

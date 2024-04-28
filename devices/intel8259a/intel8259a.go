@@ -4,307 +4,212 @@ import (
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
 	"log"
-	"os"
 )
-
-/*
-   Simulated 8259A Interrupt Controller Chip
-*/
 
 type Intel8259a struct {
 	bus                 *bus.Bus
 	busId               uint32
-	irqMask             uint8 // Interrupt request mask
-	irqService          uint8 // In-service interrupts
-	requestIrr          uint8 // Interrupt request register
-	serviceIrr          uint8 // In-service interrupt register
-	interruptVectorBase uint8 // Interrupt vector base
-	interruptVector     uint8 // Interrupt vector
-	isrPointer          uint8 // Pointer to the current position in ISR
-	irrPointer          uint8 // Pointer to the current position in IRR
-	priorityMode        uint8 // Interrupt priority mode (0: fixed, 1: rotating)
-	autoEoi             bool  // Automatic End-of-Interrupt mode
-	specificEoi         bool  // Specific End-of-Interrupt mode
-	isSlavePIC          bool  // Is this a slave PIC
-	slaveIRQ            uint8 // Slave PIC's interrupt input
-	operatingMode       bool  // Operating mode (0: MCS-80/85, 1: x86)
-	bufferedMode        bool  // Buffered mode
-	debugMode           bool  // Debug mode
+	irqMask             uint8
+	irqRequest          uint8
+	inService           uint8
+	interruptVectorBase uint8
+	autoEOI             bool
+	mode8086            bool
+	slaveMode           bool
+	masterMode          bool
+	slaveID             uint8
+	interruptOutput     bool
+	readISR             bool
+	readIRR             bool
 }
 
 func NewIntel8259a() *Intel8259a {
-	chip := &Intel8259a{}
-	chip.irqMask = 0xff         // All interrupts masked initially
-	chip.interruptVector = 0x08 // Default interrupt vector base
-	chip.debugMode = true
-	return chip
+	return &Intel8259a{
+		irqMask: 0xff,
+	}
 }
 
-func (device *Intel8259a) GetDeviceBusId() uint32 {
-	return device.busId
+func (d *Intel8259a) GetDeviceBusId() uint32 {
+	return d.busId
 }
 
-func (device *Intel8259a) SetDeviceBusId(id uint32) {
-	device.busId = id
+func (d *Intel8259a) SetDeviceBusId(id uint32) {
+	d.busId = id
 }
 
-func (device *Intel8259a) SetBus(bus *bus.Bus) {
-	device.bus = bus
+func (d *Intel8259a) SetBus(bus *bus.Bus) {
+	d.bus = bus
 }
 
-func (device *Intel8259a) OnReceiveMessage(message bus.BusMessage) {
-	// Handle bus messages if needed
+func (d *Intel8259a) OnReceiveMessage(message bus.BusMessage) {
+	if message.Subject == common.MESSAGE_INTERRUPT_RAISE {
+		d.assertInterrupt(message.Data[0])
+	} else if message.Subject == common.MESSAGE_INTERRUPT_ACKNOWLEDGE {
+		d.acknowledgeInterrupt()
+	} else if message.Subject == common.MESSAGE_INTERRUPT_COMPLETE {
+		d.completeInterrupt(message.Data[0])
+	}
 }
 
-func (device *Intel8259a) GetPortMap() *bus.DevicePortMap {
+func (d *Intel8259a) GetPortMap() *bus.DevicePortMap {
+	if d.masterMode {
+		return &bus.DevicePortMap{
+			ReadPorts:  []uint16{0x20, 0x21},
+			WritePorts: []uint16{0x20, 0x21},
+		}
+	} else if d.slaveMode {
+		return &bus.DevicePortMap{
+			ReadPorts:  []uint16{0xA0, 0xA1},
+			WritePorts: []uint16{0xA0, 0xA1},
+		}
+	}
 	return nil
 }
 
-func (device *Intel8259a) ReadAddr8(addr uint16) uint8 {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (device *Intel8259a) SetInterruptRequest(irq uint8) {
-	// Set the specified interrupt request bit in the request IRR
-	interruptRequestBit := uint8(1 << irq)
-	device.requestIrr |= interruptRequestBit
-
-	device.updateInterrupts()
-	device.log("8259A: Interrupt request set for IRQ %d", irq)
-}
-
-func (device *Intel8259a) clearInterruptRequest(irq uint8) {
-	// Clear the specified interrupt request bit in the request IRR
-	interruptRequestBit := uint8(1 << irq)
-	device.requestIrr &= ^interruptRequestBit
-	device.log("8259A: Interrupt request cleared for IRQ %d", irq)
-	device.updateInterrupts()
-}
-
-func (device *Intel8259a) setServiceRequest(irq uint8) {
-	// Set the specified interrupt service bit in the IRQ service register
-	interruptServiceBit := uint8(1 << irq)
-	device.irqService |= interruptServiceBit
-	device.log("8259A: Interrupt service set for IRQ %d", irq)
-}
-
-func (device *Intel8259a) clearServiceRequest(irq uint8) {
-	// Clear the specified interrupt service bit in the IRQ service register
-	interruptServiceBit := uint8(1 << irq)
-	device.irqService &= ^interruptServiceBit
-	device.log("8259A: Interrupt service cleared for IRQ %d", irq)
-}
-
-func (device *Intel8259a) updateInterrupts() {
-	// Check for pending interrupts and trigger the highest priority one
-	pendingInterrupts := device.requestIrr & ^device.irqMask & ^device.irqService
-	if pendingInterrupts != 0 {
-		highestPriorityIrq := device.getHighestPriorityIrq(pendingInterrupts)
-		device.triggerInterrupt(highestPriorityIrq)
+func (d *Intel8259a) ReadAddr8(addr uint16) uint8 {
+	switch addr {
+	case 0x20, 0xA0:
+		if d.readISR {
+			d.readISR = false
+			return d.inService
+		} else if d.readIRR {
+			d.readIRR = false
+			return d.irqRequest
+		} else {
+			return d.irqRequest
+		}
+	case 0x21, 0xA1:
+		return d.irqMask
+	default:
+		log.Printf("8259A: Unsupported read from address 0x%04X", addr)
+		return 0
 	}
 }
 
-func (device *Intel8259a) getHighestPriorityIrq(interrupts uint8) uint8 {
-	// Find the highest priority interrupt among the pending ones
+func (d *Intel8259a) WriteAddr8(addr uint16, data uint8) {
+	switch addr {
+	case 0x20, 0xA0:
+		if data&0x10 != 0 {
+			d.initialize(data)
+		} else if data&0x08 != 0 {
+			d.operationCommand3(data)
+		} else if data&0x04 != 0 {
+			d.operationCommand2(data)
+		} else {
+			d.interruptVectorBase = data & 0xF8
+		}
+	case 0x21, 0xA1:
+		if d.slaveMode && data&0x04 != 0 {
+			d.slaveID = data & 0x07
+		} else {
+			d.irqMask = data
+		}
+	default:
+		log.Printf("8259A: Unsupported write to address 0x%04X with data 0x%02X", addr, data)
+	}
+}
+
+func (d *Intel8259a) initialize(data uint8) {
+	d.irqMask = 0xFF
+	d.irqRequest = 0
+	d.inService = 0
+	d.interruptVectorBase = data & 0xF8
+	d.autoEOI = data&0x02 != 0
+	d.mode8086 = data&0x01 != 0
+	d.slaveMode = data&0x08 == 0
+	d.masterMode = !d.slaveMode
+	d.readISR = false
+	d.readIRR = false
+	d.interruptOutput = false
+}
+
+func (d *Intel8259a) operationCommand2(data uint8) {
+	rotate := data&0x80 != 0
+	autoEOI := data&0x40 != 0
+	specificEOI := data&0x20 != 0
+	nonSpecificEOI := data&0x10 != 0
+	rotateIRQ := data & 0x07
+
+	if nonSpecificEOI {
+		d.completeInterrupt(d.findHighestPriorityIRQ())
+	} else if specificEOI {
+		d.completeInterrupt(rotateIRQ)
+	}
+
+	if autoEOI {
+		d.autoEOI = true
+	} else if rotate {
+		d.rotateInterrupt(rotateIRQ)
+	}
+}
+
+func (d *Intel8259a) operationCommand3(data uint8) {
+	if data&0x01 != 0 {
+		d.readISR = true
+	} else if data&0x02 != 0 {
+		d.readIRR = true
+	}
+}
+
+func (d *Intel8259a) assertInterrupt(irq uint8) {
+	d.irqRequest |= 1 << irq
+	d.updateInterruptOutput()
+}
+
+func (d *Intel8259a) acknowledgeInterrupt() {
+	irq := d.findHighestPriorityIRQ()
+	if irq != 0xFF {
+		d.inService |= 1 << irq
+		d.irqRequest &^= 1 << irq
+		interruptVector := d.interruptVectorBase + irq
+		d.sendInterrupt(interruptVector)
+	}
+}
+
+func (d *Intel8259a) completeInterrupt(irq uint8) {
+	d.inService &^= 1 << irq
+	d.updateInterruptOutput()
+}
+
+func (d *Intel8259a) updateInterruptOutput() {
+	if d.irqRequest&^d.irqMask != 0 {
+		d.interruptOutput = true
+		d.bus.SendMessageSingle(common.MODULE_PRIMARY_PROCESSOR, bus.BusMessage{
+			Subject: common.MESSAGE_INTERRUPT_RAISE,
+			Data:    []byte{0},
+			Sender:  d.busId,
+		})
+	} else {
+		d.interruptOutput = false
+	}
+}
+
+func (d *Intel8259a) findHighestPriorityIRQ() uint8 {
 	for irq := uint8(0); irq < 8; irq++ {
-		if (interrupts & (1 << irq)) != 0 {
+		if d.irqRequest&(1<<irq) != 0 && d.inService&(1<<irq) == 0 {
 			return irq
 		}
 	}
-	return 0xff // No pending interrupts
+	return 0xFF
 }
 
-func (device *Intel8259a) triggerInterrupt(irq uint8) {
-	// Calculate the interrupt vector based on the vector base and the IRQ
-	device.interruptVector = device.interruptVectorBase + irq
-
-	// Set the service request for the IRQ
-	device.setServiceRequest(irq)
-
-	// Clear the interrupt request for the IRQ
-	device.clearInterruptRequest(irq)
-
-	// Trigger the interrupt on the bus
-	if device.bus != nil {
-		interruptMessage := bus.BusMessage{
-			Subject: common.MESSAGE_INTERRUPT_REQUEST,
-			Sender:  device.busId,
-			Data:    []byte{device.interruptVector},
-		}
-		err := device.bus.SendMessageSingle(common.MODULE_PRIMARY_PROCESSOR, interruptMessage)
-		if err != nil {
-			log.Printf("Error sending interrupt acknowledge message: %v", err)
-			return
-		}
-	}
-
-	device.log("8259A: Triggering interrupt IRQ %d with vector 0x%02X", irq, device.interruptVector)
+func (d *Intel8259a) rotateInterrupt(irq uint8) {
+	d.irqRequest = (d.irqRequest << irq) | (d.irqRequest >> (8 - irq))
+	d.inService = (d.inService << irq) | (d.inService >> (8 - irq))
 }
 
-func (device *Intel8259a) EndOfInterrupt(irq uint8) {
-	// End-of-Interrupt handler
-	if device.autoEoi {
-		// Automatic EOI mode
-		device.clearServiceRequest(device.isrPointer)
-		device.isrPointer = (device.isrPointer + 1) % 8
-	} else if device.specificEoi {
-		// Specific EOI mode
-		device.clearServiceRequest(irq)
-	} else {
-		// Normal EOI mode
-		device.clearServiceRequest(device.isrPointer)
-	}
-	device.updateInterrupts()
-	device.log("8259A: End-of-Interrupt for IRQ %d", irq)
+func (d *Intel8259a) sendInterrupt(interruptVector uint8) {
+	d.bus.SendMessageSingle(common.MODULE_PRIMARY_PROCESSOR, bus.BusMessage{
+		Subject: common.MESSAGE_INTERRUPT_EXECUTE,
+		Data:    []byte{interruptVector},
+		Sender:  d.busId,
+	})
 }
 
-// This would handle command words from the CPU.
-func (device *Intel8259a) CommandWordWrite(value uint8) {
-	// Interpret value according to the PIC's command word structure
-	if (value & 0x10) != 0 {
-		// ICW1: Initialization Command Word 1
-		device.isrPointer = 0
-		device.irrPointer = 0
-		device.irqMask = 0xff
-		device.requestIrr = 0
-		device.irqService = 0
-		device.priorityMode = 0
-		device.autoEoi = false
-		device.specificEoi = false
-		device.log("8259A: Initialization Command Word 1 received")
-	} else if (value & 0x08) != 0 {
-		// OCW3: Operation Control Word 3
-		if (value & 0x02) != 0 {
-			// Set priority mode
-			device.priorityMode = (value >> 5) & 0x01
-			device.log("8259A: Priority mode set to %d", device.priorityMode)
-		}
-		if (value & 0x01) != 0 {
-			// Set EOI mode
-			device.autoEoi = (value & 0x02) != 0
-			device.specificEoi = (value & 0x40) != 0
-			device.log("8259A: EOI mode set to Auto: %t, Specific: %t", device.autoEoi, device.specificEoi)
-		}
-	} else if (value & 0x04) != 0 {
-		// ICW3: Initialization Command Word 3
-		device.log("8259A: Initialization Command Word 3 received")
-
-		// Set the master/slave relationship and the slave PIC's interrupt input
-		device.isSlavePIC = (value & 0x08) != 0
-		device.slaveIRQ = value & 0x07
-
-		device.log("8259A: Slave PIC configured, isSlavePIC: %t, slaveIRQ: %d", device.isSlavePIC, device.slaveIRQ)
-
-		// Enable all interrupts
-		device.irqMask = 0x00
-		device.log("8259A: Interrupt mask set to 0x%02X", device.irqMask)
-
-		device.updateInterrupts()
-
-	} else if (value & 0x02) != 0 {
-		// ICW2: Initialization Command Word 2
-		device.interruptVectorBase = value & 0xF8
-		device.log("8259A: Initialization Command Word 2 received with vector base 0x%02X", device.interruptVectorBase)
-	} else if (value & 0x01) != 0 {
-		// ICW4: Initialization Command Word 4
-		device.autoEoi = (value & 0x02) != 0
-		device.specificEoi = (value & 0x01) != 0
-		device.operatingMode = (value & 0x01) != 0 // 0: MCS-80/85 mode, 1: x86 mode
-		device.bufferedMode = (value & 0x08) != 0
-
-		device.log("8259A: Initialization Command Word 4 received with EOI mode Auto: %t, Specific: %t", device.autoEoi, device.specificEoi)
-		device.log("8259A: Operating mode set to %s, Buffered mode set to %t", device.operatingMode, device.bufferedMode)
-
-		// Enable all interrupts
-		device.irqMask = 0x00
-		device.log("8259A: Interrupt mask set to 0x%02X", device.irqMask)
-		device.updateInterrupts()
-
-	} else if (value == 0x20) || (value == 0x60) {
-		// Non-specific EOI command
-		device.EndOfInterrupt(0)
-	} else if value == 0x60 {
-		// Specific EOI command
-		device.EndOfInterrupt(0)
-	} else if value == 0x0A {
-		// Rotate in Automatic EOI mode
-		device.autoEoi = true
-		device.log("8259A: Automatic EOI mode set")
-	} else if value == 0x0B {
-		// Rotate in Automatic EOI mode with a special case for EOI
-		device.autoEoi = true
-		device.specificEoi = true
-		device.log("8259A: Automatic EOI mode with specific EOI set")
-	} else if value == 0x0C {
-		// Set Interrupt Mask
-		device.irqMask = 0x01
-		device.updateInterrupts()
-		device.log("8259A: Interrupt mask set to 0x%02X", device.irqMask)
-	} else if value == 0x0D {
-		// Read Interrupt Request Register
-		device.log("8259A: Interrupt Request Register read")
-	} else if value == 0x0E {
-		// Read In-Service Register
-		device.log("8259A: In-Service Register read")
-	} else if value == 0x0F {
-		// Read Interrupt Mask Register
-		device.log("8259A: Interrupt Mask Register read")
-	} else if value == 0x70 {
-		// Read Initialization Command Word 1
-		device.log("8259A: Initialization Command Word 1 read")
-	} else if value == 0x71 {
-		// Read Initialization Command Word 2
-		device.log("8259A: Initialization Command Word 2 read")
-	} else if value == 0x72 {
-		// Read Initialization Command Word 3
-		device.log("8259A: Initialization Command Word 3 read")
-	} else if value == 0x73 {
-		// Read Initialization Command Word 4
-		device.log("8259A: Initialization Command Word 4 read")
-	} else if value == 0x74 {
-		// Read Initialization Command Word 4
-		device.log("8259A: Read Interrupt Mask Register")
-	} else if value == 0 {
-		// NOP: No Operation
-		device.log("8259A: No Operation command received")
-	} else {
-		log.Printf("8259A: Unhandled command word 0x%02X", value)
-		os.Exit(0)
-	}
+func (d *Intel8259a) IsPrimaryDevice(b bool) {
+	d.masterMode = b
 }
 
-// This would handle data writes to the PIC's data port.
-func (device *Intel8259a) dataWrite(value uint8) {
-	// Interpret value according to the PIC's data word structure
-	device.irqMask = value
-	device.updateInterrupts()
-	device.log("8259A: Interrupt mask set to 0x%02X", device.irqMask)
-}
-
-func (device *Intel8259a) DataWrite(value uint8) {
-	// Write data to the PIC's data port
-	if (device.isrPointer & 0x01) == 0 {
-		// Write to the command register
-		device.CommandWordWrite(value)
-	} else {
-		// Write to the data register
-		device.dataWrite(value)
-	}
-}
-
-func (device *Intel8259a) HasPendingInterrupts() bool {
-	// Check if there are any pending interrupts
-	return device.requestIrr&^device.irqMask&^device.irqService != 0
-}
-
-func (device *Intel8259a) TriggerInterrupt(u uint8) {
-	// Trigger the specified interrupt
-	device.triggerInterrupt(u)
-}
-
-func (device *Intel8259a) log(format string, args ...interface{}) {
-	if device.debugMode {
-		log.Printf(format, args...)
-	}
+func (d *Intel8259a) IsSecondaryDevice(b bool) {
+	d.slaveMode = b
 }

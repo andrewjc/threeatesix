@@ -216,22 +216,31 @@ func INSTR_POP(core *CpuCore) {
 	case 0x8F:
 		{
 			// POP r/m16
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
 
-			// Not implemented yet, dump the core
-			doCoreDump(core)
-			/*modrm := core.decodeModRM()
+			val, err := stackPop16(core)
+			if err != nil {
+				goto eof
+			}
 
-			  if modrm.mod == 0b11 {
-			      panic("POP r/m16 cannot use a register as the destination")
-			  }
-
-			  val, err := stackPop16(core)
-			  if err != nil {
-			      goto eof
-			  }
-
-			  modrm.write16(core, val)*/
-
+			if modrm.mod == 3 {
+				// Register mode
+				reg := core.registers.registers16Bit[modrm.rm]
+				*reg = val
+				core.logInstruction(fmt.Sprintf("[%#04x] pop %s", core.GetCurrentlyExecutingInstructionAddress(), core.registers.index16ToString(modrm.rm)))
+			} else {
+				// Memory mode
+				addr := modrm.getAddressMode16(core)
+				err = core.memoryAccessController.WriteMemoryAddr16(uint32(addr), val)
+				if err != nil {
+					goto eof
+				}
+				core.logInstruction(fmt.Sprintf("[%#04x] pop word ptr ds:[%#04x]", core.GetCurrentlyExecutingInstructionAddress(), addr))
+			}
 		}
 	case 0x61:
 		{

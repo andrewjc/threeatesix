@@ -32,6 +32,10 @@ func NewMemoryController(ram *[]byte, bios *[]byte) *MemoryAccessController {
 	return &MemoryAccessController{ram, bios, nil, 0, nil, 0}
 }
 
+func (mem *MemoryAccessController) GetDeviceBusId() uint32 {
+	return mem.busId
+}
+
 func (mem *MemoryAccessController) SetDeviceBusId(id uint32) {
 	mem.busId = id
 }
@@ -52,6 +56,11 @@ func (mem *MemoryAccessController) GetPortMap() *bus.DevicePortMap {
 }
 
 func (controller *MemoryAccessController) ReadAddr8(addr uint16) uint8 {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (mem *MemoryAccessController) WriteAddr8(addr uint16, data uint8) {
 	//TODO implement me
 	panic("implement me")
 }

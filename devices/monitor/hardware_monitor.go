@@ -23,11 +23,15 @@ func (device *HardwareMonitor) ReadAddr8(addr uint16) uint8 {
 	panic("implement me")
 }
 
+func (device *HardwareMonitor) WriteAddr8(addr uint16, data uint8) {
+
+}
+
 const MAX_LOG_LENGTH = 64
 
 func NewHardwareMonitor() *HardwareMonitor {
 	device := &HardwareMonitor{}
-	device.logCpuInstructions = false
+	device.logCpuInstructions = true
 	device.instructionLog = make([]string, 0)
 
 	return device
@@ -48,12 +52,15 @@ func (device *HardwareMonitor) SetBus(bus *bus.Bus) {
 func (device *HardwareMonitor) OnReceiveMessage(message bus.BusMessage) {
 	if device.logCpuInstructions && message.Subject == common.MESSAGE_GLOBAL_CPU_INSTRUCTION_LOG {
 		log.Printf("[%#04x] %s", device.busId, message.Data)
-	} else {
-		device.instructionLog = append(device.instructionLog, fmt.Sprintf("%s", message.Data))
-		if len(device.instructionLog) > MAX_LOG_LENGTH {
-			device.instructionLog = device.instructionLog[1:]
-		}
+	} else if device.logCpuInstructions && message.Subject == common.MESSAGE_GLOBAL_DEBUG_MESSAGE_LOG {
+		log.Printf("[%#04x] %s", device.busId, message.Data)
 	}
+
+	device.instructionLog = append(device.instructionLog, fmt.Sprintf("%s", message.Data))
+	if len(device.instructionLog) > MAX_LOG_LENGTH {
+		device.instructionLog = device.instructionLog[1:]
+	}
+
 }
 
 func (device *HardwareMonitor) GetInstructionLog() []string {

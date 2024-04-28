@@ -25,11 +25,14 @@ type DevicePortMap struct {
 }
 
 type BusDevice interface {
+	GetDeviceBusId() uint32
 	SetDeviceBusId(id uint32)
 	OnReceiveMessage(message BusMessage)
 	SetBus(bus *Bus)
 	GetPortMap() *DevicePortMap
+
 	ReadAddr8(addr uint16) uint8
+	WriteAddr8(addr uint16, data uint8)
 }
 
 func NewDeviceBus() *Bus {
@@ -130,4 +133,18 @@ func (bus *Bus) SendMessageSingle(deviceType DeviceType, message BusMessage) err
 	bus.FindSingleDevice(deviceType).OnReceiveMessage(message)
 
 	return nil
+}
+func (bus *Bus) SendMessageToDeviceById(deviceId uint32, message BusMessage) error {
+	for e, _ := range bus.deviceMap {
+		devList := bus.deviceMap[e]
+		for dev := devList.Front(); dev != nil; dev = dev.Next() {
+			if dev.Value.(BusDevice).GetDeviceBusId() == deviceId {
+				dev.Value.(BusDevice).OnReceiveMessage(message)
+				return nil
+			}
+		}
+	}
+
+	return nil
+
 }
