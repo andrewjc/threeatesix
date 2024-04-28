@@ -15,6 +15,10 @@ type ModRm struct {
 	disp32 uint32
 }
 
+func (m *ModRm) String() string {
+	return "ModRm{mod=" + string(m.mod) + ", reg=" + string(m.reg) + ", rm=" + string(m.rm) + ", sib=" + string(m.sib) + ", base=" + string(m.base) + ", index=" + string(m.index) + ", scale=" + string(m.scale) + ", disp8=" + string(m.disp8) + ", disp16=" + string(m.disp16) + ", disp32=" + string(m.disp32) + "}"
+}
+
 func (core *CpuCore) consumeModRm() (ModRm, uint32, error) {
 
 	var bytesConsumed uint32

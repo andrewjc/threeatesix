@@ -62,6 +62,34 @@ eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
+func INSTR_RET_FAR(core *CpuCore) {
+
+	current_ip := core.GetCurrentCodePointer()
+
+	var stackPntrSegment uint16
+
+	stackPntrAddr, err := stackPop16(core)
+	if err != nil {
+		goto eof
+	}
+
+	if stackPntrAddr == 0 {
+		stackPntrAddr = core.registers.SP
+	}
+
+	stackPntrSegment, err = stackPop16(core)
+	if err != nil {
+		goto eof
+	}
+
+	core.registers.IP = uint16(stackPntrAddr)
+	core.registers.CS.base = stackPntrSegment
+
+	core.logInstruction(fmt.Sprintf("[%#04x] retf (current code pointer: %#08x / new ip: %#08x)", current_ip, current_ip, core.registers.IP))
+eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
 func INSTR_PUSH(core *CpuCore) {
 	core.currentByteAddr++
 
@@ -96,6 +124,22 @@ func INSTR_PUSH(core *CpuCore) {
 			core.logInstruction(fmt.Sprintf("[%#04x] push %#04x", core.GetCurrentlyExecutingInstructionAddress(), val))
 		}
 	case 0x68:
+		{
+			// PUSH imm16
+
+			val, err := core.readImm16()
+			if err != nil {
+				goto eof
+			}
+
+			err = stackPush16(core, val)
+			if err != nil {
+				goto eof
+			}
+
+			core.logInstruction(fmt.Sprintf("[%#04x] push %#04x", core.GetCurrentlyExecutingInstructionAddress(), val))
+		}
+	case 0x6D:
 		{
 			// PUSH imm16
 
@@ -257,6 +301,18 @@ func INSTR_POP(core *CpuCore) {
 			core.registers.SS.base = val
 			core.logInstruction(fmt.Sprintf("[%#04x] pop SS", core.GetCurrentlyExecutingInstructionAddress()))
 
+		}
+	case 0x1F:
+		{
+			// POP DS
+
+			val, err := stackPop16(core)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.DS.base = val
+			core.logInstruction(fmt.Sprintf("[%#04x] pop DS", core.GetCurrentlyExecutingInstructionAddress()))
 		}
 	case 0x61:
 		{

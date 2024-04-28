@@ -299,3 +299,115 @@ func INSTR_JNO_SHORT_REL8(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] JNO %#04x (SHORT REL8) (Not Jumped)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
 	}
 }
+
+func INSTR_JLE_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+	destAddr := uint16(int16(core.registers.IP) + 2 + int16(offset))
+	if core.registers.GetFlag(ZeroFlag) || core.registers.GetFlag(SignFlag) != core.registers.GetFlag(OverFlowFlag) {
+		core.registers.IP = destAddr
+		core.logInstruction(fmt.Sprintf("[%#04x] JLE %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), destAddr))
+	} else {
+		core.registers.IP += 2
+	}
+}
+
+func INSTR_JG_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+	destAddr := uint16(int16(core.registers.IP) + 2 + int16(offset))
+	if !core.registers.GetFlag(ZeroFlag) && core.registers.GetFlag(SignFlag) == core.registers.GetFlag(OverFlowFlag) {
+		core.registers.IP = destAddr
+		core.logInstruction(fmt.Sprintf("[%#04x] JG %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), destAddr))
+	} else {
+		core.registers.IP += 2
+	}
+}
+
+func INSTR_JB_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+	destAddr := uint16(int16(core.registers.IP) + 2 + int16(offset))
+	if core.registers.GetFlag(CarryFlag) {
+		core.registers.IP = destAddr
+		core.logInstruction(fmt.Sprintf("[%#04x] JB %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), destAddr))
+	} else {
+		core.registers.IP += 2
+	}
+}
+
+func INSTR_JNB_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+	destAddr := uint16(int16(core.registers.IP) + 2 + int16(offset))
+	if !core.registers.GetFlag(CarryFlag) {
+		core.registers.IP = destAddr
+		core.logInstruction(fmt.Sprintf("[%#04x] JNB %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), destAddr))
+	} else {
+		core.registers.IP += 2
+	}
+}
+
+func INSTR_JL_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+	destAddr := uint16(int16(core.registers.IP) + 2 + int16(offset))
+	if core.registers.GetFlag(SignFlag) != core.registers.GetFlag(OverFlowFlag) {
+		core.registers.IP = destAddr
+		core.logInstruction(fmt.Sprintf("[%#04x] JL %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), destAddr))
+	} else {
+		core.registers.IP += 2
+	}
+}
+
+func INSTR_JGE_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+	destAddr := uint16(int16(core.registers.IP) + 2 + int16(offset))
+	if core.registers.GetFlag(SignFlag) == core.registers.GetFlag(OverFlowFlag) {
+		core.registers.IP = destAddr
+		core.logInstruction(fmt.Sprintf("[%#04x] JGE %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), destAddr))
+	} else {
+		core.registers.IP += 2
+	}
+}
+
+func INSTR_JPE_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+	destAddr := uint16(int16(core.registers.IP) + 2 + int16(offset))
+	if core.registers.GetFlag(ParityFlag) {
+		core.registers.IP = destAddr
+		core.logInstruction(fmt.Sprintf("[%#04x] JPE %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), destAddr))
+	} else {
+		core.registers.IP += 2
+	}
+}
+
+func INSTR_JPO_SHORT_REL8(core *CpuCore) {
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+	destAddr := uint16(int16(core.registers.IP) + 2 + int16(offset))
+	if !core.registers.GetFlag(ParityFlag) {
+		core.registers.IP = destAddr
+		core.logInstruction(fmt.Sprintf("[%#04x] JPO %#04x (SHORT REL8) (Jumped)", core.GetCurrentlyExecutingInstructionAddress(), destAddr))
+	} else {
+		core.registers.IP += 2
+	}
+}

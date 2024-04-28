@@ -13,140 +13,124 @@ func INSTR_TEST(core *CpuCore) {
 	var term2 uint32
 	var result uint32
 
-	var bitLength uint32
+	// No need for a bitLength variable if not used earlier in flag calculations.
 	switch core.currentOpCodeBeingExecuted {
-	case 0xA8:
-		{
-			//  TEST al, imm8
-			term1 = uint32(core.registers.AL)
-			term2, err := core.readImm8()
-			if err != nil {
-				goto eof
-			}
-
-			core.logInstruction(fmt.Sprintf("[%#04x] test al, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), term2))
-			goto success
-		}
-	case 0xA9:
-		{
-			// TEST ax, imm16
-			term1 = uint32(core.registers.AX)
-			term2, err := core.readImm16()
-			if err != nil {
-				goto eof
-			}
-
-			core.logInstruction(fmt.Sprintf("[%#04x] test ax, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), term2))
-			goto success
-		}
-	case 0xF6:
-		{
-			// TEST r/m8, imm8
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			rm, rmStr, err := core.readRm8(&modrm)
-			if err != nil {
-				goto eof
-			}
-			core.currentByteAddr += bytesConsumed
-
-			term1 = uint32(*rm)
-
-			term2, err := core.readImm8()
-			if err != nil {
-				goto eof
-			}
-
-			core.logInstruction(fmt.Sprintf("[%#04x] test %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
-			goto success
-		}
-	case 0xF7:
-		{
-			// TEST r/m16, imm16
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			rm, rmStr, err := core.readRm16(&modrm)
-			if err != nil {
-				goto eof
-			}
-			core.currentByteAddr += bytesConsumed
-
-			term1 = uint32(*rm)
-
-			term2, err := core.readImm16()
-			if err != nil {
-				goto eof
-			}
-
-			core.logInstruction(fmt.Sprintf("[%#04x] test %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rmStr, term2))
-			goto success
-		}
 	case 0x84:
-		{
-			// TEST r/m8, r8
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			rm, rmStr, err := core.readRm8(&modrm)
-			if err != nil {
-				goto eof
-			}
-			core.currentByteAddr += bytesConsumed
-
-			term1 = uint32(*rm)
-
-			rm2, rm2Str := core.readR8(&modrm)
-
-			term2 = uint32(*rm2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] test %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
-			goto success
+		// TEST r/m8, r8
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			log.Println("Error consuming ModR/M byte: ", err)
+			return
 		}
+		core.currentByteAddr += bytesConsumed
+
+		rm8, rm8Str, err := core.readRm8(&modrm)
+		if err != nil {
+			log.Println("Error reading r/m8: ", err)
+			return
+		}
+		r8, r8Str := core.readR8(&modrm)
+		term1 = uint32(*rm8)
+		term2 = uint32(*r8)
+		core.logInstruction(fmt.Sprintf("[%#04x] TEST %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, r8Str))
+
 	case 0x85:
-		{
-			// TEST r/m16, r16
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			rm, rmStr, err := core.readRm16(&modrm)
-			if err != nil {
-				goto eof
-			}
-			core.currentByteAddr += bytesConsumed
-
-			term1 = uint32(*rm)
-
-			rm2, rm2Str := core.readR16(&modrm)
-
-			term2 = uint32(*rm2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] test %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rm2Str))
-			goto success
+		// TEST r/m16, r16
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			log.Println("Error consuming ModR/M byte: ", err)
+			return
 		}
+		core.currentByteAddr += bytesConsumed
+
+		rm16, rm16Str, err := core.readRm16(&modrm)
+		if err != nil {
+			log.Println("Error reading r/m16: ", err)
+			return
+		}
+		r16, r16Str := core.readR16(&modrm)
+		term1 = uint32(*rm16)
+		term2 = uint32(*r16)
+		core.logInstruction(fmt.Sprintf("[%#04x] TEST %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, r16Str))
+
+	case 0xA8:
+		// TEST al, imm8
+		term1 = uint32(core.registers.AL)
+		imm8, err := core.readImm8()
+		if err != nil {
+			log.Println("Error reading immediate value: ", err)
+			return
+		}
+		term2 = uint32(imm8)
+		core.logInstruction(fmt.Sprintf("[%#04x] TEST AL, %#02x", core.GetCurrentlyExecutingInstructionAddress(), imm8))
+
+	case 0xA9:
+		// TEST ax, imm16
+		term1 = uint32(core.registers.AX)
+		imm16, err := core.readImm16()
+		if err != nil {
+			log.Println("Error reading immediate value: ", err)
+			return
+		}
+		term2 = uint32(imm16)
+		core.logInstruction(fmt.Sprintf("[%#04x] TEST AX, %#04x", core.GetCurrentlyExecutingInstructionAddress(), imm16))
+
+	case 0xF6, 0xF7:
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			log.Println("Error consuming ModR/M byte: ", err)
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		if core.currentOpCodeBeingExecuted == 0xF6 {
+			// TEST r/m8, imm8
+			rm8, rmStr, err := core.readRm8(&modrm)
+			if err != nil {
+				log.Println("Error reading r/m8: ", err)
+				return
+			}
+			imm8, err := core.readImm8()
+			if err != nil {
+				log.Println("Error reading immediate value: ", err)
+				return
+			}
+			term1 = uint32(*rm8)
+			term2 = uint32(imm8)
+			core.logInstruction(fmt.Sprintf("[%#04x] TEST %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, imm8))
+		} else {
+			// TEST r/m16, imm16
+			rm16, rmStr, err := core.readRm16(&modrm)
+			if err != nil {
+				log.Println("Error reading r/m16: ", err)
+				return
+			}
+			imm16, err := core.readImm16()
+			if err != nil {
+				log.Println("Error reading immediate value: ", err)
+				return
+			}
+			term1 = uint32(*rm16)
+			term2 = uint32(imm16)
+			core.logInstruction(fmt.Sprintf("[%#04x] TEST %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rmStr, imm16))
+		}
+
+	default:
+		log.Printf("Unsupported TEST opcode: %#x\n", core.currentOpCodeBeingExecuted)
+		return
 	}
 
-success:
-	bitLength = uint32(bits.Len32(result))
-
+	// Perform the bitwise AND, but don't store the result
 	result = term1 & term2
 
-	core.registers.SetFlag(OverFlowFlag, false)
+	// Set flags
+	core.registers.SetFlag(ZeroFlag, result == 0)                       // Zero Flag
+	core.registers.SetFlag(SignFlag, (result&0x80000000) != 0)          // Sign Flag (assume working with 32 bits)
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0) // Parity Flag
+	core.registers.SetFlag(CarryFlag, false)                            // Carry Flag (clear)
+	core.registers.SetFlag(OverFlowFlag, false)                         // Overflow Flag (clear)
 
-	core.registers.SetFlag(CarryFlag, false)
-
-	core.registers.SetFlag(SignFlag, (result>>bitLength) != 0)
-
-	core.registers.SetFlag(ZeroFlag, result == 0)
-
-	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
-
-eof:
+	// Update IP to reflect bytes read
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
@@ -224,252 +208,247 @@ eof:
 
 func INSTR_CMP(core *CpuCore) {
 	core.currentByteAddr++
-
-	var term1 uint32
-	var term2 uint32
-	var result uint32
-
-	var sign1 uint32
-	var sign2 uint32
-	var signr uint8
-
-	var bitLength uint32
+	var term1, term2, result uint32
 
 	switch core.currentOpCodeBeingExecuted {
-	case 0xA6:
-		{
-			//  CMPS m8, m8
-			tmp1, err := core.memoryAccessController.ReadMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
-			if err != nil {
-				goto eof
-			}
-			tmp2, err := core.memoryAccessController.ReadMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI))
-			if err != nil {
-				goto eof
-			}
-			term1 = uint32(tmp1)
-			term2 = uint32(tmp2)
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp m8, m8", core.GetCurrentlyExecutingInstructionAddress()))
-			goto success
+	case 0xA6: // CMPS m8, m8
+		address1 := core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI)
+		address2 := core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI)
+		tmp1, err := core.memoryAccessController.ReadMemoryAddr8(address1)
+		if err != nil {
+			return
 		}
-	case 0xA7:
-		{
-			// CMPS m16, m16
-			tmp1, err := core.memoryAccessController.ReadMemoryAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
-			if err != nil {
-				goto eof
-			}
-			tmp2, err := core.memoryAccessController.ReadMemoryAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI))
-			if err != nil {
-				goto eof
-			}
-			term1 = uint32(tmp1)
-			term2 = uint32(tmp2)
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp m16, m16", core.GetCurrentlyExecutingInstructionAddress()))
-			goto success
+		tmp2, err := core.memoryAccessController.ReadMemoryAddr8(address2)
+		if err != nil {
+			return
 		}
-	case 0x3C:
-		{
-			// CMP AL, imm8
-			term1 = uint32(core.registers.AL)
-			term2, err := core.readImm8()
-			if err != nil {
-				goto eof
-			}
+		term1 = uint32(tmp1)
+		term2 = uint32(tmp2)
+		result = term1 - term2
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP (m8) %d with %d", core.GetCurrentlyExecutingInstructionAddress(), tmp1, tmp2))
 
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp AL, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), term2))
-			goto success
+	case 0xA7: // CMPS m16, m16
+		address1 := core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI)
+		address2 := core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI)
+		tmp1, err := core.memoryAccessController.ReadMemoryAddr16(address1)
+		if err != nil {
+			return
 		}
-	case 0x3D:
-		{
-			//	CMP AX, imm16
-			term1 = uint32(core.registers.AX)
-			term2, err := core.readImm16()
-			if err != nil {
-				goto eof
-			}
-
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp AX, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), term2))
-			goto success
+		tmp2, err := core.memoryAccessController.ReadMemoryAddr16(address2)
+		if err != nil {
+			return
 		}
-	case 0x80:
-		{
-			// CMP r/m8, imm8
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			rm8, rm8Str, err := core.readRm8(&modrm)
-			if err != nil {
-				goto eof
-			}
-			core.currentByteAddr += bytesConsumed
+		term1 = uint32(tmp1)
+		term2 = uint32(tmp2)
+		result = term1 - term2
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP (m16) %d with %d", core.GetCurrentlyExecutingInstructionAddress(), tmp1, tmp2))
+	case 0x3A: // CMP r8, r/m8
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		r8, r8Str := core.readR8(&modrm)
+		rm8, rm8Str, err := core.readRm8(&modrm)
+		if err != nil {
+			return
+		}
+		term1 = uint32(*r8)
+		term2 = uint32(*rm8)
+		result = term1 - term2
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), r8Str, rm8Str))
+
+	case 0x3B: // CMP r16, r/m16
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		r16, r16Str := core.readR16(&modrm)
+		rm16, rm16Str, err := core.readRm16(&modrm)
+		if err != nil {
+			return
+		}
+		term1 = uint32(*r16)
+		term2 = uint32(*rm16)
+		result = term1 - term2
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), r16Str, rm16Str))
+
+	case 0x3C: // CMP AL, imm8
+		imm8, err := core.readImm8()
+		if err != nil {
+			return
+		}
+		term1 = uint32(core.registers.AL)
+		term2 = uint32(imm8)
+		result = term1 - term2
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP AL, %#02x", core.GetCurrentlyExecutingInstructionAddress(), imm8))
+
+	case 0x3D: // CMP AX, imm16
+		imm16, err := core.readImm16()
+		if err != nil {
+			return
+		}
+		term1 = uint32(core.registers.AX)
+		term2 = uint32(imm16)
+		result = term1 - term2
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP AX, %#04x", core.GetCurrentlyExecutingInstructionAddress(), imm16))
+	case 0x38, 0x39: // CMP r/m8, r8 or CMP r/m16, r16
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		var rm8 *uint8
+		var rm16 *uint16
+		var rmStr string
+		if core.currentOpCodeBeingExecuted == 0x38 {
+			rm8, rmStr, err = core.readRm8(&modrm)
+		} else {
+			rm16, rmStr, err = core.readRm16(&modrm)
+		}
+		if err != nil {
+			return
+		}
+		var r8 *uint8
+		var r16 *uint16
+		var rStr string
+		if core.currentOpCodeBeingExecuted == 0x38 {
+			r8, rStr = core.readR8(&modrm)
+		} else {
+			r16, rStr = core.readR16(&modrm)
+		}
+		if err != nil {
+			return
+		}
+		if core.currentOpCodeBeingExecuted == 0x38 {
 			term1 = uint32(*rm8)
-			term2, err := core.readImm8()
-			if err != nil {
-				goto eof
-			}
-
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, term2))
-			goto success
-		}
-	case 0x81:
-		{
-			// CMP r/m16, imm16
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			rm8, rm8Str, err := core.readRm16(&modrm)
-			if err != nil {
-				goto eof
-			}
-			core.currentByteAddr += bytesConsumed
-			term1 = uint32(*rm8)
-			term2, err := core.readImm16()
-			if err != nil {
-				goto eof
-			}
-
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, term2))
-			goto success
-		}
-	case 0x83:
-		{
-			// CMP r/m16,imm8
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			rm8, rm8Str, err := core.readRm16(&modrm)
-			if err != nil {
-				goto eof
-			}
-
-			core.currentByteAddr += bytesConsumed
-			term1 = uint32(*rm8)
-			term2, err := core.readImm8()
-			if err != nil {
-				goto eof
-			}
-
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp %s, [%#04x]", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, term2))
-			goto success
-		}
-	case 0x38:
-		{
-			// CMP r/m8,r8
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			rm8, rm8Str, err := core.readRm8(&modrm)
-			if err != nil {
-				goto eof
-			}
-			core.currentByteAddr += bytesConsumed
-			term1 = uint32(*rm8)
-			r8, r8Str := core.readR8(&modrm)
 			term2 = uint32(*r8)
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, r8Str))
-			goto success
+		} else {
+			term1 = uint32(*rm16)
+			term2 = uint32(*r16)
 		}
-	case 0x39:
-		{
-			// CMP r/m16,r16
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			rm8, rm8Str, err := core.readRm16(&modrm)
-			if err != nil {
-				goto eof
-			}
-			core.currentByteAddr += bytesConsumed
-			term1 = uint32(*rm8)
-			r8, r8Str := core.readR16(&modrm)
-			term2 = uint32(*r8)
-			result = uint32(term1) - uint32(term2)
+		result = term1 - term2
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rStr))
 
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, r8Str))
-			goto success
+	case 0x80, 0x81, 0x83: // CMP r/m8, imm8 or CMP r/m16, imm16 or CMP r/m16, imm8
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			return
 		}
-	case 0x3A:
-		{
-			// CMP r8,r/m8
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			r8, r8Str := core.readR8(&modrm)
-			term1 = uint32(*r8)
+		core.currentByteAddr += bytesConsumed
 
+		if core.currentOpCodeBeingExecuted == 0x80 { // CMP r/m8, imm8
 			rm8, rm8Str, err := core.readRm8(&modrm)
 			if err != nil {
-				goto eof
+				return
 			}
-			core.currentByteAddr += bytesConsumed
-			term2 = uint32(*rm8)
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionAddress(), r8Str, rm8Str))
-			goto success
-		}
-	case 0x3B:
-		{
-			// CMP r16,r/m16
-			modrm, bytesConsumed, err := core.consumeModRm()
+			imm8, err := core.readImm8()
 			if err != nil {
-				goto eof
+				return
 			}
-			r8, r8Str := core.readR16(&modrm)
-			term1 = uint32(*r8)
-
-			rm8, rm8Str, err := core.readRm16(&modrm)
+			term1 = uint32(*rm8)
+			term2 = uint32(imm8)
+			core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, imm8))
+		} else { // CMP r/m16, imm16 or CMP r/m16, imm8
+			rm16, rm16Str, err := core.readRm16(&modrm)
 			if err != nil {
-				goto eof
+				return
 			}
-			core.currentByteAddr += bytesConsumed
-			term2 = uint32(*rm8)
-			result = uint32(term1) - uint32(term2)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] cmp %s, %s", core.GetCurrentlyExecutingInstructionAddress(), r8Str, rm8Str))
-			goto success
+			var imm uint32
+			if core.currentOpCodeBeingExecuted == 0x81 {
+				imm16, err := core.readImm16()
+				if err != nil {
+					return
+				}
+				imm = uint32(imm16)
+			} else { // Opcode 0x83, CMP r/m16, imm8
+				imm8, err := core.readImm8()
+				if err != nil {
+					return
+				}
+				imm = uint32(imm8) // Sign-extend the 8-bit immediate to 16-bit if necessary
+			}
+			term1 = uint32(*rm16)
+			term2 = imm
+			core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, imm))
 		}
+		result = term1 - term2
+
+	default:
+		fmt.Printf("Unsupported opcode %#x\n", core.currentOpCodeBeingExecuted)
+		return
 	}
 
-success:
-	bitLength = uint32(bits.Len32(result))
+	// Update flags
+	core.registers.SetFlag(ZeroFlag, result == 0)
+	core.registers.SetFlag(SignFlag, (result>>31) != 0)
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result&0xFF)%2 == 0)
+	core.registers.SetFlag(CarryFlag, term1 < term2)
+	core.registers.SetFlag(OverFlowFlag, ((term1^term2)&(term1^result)>>31) != 0)
 
-	// update flags
-	sign1 = (term1 >> (bitLength)) & 0x01
-	sign2 = (term2 >> (bitLength)) & 0x01
-	signr = uint8((result >> (bitLength)) & 0x01)
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
 
-	core.registers.SetFlag(CarryFlag, result>>(bitLength) != 0)
+// INSTR_TEST_IMM8_AL tests the AL register with an immediate 8-bit value.
+func INSTR_TEST_IMM8_AL(core *CpuCore) {
+	// Read the next 8-bit immediate value from the code segment
+	imm8, err := core.readImm8()
+	if err != nil {
+		core.logInstruction(fmt.Sprintf("Error reading immediate value for TEST: %s", err))
+		return
+	}
 
+	// Perform the bitwise AND operation between AL and imm8
+	result := uint32(core.registers.AL) & uint32(imm8)
+
+	// Log the instruction for debugging purposes
+	core.logInstruction(fmt.Sprintf("[%#04x] TEST AL, %#02x", core.GetCurrentlyExecutingInstructionAddress(), imm8))
+
+	// Update flags based on the result
+	updateFlagsAfterTest(core, result)
+
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
+}
+
+// INSTR_TEST_IMM16_AX tests the AX register with an immediate 16-bit value.
+func INSTR_TEST_IMM16_AX(core *CpuCore) {
+	// Read the next 16-bit immediate value from the code segment
+	imm16, err := core.readImm16()
+	if err != nil {
+		core.logInstruction(fmt.Sprintf("Error reading immediate value for TEST: %s", err))
+		return
+	}
+
+	// Perform the bitwise AND operation between AX and imm16
+	result := uint32(core.registers.AX) & uint32(imm16)
+
+	// Log the instruction for debugging purposes
+	core.logInstruction(fmt.Sprintf("[%#04x] TEST AX, %#04x", core.GetCurrentlyExecutingInstructionAddress(), imm16))
+
+	// Update flags based on the result
+	updateFlagsAfterTest(core, result)
+
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
+}
+
+// updateFlagsAfterTest updates the CPU flags after a TEST instruction.
+func updateFlagsAfterTest(core *CpuCore, result uint32) {
+	// Set Zero Flag (ZF) if the result is zero
 	core.registers.SetFlag(ZeroFlag, result == 0)
 
-	core.registers.SetFlag(SignFlag, signr != 0)
+	// Set Sign Flag (SF) if the high bit of the result is set (assuming a 32-bit context here)
+	core.registers.SetFlag(SignFlag, (result&0x80000000) != 0)
 
-	core.registers.SetFlag(OverFlowFlag, (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
+	// Set Parity Flag (PF) based on the parity of the low 8 bits of the result
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result&0xFF)%2 == 0)
 
-eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+	// Clear Carry Flag (CF) and Overflow Flag (OF) as they are not affected by the TEST operation
+	core.registers.SetFlag(CarryFlag, false)
+	core.registers.SetFlag(OverFlowFlag, false)
 }

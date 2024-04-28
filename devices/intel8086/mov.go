@@ -90,6 +90,59 @@ func INSTR_MOV(core *CpuCore) {
 			core.logInstruction(fmt.Sprintf("[%#04x] MOV byte ptr cs:%#02x, ax", core.GetCurrentlyExecutingInstructionAddress(), segOff))
 
 		}
+	case 0xA4:
+		{
+			// movsb
+			src := core.registers.DS
+			srcOff := core.registers.SI
+			dest := core.registers.ES
+			destOff := core.registers.DI
+
+			srcAddr := uint32(src.base + srcOff)
+			destAddr := uint32(dest.base + destOff)
+
+			srcData, err := core.memoryAccessController.ReadMemoryAddr8(srcAddr)
+			if err != nil {
+				goto eof
+			}
+
+			err = core.memoryAccessController.WriteMemoryAddr8(destAddr, srcData)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.SI++
+			core.registers.DI++
+
+			core.logInstruction(fmt.Sprintf("[%#04x] MOVSB", core.GetCurrentlyExecutingInstructionAddress()))
+		}
+	case 0xA5:
+		{
+			// movsw
+			src := core.registers.DS
+			srcOff := core.registers.SI
+			dest := core.registers.ES
+			destOff := core.registers.DI
+
+			srcAddr := uint32(src.base + srcOff)
+			destAddr := uint32(dest.base + destOff)
+
+			srcData, err := core.memoryAccessController.ReadMemoryAddr16(srcAddr)
+			if err != nil {
+				goto eof
+			}
+
+			err = core.memoryAccessController.WriteMemoryAddr16(destAddr, srcData)
+			if err != nil {
+				goto eof
+			}
+
+			core.registers.SI += 2
+			core.registers.DI += 2
+
+			core.logInstruction(fmt.Sprintf("[%#04x] MOVSW", core.GetCurrentlyExecutingInstructionAddress()))
+
+		}
 	case 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7:
 		{
 			// mov r8, imm8

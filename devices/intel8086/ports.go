@@ -68,6 +68,74 @@ eof:
 	core.registers.IP += uint16(core.currentByteAddr-core.currentByteDecodeStart) + 1
 }
 
+func INSTR_INS(core *CpuCore) {
+	// Read from port
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0x6C:
+		{
+			// Read from port (imm) to AL
+
+			imm, err := core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr + 1)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr++
+
+			data := core.ioPortAccessController.ReadAddr8(uint16(imm))
+
+			core.memoryAccessController.WriteMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.ES, core.registers.DI), data)
+			core.registers.DI += 1
+			core.logInstruction(fmt.Sprintf("[%#04x] INS AL, IMM8 (Port: %#04x, data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), imm, data))
+		}
+	case 0x6D:
+		{
+			// Read from port (DX) to AL
+
+			dx := core.registers.DX
+
+			data := core.ioPortAccessController.ReadAddr8(uint16(dx))
+
+			core.memoryAccessController.WriteMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.ES, core.registers.DI), data)
+			core.registers.DI += 1
+			core.logInstruction(fmt.Sprintf("[%#04x] INS AL, DX (Port: %#04x, data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), dx, data))
+		}
+	case 0x6E:
+		{
+			// Read from port (imm) to AX
+
+			imm, err := core.memoryAccessController.ReadMemoryAddr16(core.currentByteAddr + 1)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += 2
+
+			data := core.ioPortAccessController.ReadAddr16(imm)
+
+			core.memoryAccessController.WriteMemoryAddr16(core.SegmentAddressToLinearAddress(core.registers.ES, core.registers.DI), data)
+			core.registers.DI += 2
+			core.logInstruction(fmt.Sprintf("[%#04x] INS AX, IMM16 (Port: %#04x, data = %#16x)", core.GetCurrentlyExecutingInstructionAddress(), imm, data))
+		}
+	case 0x6F:
+		{
+			// Read from port (DX) to AX
+
+			dx := core.registers.DX
+
+			data := core.ioPortAccessController.ReadAddr16(uint16(dx))
+
+			core.memoryAccessController.WriteMemoryAddr16(core.SegmentAddressToLinearAddress(core.registers.ES, core.registers.DI), data)
+			core.registers.DI += 2
+			core.logInstruction(fmt.Sprintf("[%#04x] INS AX, DX (Port: %#04x, data = %#16x)", core.GetCurrentlyExecutingInstructionAddress(), dx, data))
+		}
+	default:
+		log.Fatal("Unrecognised IN (port read) instruction!")
+	}
+
+eof:
+	core.registers.IP += uint16(core.currentByteAddr-core.currentByteDecodeStart) + 1
+}
+
 func INSTR_OUT(core *CpuCore) {
 	// Read from port
 

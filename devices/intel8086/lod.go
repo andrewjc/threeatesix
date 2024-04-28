@@ -65,6 +65,47 @@ eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
+func INSTR_STOSB(core *CpuCore) {
+	core.currentByteAddr++
+
+	// Check if there is a repetition prefix
+	if core.flags.RepPrefixEnabled {
+		// Execute the operation for the number of times specified in the CX register
+		for core.registers.CX > 0 {
+			// Perform the STOSB operation
+			core.memoryAccessController.WriteMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.ES, core.registers.DI), core.registers.AL)
+
+			// Update the DI register depending on the direction flag
+			if core.registers.GetFlag(DirectionFlag) {
+				core.registers.DI--
+			} else {
+				core.registers.DI++
+			}
+
+			core.registers.CX--
+		}
+
+		// Reset the repetition prefix
+		core.flags.RepPrefixEnabled = false
+
+	} else {
+		// No repetition prefix, just perform the STOSB operation once
+		core.memoryAccessController.WriteMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.ES, core.registers.DI), core.registers.AL)
+
+		// Update the DI register depending on the direction flag
+		if core.registers.GetFlag(DirectionFlag) {
+			core.registers.DI--
+		} else {
+			core.registers.DI++
+		}
+	}
+
+	// Log the instruction
+	core.logInstruction(fmt.Sprintf("[%#04x] STOSB", core.GetCurrentlyExecutingInstructionAddress()))
+
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
 func INSTR_STOSD(core *CpuCore) {
 	core.currentByteAddr++
 

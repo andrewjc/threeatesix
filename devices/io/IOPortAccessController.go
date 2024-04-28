@@ -75,12 +75,18 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 			return r.cmosRegisterData[r.cmosRegisterSelect]
 		}
 
+		if addr == 0xc3 {
+			// 8237 DMA controller status register
+			return r.GetBus().FindSingleDevice(common.MODULE_DMA_CONTROLLER).(*intel8237.Intel8237).ReadStatusRegister()
+		}
+
 		log.Fatalf("Unhandled IO port read: PORT=[%#04x]", addr)
 	}
 	return 0
 }
 
 func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
+	print("WriteAddr8: ", port_addr, " ", value, "\n")
 	devicePortRegistration := r.bus.GetDeviceOnPort(port_addr)
 	if devicePortRegistration != nil {
 		devicePortRegistration.Device.WriteAddr8(port_addr, value)

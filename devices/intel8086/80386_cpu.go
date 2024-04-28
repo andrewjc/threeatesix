@@ -538,3 +538,8 @@ func (core *CpuCore) AcknowledgeInterrupt(message bus.BusMessage) {
 		return
 	}
 }
+
+func INSTR_HLT(core *CpuCore) {
+	core.halt = true
+	core.logInstruction(fmt.Sprintf("[%#04x] HLT", core.GetCurrentlyExecutingInstructionAddress()))
+}

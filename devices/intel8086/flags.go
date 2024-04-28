@@ -57,3 +57,20 @@ func INSTR_CLD(core *CpuCore) {
 	core.registers.SetFlag(DirectionFlag, false)
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
+
+func INSTR_CMC(core *CpuCore) {
+	// Complement carry flag
+	carryFlag := core.registers.GetFlag(CarryFlag)
+	core.logInstruction(fmt.Sprintf("[%#04x] CMC", core.GetCurrentCodePointer()))
+	core.registers.SetFlag(CarryFlag, !carryFlag)
+
+	core.currentByteAddr++
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_CLC(core *CpuCore) {
+	core.logInstruction(fmt.Sprintf("[%#04x] CLC", core.GetCurrentCodePointer()))
+	core.registers.SetFlag(CarryFlag, false)
+	core.currentByteAddr++
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}

@@ -1578,18 +1578,13 @@ func INSTR_INC_SHORT_REL8(core *CpuCore) {
 	}
 	core.currentByteAddr += bytesConsumed
 
-	if modrm.mod == 3 {
-		dest = core.registers.registers16Bit[modrm.rm]
-		destName = core.registers.index16ToString(modrm.rm)
-		*dest = *dest + 1
-	} else {
-		addressMode := modrm.getAddressMode16(core)
-		err = core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), *dest+1)
-		if err != nil {
-			goto eof
-		}
-		destName = "rm/16"
+	dest, destName, err = core.readRm16(&modrm)
+	if err != nil {
+		goto eof
 	}
+
+	*dest = *dest + 1
+
 eof:
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", destName))
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
@@ -1903,6 +1898,20 @@ func INSTR_SBB(core *CpuCore) {
 			core.logInstruction(fmt.Sprintf("[%#04x] sbb ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
 		}
+	case 0x1F:
+		{
+			// SBB BX, imm16
+			term2, err := core.readImm16()
+			if err != nil {
+				goto eof
+			}
+			term1 = uint32(core.registers.BX)
+			result = uint32(term1) - (uint32(term2) + uint32(core.registers.GetFlagInt(CarryFlag)))
+			core.registers.BX = uint16(result)
+
+			core.logInstruction(fmt.Sprintf("[%#04x] sbb bx, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
+			goto success
+		}
 	case 0x80:
 		{
 			// SBB r/m8, imm8
@@ -2104,6 +2113,63 @@ success:
 	core.registers.SetFlag(SignFlag, signr != 0)
 
 	core.registers.SetFlag(OverFlowFlag, (sign1 == 1 && sign2 == 0 && signr == 0) || (sign1 == 0 && sign2 == 1 && signr == 1))
+
+eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_IMUL(core *CpuCore) {
+	core.currentByteAddr++
+
+	var term1 uint32
+	var term2 uint32
+	var result uint32
+
+	var bitLength uint32
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0x6B:
+		{
+			// IMUL r16, r/m16, imm8
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name := core.readR16(&modrm)
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*t1)
+			imm8, err := core.readImm8()
+			if err != nil {
+				goto eof
+			}
+			term2 = uint32(int8(imm8))
+			result = uint32(int16(int32(term1) * int32(int8(term2))))
+			tmp := uint16(result)
+			core.writeR16(&modrm, &tmp)
+			if err != nil {
+				goto eof
+			}
+
+			core.logInstruction(fmt.Sprintf("[%#04x] imul %s, %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, modrm.String(), term2))
+			goto success
+		}
+	default:
+		log.Fatal(fmt.Sprintf("Unrecognised IMUL instruction: %#04x!", core.currentOpCodeBeingExecuted))
+	}
+
+success:
+	bitLength = uint32(bits.Len32(result))
+
+	// update flags
+	core.registers.SetFlag(OverFlowFlag, false)
+
+	core.registers.SetFlag(CarryFlag, false)
+
+	core.registers.SetFlag(SignFlag, (result>>bitLength) != 0)
+
+	core.registers.SetFlag(ZeroFlag, result == 0)
+
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
 
 eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
