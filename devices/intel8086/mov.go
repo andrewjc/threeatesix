@@ -391,7 +391,7 @@ func INSTR_MOV(core *CpuCore) {
 			if modrm.mod == 3 {
 				src = core.registers.registers16Bit[modrm.rm]
 				srcName = core.registers.index16ToString(modrm.rm)
-				(*dest).Base = uint32(*src) << 4
+				(*dest).Base = uint32(*src)
 			} else {
 				addressMode := modrm.getAddressMode16(core)
 				var data, err = core.memoryAccessController.ReadMemoryAddr16(uint32(addressMode))
@@ -399,7 +399,7 @@ func INSTR_MOV(core *CpuCore) {
 					goto eof
 				}
 				src = &data
-				(*dest).Base = uint32(*src) << 4
+				(*dest).Base = uint32(*src)
 				srcName = "rm/16"
 			}
 
