@@ -3,10 +3,14 @@ package intel8086
 import "fmt"
 
 type SegmentRegister struct {
-	base  uint16
-	limit uint32
+	Base  uint32
+	Limit uint32
 	//selector uint16
 	access_information uint16
+}
+
+func (s *SegmentRegister) String() string {
+	return fmt.Sprintf("SegmentRegister{base=%#04x, limit=%#08x, access_information=%#04x}", s.Base, s.Limit, s.access_information)
 }
 
 type CpuRegisters struct {

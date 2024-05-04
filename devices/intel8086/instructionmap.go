@@ -37,7 +37,7 @@ func mapOpCodes(c *CpuCore) {
 		0x7d: INSTR_JGE_SHORT_REL8,
 		0x7a: INSTR_JPE_SHORT_REL8,
 		0x7b: INSTR_JPO_SHORT_REL8,
-		0xC2: INSTR_RET_FAR, // Corrected to handle immediate word
+		0xC2: INSTR_RET_FAR,
 		0xC3: INSTR_RET_NEAR,
 		// Input/Output Instructions
 		0xE4: INSTR_IN,
@@ -102,6 +102,10 @@ func mapOpCodes(c *CpuCore) {
 		0x11: INSTR_ADC,
 		0x12: INSTR_ADC,
 		0x13: INSTR_ADC,
+		0x2F: INSTR_DAS, // Decimal Adjust AL after Subtraction
+		0x27: INSTR_DAA, // Decimal Adjust AL after Addition
+		0x37: INSTR_AAA, // ASCII Adjust AL After Addition
+		0x3F: INSTR_AAS, // ASCII Adjust AL After Subtraction
 		0xD0: INSTR_SHIFT,
 		0xD1: INSTR_SHIFT,
 		0xD2: INSTR_SHIFT,
@@ -126,6 +130,8 @@ func mapOpCodes(c *CpuCore) {
 
 		0x6C: INSTR_INS,
 		0x6D: INSTR_INS,
+		0x6E: INSTR_OUTS, //ADDED
+		0x6F: INSTR_OUTS, //ADDED
 
 		0x68: INSTR_PUSH,
 		0x69: INSTR_IMUL,

@@ -1,4 +1,4 @@
-package main
+package tests_test
 
 import (
 	"fmt"
@@ -150,6 +150,98 @@ func Test_BufferInitTest_INSTRUCTIONS(t *testing.T) {
 			/*if testPc.GetPrimaryCpu().GetIP() != tt.expectedIP {
 				panic(fmt.Errorf("Expected ip [%#04x] but got [%#04x]", tt.expectedIP,testPc.GetPrimaryCpu().GetIP() ))
 			}*/
+		})
+	}
+}
+
+func Test_INSTR_JMP_CALL_CLI_STC(t *testing.T) {
+
+	tests := []struct {
+		name         string
+		instructions []uint8
+		setupFunc    func(*pc.PersonalComputer)
+		checkFunc    func(*pc.PersonalComputer) error
+	}{
+
+		{
+			"Test_CALL_NEAR_REL16",
+			[]uint8{0xE8, 0x08, 0x00}, // CALL 0008 (Relative call)
+			func(pc *pc.PersonalComputer) {
+				pc.GetPrimaryCpu().SetIP(0x2000)
+				pc.GetPrimaryCpu().GetRegisters().SP = 0xFFFE
+			},
+			func(pc *pc.PersonalComputer) error {
+				if pc.GetPrimaryCpu().GetIP() != 0x200B || pc.GetPrimaryCpu().GetRegisters().SP != 0xFFFC {
+					return fmt.Errorf("CALL NEAR REL16 failed: expected IP=0x200B and SP=0xFFFC, got IP=0x%04X and SP=0x%04X", pc.GetPrimaryCpu().GetIP(), pc.GetPrimaryCpu().GetRegisters().SP)
+				}
+				return nil
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		testPc := pc.NewPc() // build a new pc for each test run
+		testPc.GetPrimaryCpu().Init(testPc.GetBus())
+		testPc.GetMemoryController().UnlockBootVector()
+		tt.setupFunc(testPc)
+
+		t.Run(tt.name, func(t *testing.T) {
+			testPc.GetPrimaryCpu().SetCS(0x0)
+
+			for i, instr := range tt.instructions {
+				testPc.GetMemoryController().WriteMemoryAddr8(uint32(testPc.GetPrimaryCpu().GetIP()+uint16(i)), instr)
+			}
+
+			testPc.GetPrimaryCpu().Step()
+
+			if err := tt.checkFunc(testPc); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
+func Test_INSTR_JMP_FAR_m16(t *testing.T) {
+	tests := []struct {
+		name       string
+		setupFunc  func(*pc.PersonalComputer)
+		expectedCS uint32
+		expectedIP uint16
+	}{
+		{
+			name: "Test_JMP_FAR_m16_SimpleJump",
+			setupFunc: func(pc *pc.PersonalComputer) {
+				// Setting up memory to contain the JMP FAR instruction followed by segment and offset
+				// Assuming IP starts at 0x100
+				pc.GetPrimaryCpu().SetCS(0x0000)
+				pc.GetPrimaryCpu().SetIP(0x0100)
+				// Writing JMP FAR instruction 0xEA and the immediate segment:offset data
+				pc.GetMemoryController().WriteMemoryAddr8(0x0100, 0xEA)    // Opcode for JMP FAR
+				pc.GetMemoryController().WriteMemoryAddr16(0x0101, 0x1234) // Offset
+				pc.GetMemoryController().WriteMemoryAddr16(0x0103, 0x0002) // Segment
+			},
+			expectedCS: 0x0002,
+			expectedIP: 0x1234,
+		},
+	}
+
+	for _, tt := range tests {
+		testPc := pc.NewPc() // Build a new PC for each test run
+		testPc.GetPrimaryCpu().Init(testPc.GetBus())
+		testPc.GetMemoryController().UnlockBootVector()
+		tt.setupFunc(testPc)
+
+		t.Run(tt.name, func(t *testing.T) {
+			// Execute the JMP FAR instruction
+			testPc.GetPrimaryCpu().Step()
+
+			// Check if CS and IP registers are set to the expected values
+			actualCS := testPc.GetPrimaryCpu().GetCS()
+			actualIP := testPc.GetPrimaryCpu().GetIP()
+			if actualCS != tt.expectedCS || actualIP != tt.expectedIP {
+				t.Errorf("Test %s failed: expected CS:IP = %04X:%04X, got CS:IP = %04X:%04X",
+					tt.name, tt.expectedCS, tt.expectedIP, actualCS, actualIP)
+			}
 		})
 	}
 }

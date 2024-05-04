@@ -7,19 +7,27 @@ type RealModeAccessProvider struct {
 }
 
 func (r *RealModeAccessProvider) ReadMemoryAddr8(addr uint32) (uint8, error) {
+	// Define BIOS memory range constants
+	const BIOS_START uint32 = 0xF0000
+	const BIOS_END uint32 = 0xFFFFF // Adjust based on actual BIOS size
 
-	var byteData uint8
-	inBiosSpace := (addr > uint32(len(*r.biosImage)-1)-(0xFFFFFFF-addr)) && addr < 0xFFFFFFFF
-	if r.resetVectorBaseAddr > 0 && inBiosSpace {
-		return r.ReadFromBiosAddressSpace(addr)
+	// Check if the address is within the BIOS mapped space
+	inBiosSpace := addr >= BIOS_START && addr <= BIOS_END
+
+	if inBiosSpace {
+		// Calculate index into BIOS data by subtracting the start of the BIOS address space
+		biosIndex := addr - BIOS_START
+		if int(biosIndex) >= len(*r.biosImage) {
+			return 0, common.GeneralProtectionFault{} // or another appropriate error
+		}
+		return (*r.biosImage)[biosIndex], nil
 	} else {
-		if int(addr) > len(*r.backingRam) || addr < 0 {
+		// Ensure address is within RAM bounds
+		if int(addr) >= len(*r.backingRam) || addr < 0 {
 			return 0, common.GeneralProtectionFault{}
 		}
-		byteData = (*r.backingRam)[addr]
+		return (*r.backingRam)[addr], nil
 	}
-
-	return byteData, nil
 }
 
 func (r *RealModeAccessProvider) ReadMemoryAddr16(addr uint32) (uint16, error) {

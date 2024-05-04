@@ -190,3 +190,26 @@ eof:
 	core.registers.IP += uint16(core.currentByteAddr-core.currentByteDecodeStart) + 1
 
 }
+
+func INSTR_OUTS(core *CpuCore) {
+	// Read from port
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0x6E:
+		{
+			// Write value in AL to port addr imm8
+			core.logInstruction(fmt.Sprintf("[%#04x] OUTS DX, AL (Port: %#16x, data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AL))
+			core.ioPortAccessController.WriteAddr8(uint16(core.registers.DX), core.registers.AL)
+			core.registers.DI += 1
+		}
+	case 0x6F:
+		{
+			// Write value in AX to port addr imm8
+			core.logInstruction(fmt.Sprintf("[%#04x] OUTS DX, AX (Port: %#16x, data = %#16x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.DX, core.registers.AX))
+			core.ioPortAccessController.WriteAddr16(uint16(core.registers.DX), core.registers.AX)
+			core.registers.DI += 2
+		}
+	default:
+		log.Fatal("Unrecognised OUTS (port read) instruction!")
+	}
+}

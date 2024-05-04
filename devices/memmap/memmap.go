@@ -19,6 +19,12 @@ type MemoryAccessController struct {
 
 	bus   *bus.Bus
 	busId uint32
+
+	segmentOverride     uint32
+	addressSizeOverride bool
+	operandSizeOverride bool
+	setLockPrefix       bool
+	setRepPrefix        bool
 }
 
 type MemoryAccessProvider interface {
@@ -29,7 +35,7 @@ type MemoryAccessProvider interface {
 }
 
 func NewMemoryController(ram *[]byte, bios *[]byte) *MemoryAccessController {
-	return &MemoryAccessController{ram, bios, nil, 0, nil, 0}
+	return &MemoryAccessController{ram, bios, nil, 0, nil, 0, 0, false, false, false, false}
 }
 
 func (mem *MemoryAccessController) GetDeviceBusId() uint32 {
@@ -77,6 +83,7 @@ func (controller *MemoryAccessController) SetBus(bus *bus.Bus) {
 }
 
 func (mem *MemoryAccessController) ReadMemoryAddr8(address uint32) (uint8, error) {
+
 	return mem.memoryAccessProvider.ReadMemoryAddr8(address)
 }
 
@@ -129,4 +136,24 @@ func (mem *MemoryAccessController) UnlockBootVector() {
 
 func (mem *MemoryAccessController) PeekNextBytes(addr uint32, numBytes uint32) []byte {
 	return mem.memoryAccessProvider.PeekNextBytesImpl(addr, numBytes)
+}
+
+func (mem *MemoryAccessController) SetSegmentOverride(override uint32) {
+	mem.segmentOverride = override
+}
+
+func (mem *MemoryAccessController) SetAddressSizeOverride(enabled bool) {
+	mem.addressSizeOverride = enabled
+}
+
+func (mem *MemoryAccessController) SetOperandSizeOverride(enabled bool) {
+	mem.operandSizeOverride = enabled
+}
+
+func (mem *MemoryAccessController) SetLockPrefix(enabled bool) {
+	mem.setLockPrefix = enabled
+}
+
+func (mem *MemoryAccessController) SetRepPrefix(enabled bool) {
+	mem.setRepPrefix = enabled
 }

@@ -16,7 +16,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	core.flags.AddressSizeOverrideEnabled = false
 	core.flags.LockPrefixEnabled = false
 	core.flags.RepPrefixEnabled = false
-	core.is2ByteOperand = true
+	core.is2ByteOperand = false
 
 	core.currentPrefixBytes = []byte{}
 	for isPrefixByte(core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0]) {
@@ -61,7 +61,14 @@ func (core *CpuCore) decodeInstruction() uint8 {
 		core.currentByteAddr++
 	}
 
-	instrByte, err = core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr))
+	core.memoryAccessController.SetSegmentOverride(core.flags.MemorySegmentOverride)
+	core.memoryAccessController.SetAddressSizeOverride(core.flags.AddressSizeOverrideEnabled)
+	core.memoryAccessController.SetOperandSizeOverride(core.flags.OperandSizeOverrideEnabled)
+	core.memoryAccessController.SetLockPrefix(core.flags.LockPrefixEnabled)
+	core.memoryAccessController.SetRepPrefix(core.flags.RepPrefixEnabled)
+	nextInstructionAddr := core.SegmentAddressToLinearAddress32(core.registers.CS, uint32(core.registers.IP))
+	instrByte, err = core.memoryAccessController.ReadMemoryAddr8(nextInstructionAddr)
+
 	if err != nil {
 		log.Printf("Error reading instruction byte: %s\n", err)
 		doCoreDump(core)
@@ -69,10 +76,10 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	}
 
 	var instructionImpl OpCodeImpl
-	if core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0] == 0x0F {
+	if instrByte == 0x0F {
 		// 2 byte opcode
-		core.IncrementIP()
-		instrByte, err = core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr + 1))
+		core.currentByteAddr++
+		instrByte, err = core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr))
 		if err != nil {
 			log.Printf("Error reading instruction byte: %s\n", err)
 			doCoreDump(core)
@@ -162,9 +169,10 @@ func (core *CpuCore) Is32BitOperand() bool {
 
 func INSTR_SMSW(core *CpuCore) {
 	var value uint16
-	var rm_str string
+	var dest *uint16
+	var destName string
 
-	core.IncrementIP()
+	core.currentByteAddr++
 	modrm, bytesConsumed, err := core.consumeModRm()
 	if err != nil {
 		goto eof
@@ -173,16 +181,25 @@ func INSTR_SMSW(core *CpuCore) {
 
 	value = uint16(core.registers.CR0)
 
-	err = core.writeRm16(&modrm, &value)
+	// mask out the reserved bits
+	value = value & 0xFFFF
 
 	if modrm.mod == 3 {
-		rm_str = core.registers.index16ToString(modrm.rm)
+		dest = core.registers.registers16Bit[modrm.rm]
+		destName = core.registers.index16ToString(modrm.rm)
+		*dest = value
 	} else {
-		rm_str = "r/m16"
+		addressMode := modrm.getAddressMode16(core)
+		err = core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), value)
+		if err != nil {
+			goto eof
+		}
+		destName = "rm/16"
 	}
+
 eof:
-	core.logInstruction(fmt.Sprintf("[%#04x] smsw %s", core.GetCurrentlyExecutingInstructionAddress(), rm_str))
-	core.registers.IP = uint16(core.GetIP() + 1)
+	core.logInstruction(fmt.Sprintf("[%#04x] smsw %s", core.GetCurrentlyExecutingInstructionAddress(), destName))
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_FF_OPCODES(core *CpuCore) {

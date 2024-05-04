@@ -396,11 +396,13 @@ func INSTR_CMP(core *CpuCore) {
 // INSTR_TEST_IMM8_AL tests the AL register with an immediate 8-bit value.
 func INSTR_TEST_IMM8_AL(core *CpuCore) {
 	// Read the next 8-bit immediate value from the code segment
+	core.currentByteAddr++
 	imm8, err := core.readImm8()
 	if err != nil {
 		core.logInstruction(fmt.Sprintf("Error reading immediate value for TEST: %s", err))
 		return
 	}
+	//core.currentByteAddr += 1
 
 	// Perform the bitwise AND operation between AL and imm8
 	result := uint32(core.registers.AL) & uint32(imm8)

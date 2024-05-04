@@ -47,50 +47,100 @@ func (d *Intel8237) OnReceiveMessage(message bus.BusMessage) {
 }
 
 func (d *Intel8237) GetPortMap() *bus.DevicePortMap {
-	return &bus.DevicePortMap{
-		ReadPorts: []uint16{0xe3, 0xe4},
+	if d.isPrimaryDevice {
+		return &bus.DevicePortMap{
+			ReadPorts: []uint16{0x0008, 0x000D},
+			WritePorts: []uint16{
+				0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007,
+				0x0008, 0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
+			},
+		}
+	} else if d.isSecondaryDevice {
+		return &bus.DevicePortMap{
+			ReadPorts: []uint16{0x00D0, 0x00DA},
+			WritePorts: []uint16{
+				0x00C0, 0x00C2, 0x00C4, 0x00C6, 0x00C8, 0x00CA, 0x00CC, 0x00CE,
+				0x00D0, 0x00D2, 0x00D4, 0x00D6, 0x00D8, 0x00DA, 0x00DC, 0x00DE,
+			},
+		}
 	}
+	return nil
 }
 
 func (d *Intel8237) ReadAddr8(addr uint16) uint8 {
-	if d.isPrimaryDevice && addr == 0xe3 {
-		// 8237 DMA controller
-		return d.ReadTemporaryRegister()
+	if d.isPrimaryDevice {
+		switch addr {
+		case 0x0008:
+			return d.ReadStatusRegister()
+		case 0x000D:
+			return d.ReadTemporaryRegister()
+		}
+	} else if d.isSecondaryDevice {
+		switch addr {
+		case 0x00D0:
+			return d.ReadStatusRegister()
+		case 0x00DA:
+			return d.ReadTemporaryRegister()
+		}
 	}
-	if d.isPrimaryDevice && addr == 0xe4 {
-		// 8237 DMA controller
-		return d.ReadStatusRegister()
-	}
-
-	if d.isSecondaryDevice && addr == 0x00D3 {
-		// 8237 DMA controller
-		return d.ReadTemporaryRegister()
-	}
-	if d.isSecondaryDevice && addr == 0x00D0 {
-		// 8237 DMA controller
-		return d.ReadStatusRegister()
-	}
-
-	return 0
+	panic("implement me")
 }
 
 func (d *Intel8237) WriteAddr8(addr uint16, data uint8) {
-	if d.isPrimaryDevice && addr == 0xe3 {
-		// 8237 DMA controller
-		d.WriteTemporaryRegister(data)
-	}
-	if d.isPrimaryDevice && addr == 0xe4 {
-		// 8237 DMA controller
-		d.WriteCommandRegister(data)
-	}
-
-	if d.isSecondaryDevice && addr == 0x00D3 {
-		// 8237 DMA controller
-		d.WriteTemporaryRegister(data)
-	}
-	if d.isSecondaryDevice && addr == 0x00D0 {
-		// 8237 DMA controller
-		d.WriteCommandRegister(data)
+	if d.isPrimaryDevice {
+		switch addr {
+		case 0x0000, 0x0002, 0x0004, 0x0006:
+			// DMA channel memory address bytes 1 and 0 (low)
+			channel := uint8(addr / 2)
+			d.addressRegisters[channel] = (d.addressRegisters[channel] & 0xFF00) | uint16(data)
+		case 0x0001, 0x0003, 0x0005, 0x0007:
+			// DMA channel memory address bytes 1 and 0 (high)
+			channel := uint8((addr - 1) / 2)
+			d.addressRegisters[channel] = (uint16(data) << 8) | (d.addressRegisters[channel] & 0x00FF)
+		case 0x0008:
+			d.WriteCommandRegister(data)
+		case 0x0009:
+			d.WriteRequestRegister(data)
+		case 0x000A:
+			d.WriteSingleMaskRegister(data)
+		case 0x000B:
+			d.WriteModeRegister(data)
+		case 0x000C:
+			d.ClearBytePointerFlipFlop()
+		case 0x000D:
+			// ignored, write to temporary register
+		case 0x000E:
+			d.ClearMaskRegister()
+		case 0x000F:
+			d.WriteMaskRegister(data)
+		}
+	} else if d.isSecondaryDevice {
+		switch addr {
+		case 0x00C0, 0x00C4, 0x00C8, 0x00CC:
+			// DMA channel memory address bytes 1 and 0 (low)
+			channel := uint8((addr - 0x00C0) / 4)
+			d.addressRegisters[channel] = (d.addressRegisters[channel] & 0xFF00) | uint16(data)
+		case 0x00C2, 0x00C6, 0x00CA, 0x00CE:
+			// DMA channel memory address bytes 1 and 0 (high)
+			channel := uint8((addr - 0x00C2) / 4)
+			d.addressRegisters[channel] = (uint16(data) << 8) | (d.addressRegisters[channel] & 0x00FF)
+		case 0x00D0:
+			d.WriteCommandRegister(data)
+		case 0x00D2:
+			d.WriteRequestRegister(data)
+		case 0x00D4:
+			d.WriteSingleMaskRegister(data)
+		case 0x00D6:
+			d.WriteModeRegister(data)
+		case 0x00D8:
+			d.ClearBytePointerFlipFlop()
+		case 0x00DA:
+			// ignored, write to temporary register
+		case 0x00DC:
+			d.ClearMaskRegister()
+		case 0x00DE:
+			d.WriteMaskRegister(data)
+		}
 	}
 }
 

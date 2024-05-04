@@ -1,4 +1,4 @@
-package main
+package tests
 
 import (
 	"github.com/andrewjc/threeatesix/devices/intel8086"
@@ -9,15 +9,13 @@ import (
 func Test_SetFlag(t *testing.T) {
 
 	tests := []struct {
-		name string
-		flagMask uint16
+		name         string
+		flagMask     uint16
 		setTestValue bool
-
 	}{
 		// TODO: Add test cases.
 
 		{"TestSettingFlagAndRetrieve", intel8086.ZeroFlag, true},
-
 	}
 	for _, tt := range tests {
 
