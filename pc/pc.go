@@ -5,6 +5,7 @@ import (
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
 	"github.com/andrewjc/threeatesix/devices/cga"
+	"github.com/andrewjc/threeatesix/devices/cmos"
 	"github.com/andrewjc/threeatesix/devices/hid/kb"
 	"github.com/andrewjc/threeatesix/devices/intel8086"
 	"github.com/andrewjc/threeatesix/devices/intel82335"
@@ -45,6 +46,7 @@ type PersonalComputer struct {
 
 	hardwareMonitor                *monitor.HardwareMonitor
 	cgaController                  *cga.Motorola6845
+	cmos                           *cmos.Motorola146818
 	highIntegrationInterfaceDevice *intel82335.Intel82335
 	dmaController                  *intel8237.Intel8237
 	dmaController2                 *intel8237.Intel8237
@@ -98,6 +100,7 @@ func NewPc() *PersonalComputer {
 	pc.dmaController2.IsSecondaryDevice(true)
 
 	pc.cgaController = cga.NewMotorola6845()
+	pc.cmos = cmos.NewMotorola146818()
 
 	pc.memController = memmap.NewMemoryController(&pc.ram, &pc.rom.bios)
 
@@ -120,6 +123,7 @@ func NewPc() *PersonalComputer {
 	pc.bus.RegisterDevice(pc.programmableIntervalTimer, common.MODULE_PIT)
 	pc.bus.RegisterDevice(pc.highIntegrationInterfaceDevice, common.MODULE_INTEL_82335)
 	pc.bus.RegisterDevice(pc.cgaController, common.MODULE_CGA)
+	pc.bus.RegisterDevice(pc.cmos, common.MODULE_CMOS)
 	pc.bus.RegisterDevice(pc.dmaController, common.MODULE_DMA_CONTROLLER)
 	pc.bus.RegisterDevice(pc.dmaController2, common.MODULE_DMA_CONTROLLER_2)
 
