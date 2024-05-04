@@ -10,6 +10,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 
 	var instrByte uint8
 	var err error
+	nextInstructionAddr := core.SegmentAddressToLinearAddress32(core.registers.CS, uint32(core.registers.IP))
 
 	core.flags.MemorySegmentOverride = 0
 	core.flags.OperandSizeOverrideEnabled = false
@@ -19,9 +20,9 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	core.is2ByteOperand = false
 
 	core.currentPrefixBytes = []byte{}
-	for isPrefixByte(core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0]) {
+	if isPrefixByte(core.memoryAccessController.PeekNextBytes(nextInstructionAddr, 1)[0]) {
 
-		prefixByte := core.memoryAccessController.PeekNextBytes(uint32(core.currentByteAddr), 1)[0]
+		prefixByte := core.memoryAccessController.PeekNextBytes(nextInstructionAddr, 1)[0]
 		core.currentPrefixBytes = append(core.currentPrefixBytes, prefixByte)
 		switch prefixByte {
 		case 0x2e:
@@ -59,6 +60,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 		}
 
 		core.currentByteAddr++
+		nextInstructionAddr++
 	}
 
 	core.memoryAccessController.SetSegmentOverride(core.flags.MemorySegmentOverride)
@@ -66,7 +68,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	core.memoryAccessController.SetOperandSizeOverride(core.flags.OperandSizeOverrideEnabled)
 	core.memoryAccessController.SetLockPrefix(core.flags.LockPrefixEnabled)
 	core.memoryAccessController.SetRepPrefix(core.flags.RepPrefixEnabled)
-	nextInstructionAddr := core.SegmentAddressToLinearAddress32(core.registers.CS, uint32(core.registers.IP))
+
 	instrByte, err = core.memoryAccessController.ReadMemoryAddr8(nextInstructionAddr)
 
 	if err != nil {
@@ -97,6 +99,10 @@ func (core *CpuCore) decodeInstruction() uint8 {
 
 		core.currentPrefixBytes = append(core.currentPrefixBytes, 0x0F)
 		core.is2ByteOperand = true
+	} else if instrByte == 0xFF {
+		// 2 byte opcode dictated by modrm
+		handleGroup5Opcode(core)
+		return 0
 	} else {
 		core.currentOpCodeBeingExecuted = instrByte
 		instructionImpl = core.opCodeMap[core.currentOpCodeBeingExecuted]
@@ -156,104 +162,134 @@ func isPrefixByte(b byte) bool {
 }
 
 func (core *CpuCore) Is32BitOperand() bool {
-	if core.mode == common.REAL_MODE && core.flags.OperandSizeOverrideEnabled {
-		return true
-	}
-
-	if core.mode == common.PROTECTED_MODE && !core.flags.OperandSizeOverrideEnabled {
-		return true
-	}
-
-	return false
-}
-
-func INSTR_SMSW(core *CpuCore) {
-	var value uint16
-	var dest *uint16
-	var destName string
-
-	core.currentByteAddr++
-	modrm, bytesConsumed, err := core.consumeModRm()
-	if err != nil {
-		goto eof
-	}
-	core.currentByteAddr += bytesConsumed
-
-	value = uint16(core.registers.CR0)
-
-	// mask out the reserved bits
-	value = value & 0xFFFF
-
-	if modrm.mod == 3 {
-		dest = core.registers.registers16Bit[modrm.rm]
-		destName = core.registers.index16ToString(modrm.rm)
-		*dest = value
-	} else {
-		addressMode := modrm.getAddressMode16(core)
-		err = core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), value)
-		if err != nil {
-			goto eof
+	if core.mode == common.PROTECTED_MODE {
+		if core.GetCurrentSegmentWidth() == 32 || core.flags.OperandSizeOverrideEnabled {
+			return true
+		} else {
+			return false
 		}
-		destName = "rm/16"
+	} else {
+		if core.flags.OperandSizeOverrideEnabled {
+			return true
+		} else {
+			return false
+		}
 	}
-
-eof:
-	core.logInstruction(fmt.Sprintf("[%#04x] smsw %s", core.GetCurrentlyExecutingInstructionAddress(), destName))
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
-func INSTR_FF_OPCODES(core *CpuCore) {
+func handleGroup5Opcode(core *CpuCore) {
+
+	if core.Is32BitOperand() {
+		handleGroup5Opcode_32(core)
+		return
+	}
 
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
-	core.currentByteAddr--
 	if err != nil {
-		goto eof
+		log.Printf("Error consuming ModR/M byte: %v\n", err)
+		return // Exit early on error
 	}
+	core.currentByteAddr--
 
 	switch modrm.reg {
-	/*case modrm.rm == 0:
-	  	{
-	  		// inc rm32
-	  	}
-	  case modrm.rm == 1:
-	  	{
-	  		// dec rm32
-	  	}
-	  case modrm.rm == 2:
-	  	{
-	  		// call rm32
-	  	}
-	  case modrm.rm == 3:
-	  	{
-	  		// call m16
-	  	}*/
-	//case 3:
-	//	{
-	// call m16
-	//		INSTR_CALLF_M16(core, &modrm)
-	//	}
+	case 0:
+		if modrm.rm == 0 {
+			// inc rm16
+			INSTR_INC_RM16(core)
+		} else {
+			log.Println("Unexpected ModRM setup for INC instruction")
+		}
+	case 1:
+		if modrm.rm == 1 {
+			// dec rm16
+			INSTR_DEC_RM16(core)
+		} else {
+			log.Println("Unexpected ModRM setup for DEC RM16 instruction")
+		}
+	case 2:
+		if modrm.rm == 2 {
+			// call rm32
+			INSTR_CALL_RM16(core)
+		} else {
+			log.Println("Unexpected ModRM setup for CALL RM16 instruction")
+		}
+	case 3:
+		if modrm.rm == 3 {
+			// call m16:16
+			INSTR_CALL_M16(core)
+		} else {
+			log.Println("Unexpected ModRM setup for CALL M16 instruction")
+		}
 	case 4:
-		{
-			// jmp rm32
-			INSTR_JMP_FAR_M16(core, &modrm)
-		}
+		// jmp rm32
+		INSTR_JMP_FAR_M16(core, &modrm)
 	case 5:
-		{
-			// jmp m16
-			INSTR_JMP_FAR_M16(core, &modrm)
-		}
+		// jmp m16:16
+		INSTR_JMP_FAR_M16(core, &modrm)
 	case 6:
-		{
-			// push rm32
-			INSTR_PUSH(core)
-		}
+		// push rm32
+		INSTR_PUSH_RM16(core)
 	default:
-		log.Println(fmt.Sprintf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
+		log.Printf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm)
 		doCoreDump(core)
-		panic(0)
+		panic("Unhandled operation")
 	}
-eof:
+}
+
+func handleGroup5Opcode_32(core *CpuCore) {
+
+	core.currentByteAddr++
+	modrm, _, err := core.consumeModRm()
+	if err != nil {
+		log.Printf("Error consuming ModR/M byte: %v\n", err)
+		return // Exit early on error
+	}
+	core.currentByteAddr--
+
+	switch modrm.reg {
+	case 0:
+		if modrm.rm == 0 {
+			// inc rm32
+			INSTR_INC_RM32(core)
+		} else {
+			log.Println("Unexpected ModRM setup for INC instruction")
+		}
+	case 1:
+		if modrm.rm == 1 {
+			// dec rm32
+			INSTR_DEC_RM32(core)
+		} else {
+			log.Println("Unexpected ModRM setup for DEC instruction")
+		}
+	case 2:
+		if modrm.rm == 2 {
+			// call rm32
+			INSTR_CALL_RM32(core)
+		} else {
+			log.Println("Unexpected ModRM setup for CALL RM32 instruction")
+		}
+	case 3:
+		if modrm.rm == 3 {
+			// call m16:16
+			INSTR_CALL_M16(core)
+		} else {
+			log.Println("Unexpected ModRM setup for CALL M16 instruction")
+		}
+	case 4:
+		// jmp rm32
+		INSTR_JMP_FAR_M32(core)
+	case 5:
+		// jmp m16:16
+		INSTR_JMP_FAR_M16(core, &modrm)
+	case 6:
+		// push rm32
+		INSTR_PUSH_32(core)
+	default:
+		log.Printf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm)
+		doCoreDump(core)
+		panic("Unhandled operation")
+	}
 }
 
 func INSTR_80_OPCODES(core *CpuCore) {
@@ -307,36 +343,6 @@ func INSTR_81_OPCODES(core *CpuCore) {
 		INSTR_CMP(core)
 	default:
 		log.Println(fmt.Sprintf("INSTR_81_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
-		doCoreDump(core)
-		panic(0)
-	}
-eof:
-}
-
-func INSTR_83_OPCODES(core *CpuCore) {
-
-	core.currentByteAddr++
-	modrm, _, err := core.consumeModRm()
-	core.currentByteAddr--
-	if err != nil {
-		goto eof
-	}
-
-	switch modrm.reg {
-	case 0:
-		INSTR_ADD(core)
-	case 1:
-		INSTR_OR(core)
-	case 4:
-		INSTR_AND(core)
-	case 5:
-		INSTR_SUB(core)
-	case 6:
-		INSTR_XOR(core)
-	case 7:
-		INSTR_CMP(core)
-	default:
-		log.Println(fmt.Sprintf("INSTR_83_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
 		panic(0)
 	}
