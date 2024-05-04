@@ -86,7 +86,7 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 }
 
 func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
-	print("WriteAddr8: ", port_addr, " ", value, "\n")
+	//print("WriteAddr8: ", port_addr, " ", value, "\n")
 	devicePortRegistration := r.bus.GetDeviceOnPort(port_addr)
 	if devicePortRegistration != nil {
 		devicePortRegistration.Device.WriteAddr8(port_addr, value)
@@ -143,20 +143,6 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 		if port_addr == 0x26 {
 			// DMA command register write
 			r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).DmaCommandRegisterWrite(value)
-			return
-		}
-
-		if port_addr == 0x70 {
-			// CMOS RAM
-			r.cmosRegisterSelect = value
-			return
-		}
-
-		if port_addr == 0x71 {
-			// CMOS RAM
-			friendlyCmosString := common.CmosRegisterWriteToFriendlyString(r.cmosRegisterSelect, value)
-			log.Printf("CMOS RAM: %#02x -> %#02x (%s)", r.cmosRegisterSelect, value, friendlyCmosString)
-			r.cmosRegisterData[r.cmosRegisterSelect] = value
 			return
 		}
 
