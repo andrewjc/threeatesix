@@ -7,21 +7,19 @@ import (
 
 func stackPush8(core *CpuCore, val uint8) error {
 	core.registers.SP -= 1
-	return core.memoryAccessController.WriteMemoryAddr8(uint32(core.registers.SP), val)
+	stackAddr := core.SegmentAddressToLinearAddress32(core.registers.SS, uint32(core.registers.SP))
+	return core.memoryAccessController.WriteMemoryAddr8(stackAddr, val)
 }
 
 func stackPush16(core *CpuCore, val uint16) error {
 	core.registers.SP -= 2
-	return core.memoryAccessController.WriteMemoryAddr16(uint32(core.registers.SP), val)
-}
-
-func stackPush32(core *CpuCore, val uint32) error {
-	core.registers.SP -= 4
-	return core.memoryAccessController.WriteMemoryAddr32(uint32(core.registers.SP), val)
+	stackAddr := core.SegmentAddressToLinearAddress32(core.registers.SS, uint32(core.registers.SP))
+	return core.memoryAccessController.WriteMemoryAddr16(stackAddr, val)
 }
 
 func stackPop8(core *CpuCore) (uint8, error) {
-	val, err := core.memoryAccessController.ReadMemoryAddr8(uint32(core.registers.SP))
+	stackAddr := core.SegmentAddressToLinearAddress32(core.registers.SS, uint32(core.registers.SP))
+	val, err := core.memoryAccessController.ReadMemoryAddr8(stackAddr)
 	if err != nil {
 		return 0, err
 	}
@@ -30,7 +28,8 @@ func stackPop8(core *CpuCore) (uint8, error) {
 }
 
 func stackPop16(core *CpuCore) (uint16, error) {
-	val, err := core.memoryAccessController.ReadMemoryAddr16(uint32(core.registers.SP))
+	stackAddr := core.SegmentAddressToLinearAddress32(core.registers.SS, uint32(core.registers.SP))
+	val, err := core.memoryAccessController.ReadMemoryAddr16(stackAddr)
 	if err != nil {
 		return 0, err
 	}
@@ -169,6 +168,40 @@ func INSTR_PUSH(core *CpuCore) {
 		log.Printf("Unhandled PUSH opcode: %#04x\n", opcode)
 	}
 }
+
+func INSTR_PUSH_RM16(core *CpuCore) {
+	core.currentByteAddr++
+	modrm, _, err := core.consumeModRm()
+	if err != nil {
+		log.Printf("Error consuming ModR/M byte: %v\n", err)
+		return // Exit early on error
+	}
+	core.currentByteAddr--
+
+	if modrm.mod == 3 {
+		reg, reg_str := core.registers.registers16Bit[modrm.rm], core.registers.index16ToString(modrm.rm)
+		if err := stackPush16(core, *reg); err != nil {
+			log.Printf("Error pushing register: %s\n", err)
+			return
+		}
+		core.logInstruction(fmt.Sprintf("[%#04x] PUSH %s", core.GetCurrentlyExecutingInstructionAddress(), reg_str))
+		core.registers.IP += 1 // Increment IP by 1 to simulate the reading of the opcode
+	} else {
+		addr := modrm.getAddressMode16(core)
+		val, err := core.memoryAccessController.ReadMemoryAddr16(uint32(addr))
+		if err != nil {
+			log.Printf("Error reading memory address: %s\n", err)
+			return
+		}
+		if err := stackPush16(core, val); err != nil {
+			log.Printf("Error pushing memory value: %s\n", err)
+			return
+		}
+		core.logInstruction(fmt.Sprintf("[%#04x] PUSH %#04x", core.GetCurrentlyExecutingInstructionAddress(), val))
+		core.registers.IP += 1 // Increment IP by 1 to simulate the reading of the opcode
+	}
+}
+
 func INSTR_POP(core *CpuCore) {
 	var instructionSize uint16
 
