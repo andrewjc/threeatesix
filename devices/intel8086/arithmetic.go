@@ -510,11 +510,11 @@ func INSTR_AND(core *CpuCore) {
 	var term2 uint32
 	var result uint32
 
-	var signr uint8
-	var sign1 uint32
-	var sign2 uint32
+	var signr int16
+	var sign1 int16
+	var sign2 int16
 
-	var bitLength uint32
+	var dataSize uint32
 
 	switch core.currentOpCodeBeingExecuted {
 	case 0x24:
@@ -527,7 +527,9 @@ func INSTR_AND(core *CpuCore) {
 			}
 			term1 = uint32(core.registers.AL)
 			result = uint32(term1) & uint32(term2)
-			core.registers.AL = uint8(term1)
+			core.registers.AL = uint8(result)
+
+			dataSize = 8
 
 			core.logInstruction(fmt.Sprintf("[%#04x] and al, %#08x", core.GetCurrentlyExecutingInstructionAddress(), term2))
 			goto success
@@ -570,6 +572,7 @@ func INSTR_AND(core *CpuCore) {
 			} else {
 				core.registers.AX = uint16(result)
 			}
+			dataSize = 16
 
 			goto success
 		}
@@ -594,6 +597,7 @@ func INSTR_AND(core *CpuCore) {
 			result = uint32(term1) & uint32(term2)
 			tmp := uint8(result)
 			err = core.writeRm8(&modrm, &tmp)
+			dataSize = 8
 
 			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
@@ -622,6 +626,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
+			dataSize = 16
 			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#16x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
@@ -649,6 +654,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
+			dataSize = 16
 			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
 			goto success
 		}
@@ -674,6 +680,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
+			dataSize = 8
 			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
@@ -699,6 +706,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
+			dataSize = 16
 			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
@@ -724,6 +732,7 @@ func INSTR_AND(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
+			dataSize = 8
 			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
@@ -746,7 +755,7 @@ func INSTR_AND(core *CpuCore) {
 			result = uint32(term1) & uint32(term2)
 			tmp := uint16(result)
 			core.writeR16(&modrm, &tmp)
-
+			dataSize = 16
 			core.logInstruction(fmt.Sprintf("[%#04x] and %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
 			goto success
 		}
@@ -755,20 +764,19 @@ func INSTR_AND(core *CpuCore) {
 	}
 
 success:
-	bitLength = uint32(bits.Len32(result))
 
 	// update flags
-	sign1 = (term1 >> (bitLength)) & 0x01
-	sign2 = (term2 >> (bitLength)) & 0x01
-	signr = uint8((result >> (bitLength)) & 0x01)
+	sign1 = int16(term1 >> (dataSize - 1))
+	sign2 = int16(term2 >> (dataSize - 1))
+	signr = int16((result >> (dataSize - 1)) & 0x01)
 
-	core.registers.SetFlag(CarryFlag, result>>(bitLength) != 0)
+	core.registers.SetFlag(CarryFlag, (result>>dataSize) == 1)
 
 	core.registers.SetFlag(ZeroFlag, result == 0)
 
-	core.registers.SetFlag(SignFlag, signr != 0)
+	core.registers.SetFlag(SignFlag, signr == 1)
 
-	core.registers.SetFlag(OverFlowFlag, (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
+	core.registers.SetFlag(OverFlowFlag, (sign1^sign2 == 0) && (sign1^signr == 1))
 
 eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
@@ -778,6 +786,10 @@ func INSTR_OR(core *CpuCore) {
 	var term1, term2, result uint32
 	var dataSize uint8 = 16
 	var srcName, dstName string
+
+	var signr int16
+	var sign1 int16
+	var sign2 int16
 
 	core.currentByteAddr++
 
@@ -945,21 +957,17 @@ func INSTR_OR(core *CpuCore) {
 	}
 
 	// Update flags
-	zero := result == 0
-	sign := false
+	sign1 = int16(term1 >> (dataSize - 1))
+	sign2 = int16(term2 >> (dataSize - 1))
+	signr = int16((result >> (dataSize - 1)) & 0x01)
 
-	// Check the size of the operation to determine how to set the Sign Flag
-	if dataSize == 8 { // 8-bit operation
-		sign = (result & 0x80) != 0 // Check the 8th bit
-	} else if dataSize == 16 { // 16-bit operation
-		sign = (result & 0x8000) != 0 // Check the 16th bit
-	}
+	core.registers.SetFlag(CarryFlag, (result>>dataSize) == 1)
 
-	// Update the flags
-	core.registers.SetFlag(ZeroFlag, zero)
-	core.registers.SetFlag(SignFlag, sign)
-	core.registers.SetFlag(OverFlowFlag, false)
-	core.registers.SetFlag(CarryFlag, false)
+	core.registers.SetFlag(ZeroFlag, result == 0)
+
+	core.registers.SetFlag(SignFlag, signr == 1)
+
+	core.registers.SetFlag(OverFlowFlag, (sign1^sign2 == 0) && (sign1^signr == 1))
 
 	// Increment instruction pointer
 	core.logInstruction(fmt.Sprintf("[%#04x] OR %s, %s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
@@ -1514,6 +1522,7 @@ func INSTR_INC_SHORT_REL8(core *CpuCore) {
 
 	var dest *uint16
 	var destName string
+	var result uint16
 
 	core.currentByteAddr++
 
@@ -1528,9 +1537,18 @@ func INSTR_INC_SHORT_REL8(core *CpuCore) {
 		goto eof
 	}
 
-	*dest = *dest + 1
+	result = *dest + 1
 
-	core.registers.SetFlag(ZeroFlag, *dest == 0)
+	// Update flags
+	core.registers.SetFlag(CarryFlag, result < *dest) // Set if carry occurs
+
+	core.registers.SetFlag(ZeroFlag, result == 0)
+
+	core.registers.SetFlag(SignFlag, (result>>15)&0x01 == 1) // Set if the most significant bit is 1
+
+	core.registers.SetFlag(OverFlowFlag, (*dest>>15)&0x01 == 0 && (result>>15)&0x01 == 1) // Set if result exceeds maximum positive value
+
+	*dest = result
 
 eof:
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", destName))
@@ -1546,9 +1564,18 @@ func INSTR_DEC(core *CpuCore) {
 			// DEC r16
 			val, valName := core.registers.registers16Bit[core.currentOpCodeBeingExecuted-0x48], core.registers.index16ToString(core.currentOpCodeBeingExecuted-0x48)
 
-			*val = *val - 1
+			result := *val - 1
 
-			core.registers.SetFlag(ZeroFlag, *val == 0)
+			// Update flags
+			core.registers.SetFlag(CarryFlag, *val == 0) // Set if borrow occurs
+
+			core.registers.SetFlag(ZeroFlag, result == 0)
+
+			core.registers.SetFlag(SignFlag, (result>>15)&0x01 == 1) // Set if the most significant bit is 1
+
+			core.registers.SetFlag(OverFlowFlag, (*val>>15)&0x01 == 1 && (result>>15)&0x01 == 0) // Set if result exceeds maximum negative value
+
+			*val = result
 
 			core.logInstruction(fmt.Sprintf("[%#04x] dec %s", core.GetCurrentlyExecutingInstructionAddress(), valName))
 
@@ -1564,6 +1591,7 @@ func INSTR_DEC(core *CpuCore) {
 func INSTR_DEC_RM16(core *CpuCore) {
 	var dest *uint16
 	var destName string
+	var result uint16
 
 	core.currentByteAddr++
 
@@ -1578,9 +1606,18 @@ func INSTR_DEC_RM16(core *CpuCore) {
 		goto eof
 	}
 
-	*dest = *dest - 1
+	result = *dest - 1
 
-	core.registers.SetFlag(ZeroFlag, *dest == 0)
+	// Update flags
+	core.registers.SetFlag(CarryFlag, *dest == 0) // Set if borrow occurs
+
+	core.registers.SetFlag(ZeroFlag, result == 0)
+
+	core.registers.SetFlag(SignFlag, (result>>15)&0x01 == 1) // Set if the most significant bit is 1
+
+	core.registers.SetFlag(OverFlowFlag, (*dest>>15)&0x01 == 1 && (result>>15)&0x01 == 0) // Set if result exceeds maximum negative value
+
+	*dest = result
 
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "DEC", destName))
 

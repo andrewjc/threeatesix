@@ -69,8 +69,21 @@ func INSTR_DEC_COUNT_JMP_SHORT(core *CpuCore) {
 	destAddr += uint16(offset) // Correctly calculate destination address
 
 	term1 := uint16(core.registers.CX)
-	term1-- // Decrement CX
-	core.registers.CX = term1
+	result := term1 - 1 // Decrement CX
+	core.registers.CX = result
+
+	// Update flags
+	dataSize := uint16(16) // Assuming CX is a 16-bit register
+	sign1 := int16(term1 >> (dataSize - 1))
+	signr := int16((result >> (dataSize - 1)) & 0x01)
+
+	core.registers.SetFlag(CarryFlag, result > term1) // Set if borrow occurs
+
+	core.registers.SetFlag(ZeroFlag, result == 0)
+
+	core.registers.SetFlag(SignFlag, signr == 1)
+
+	core.registers.SetFlag(OverFlowFlag, (sign1 == 0) && (signr == 1)) // Set if result exceeds maximum negative value
 
 	silenceLogging := false
 	if core.lastExecutedInstructionPointer == core.GetCurrentlyExecutingInstructionAddress() {
@@ -80,7 +93,7 @@ func INSTR_DEC_COUNT_JMP_SHORT(core *CpuCore) {
 	if !silenceLogging {
 		core.logInstruction(fmt.Sprintf("[%#04x] LOOP %#04x (SHORT REL8)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
 	}
-	if term1 != 0 {
+	if result != 0 {
 		core.registers.IP = uint16(destAddr)
 		if !silenceLogging {
 			core.logInstruction(fmt.Sprintf("[%#04x]   |-> jumped (CX %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.CX))
@@ -105,8 +118,21 @@ func INSTR_DEC_COUNT_JMP_SHORT_Z(core *CpuCore) {
 	destAddr += uint16(offset) // Correctly calculate destination address
 
 	term1 := uint16(core.registers.CX)
-	term1-- // Decrement CX
-	core.registers.CX = term1
+	result := term1 - 1 // Decrement CX
+	core.registers.CX = result
+
+	// Update flags
+	dataSize := uint16(16) // Assuming CX is a 16-bit register
+	sign1 := int16(term1 >> (dataSize - 1))
+	signr := int16((result >> (dataSize - 1)) & 0x01)
+
+	core.registers.SetFlag(CarryFlag, result > term1) // Set if borrow occurs
+
+	core.registers.SetFlag(ZeroFlag, result == 0)
+
+	core.registers.SetFlag(SignFlag, signr == 1)
+
+	core.registers.SetFlag(OverFlowFlag, (sign1 == 0) && (signr == 1)) // Set if result exceeds maximum negative value
 
 	additional := true
 	extraStr := ""
@@ -121,7 +147,7 @@ func INSTR_DEC_COUNT_JMP_SHORT_Z(core *CpuCore) {
 	}
 
 	core.logInstruction(fmt.Sprintf("[%#04x] LOOP %#04x (SHORT REL8) %s", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr), extraStr))
-	if term1 != 0 && additional {
+	if result != 0 && additional {
 		core.registers.IP = uint16(destAddr)
 		core.logInstruction(fmt.Sprintf("[%#04x]   |-> jumped (CX %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.CX))
 	} else {

@@ -16,10 +16,8 @@ import (
 */
 
 type IOPortAccessController struct {
-	bus                *bus.Bus
-	busId              uint32
-	cmosRegisterSelect uint8
-	cmosRegisterData   []uint8
+	bus   *bus.Bus
+	busId uint32
 }
 
 func (mem *IOPortAccessController) GetPortMap() *bus.DevicePortMap {
@@ -27,9 +25,7 @@ func (mem *IOPortAccessController) GetPortMap() *bus.DevicePortMap {
 }
 
 func NewIOPortController() *IOPortAccessController {
-	return &IOPortAccessController{
-		cmosRegisterData: make([]byte, 0x10000),
-	}
+	return &IOPortAccessController{}
 }
 
 func (mem *IOPortAccessController) GetDeviceBusId() uint32 {
@@ -52,17 +48,6 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 	} else {
 		//log.Printf("warn: PORT READ WITHOUT DEVICE ROUTE: %#04x", addr)
 
-		if addr == 0x64 {
-			// Status Register READ
-			sr := r.GetBus().FindSingleDevice(common.MODULE_PS2_CONTROLLER).(*ps2.Ps2Controller).ReadStatusRegister()
-			return sr
-		}
-
-		if addr == 0x60 {
-			sr := r.GetBus().FindSingleDevice(common.MODULE_PS2_CONTROLLER).(*ps2.Ps2Controller).ReadDataPort()
-			return sr
-		}
-
 		if addr == 0x24 {
 			// RC1 roll compare register???
 			//log.Printf("RC1 roll compare register read")
@@ -70,9 +55,9 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 			return sr
 		}
 
-		if addr == 0x71 {
-			// CMOS RAM
-			return r.cmosRegisterData[r.cmosRegisterSelect]
+		if addr == 0x80 {
+			// bios post diag
+			return 0x00
 		}
 
 		if addr == 0xc3 {
@@ -91,7 +76,7 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 	if devicePortRegistration != nil {
 		devicePortRegistration.Device.WriteAddr8(port_addr, value)
 	} else {
-		log.Printf("warn: PORT WRITE WITHOUT DEVICE ROUTE: %#04x", port_addr)
+		//log.Printf("warn: PORT WRITE WITHOUT DEVICE ROUTE: %#04x", port_addr)
 
 		if port_addr == 0x00F1 {
 			// 80287 math coprocessor
@@ -121,9 +106,39 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 			return
 		}
 
-		if port_addr == 0x80 {
+		if port_addr == 0x80 && value > 0x00 {
 			// bios post diag
 			log.Printf("BIOS POST: %#02x - %s", value, common.BiosPostCodeToString(value))
+			return
+		}
+
+		if port_addr == 0x81 && value > 0x00 {
+			// bios post diag checkpoint
+			log.Printf("BIOS POST CHECKPOINT: %#02x - %s", value, common.BiosPostCodeToString(value))
+			return
+		}
+
+		if port_addr == 0x80 && value == 0x00 {
+			// port 80 delay
+			return
+		}
+		if port_addr == 0x81 && value == 0x00 {
+			// port 80 delay
+			return
+		}
+
+		if port_addr == 0x82 {
+			// unknown?
+			return
+		}
+
+		if port_addr == 0x83 {
+			// int 1a ? - RTC
+			return
+		}
+
+		if port_addr == 0x84 {
+			// unknown?
 			return
 		}
 

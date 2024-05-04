@@ -1,7 +1,11 @@
 package common
 
+import "fmt"
+
 func BiosPostCodeToString(value uint8) string {
 	switch value {
+	case 0x0:
+		return "Power-on reset"
 	case 0x1:
 		return "Register test about to start"
 	case 0x2:
@@ -163,7 +167,7 @@ func BiosPostCodeToString(value uint8) string {
 	case 0x7F:
 		return "Enable setup routine if <DELETE> is pressed"
 	default:
-		return "Unhandled post code."
+		return fmt.Sprintf("Unhandled post code: %#02x", value)
 	}
 
 }

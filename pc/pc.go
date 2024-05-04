@@ -62,9 +62,14 @@ const MaxRAMBytes = 0x1E84800 //32 million (32mb)
 
 func (pc *PersonalComputer) Power() {
 	// do stuff
+	log.SetFlags(log.Lshortfile)
 
 	pc.cpu.Init(pc.bus)
 	pc.mathCoProcessor.Init(pc.bus)
+
+	// hack a hard drive into cmos settings
+	pc.cmos.WriteAddr8(0x70, 0x12)
+	pc.cmos.WriteAddr8(0x71, 0x01)
 
 	for {
 		if pc.cpu.GetIP() == 0x0 {
