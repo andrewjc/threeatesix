@@ -1,0 +1,2087 @@
+Ports
+
+PORT LIST			Release 53		Last change 12jan97
+Copyright (c) 1989,1990,1991,1992,1993,1994,1995,1996,1997 Ralf Brown
+[This file originally by Wim Osterholt (2:512/56 or wim@djo.wtm.tudelft.nl),
+ though it has grown considerably since.]
+
+		XT, AT and PS/2	 I/O port addresses
+
+Do NOT consider this information to be complete and accurate.  If you want
+to do hardware programming ALWAYS check the appropriate data sheets (but
+even they are sometimes in error!).  Be aware that erroneous port programming
+can put your data or even your hardware at risk.
+
+There are a number of memory-mapped addresses in use for I/O; see MEMORY.LST
+for details on memory-mapped I/O.
+
+---------------------------------------------
+Note: the port description format is:
+
+PPPPw RW  description
+
+where:	PPPP	is the four-digit hex port number
+	w	is blank for byte-size port, 'w' for word, and 'd' for dword
+	R	is blank or dash if not readable, 'r' if sometimes readable,
+		'R' if "always" readable, '?' if readability unknown
+	W	is blank or dash if not writable, 'w' if sometimes writable,
+		'W' if "always" writable, '?' if writability unknown
+----------P0000001F--------------------------
+PORT 0000-001F - DMA 1 - FIRST DIRECT MEMORY ACCESS CONTROLLER (8237)
+
+0000  RW  DMA channel 0	 address byte  0, then byte 1
+0001  RW  DMA channel 0 word count byte 0, then byte 1
+0002  RW  DMA channel 1	 address byte  0, then byte 1
+0003  RW  DMA channel 1 word count byte 0, then byte 1
+0004  RW  DMA channel 2	 address byte  0, then byte 1
+0005  RW  DMA channel 2 word count byte 0, then byte 1
+0006  RW  DMA channel 3	 address byte  0, then byte 1
+0007  RW  DMA channel 3 word count byte 0, then byte 1
+
+0008  R-  DMA channel 0-3 status register (see #P001)
+0008  -W  DMA channel 0-3 command register (see #P002)
+0009  -W  DMA channel 0-3 write request register (see #P003)
+000A  RW  DMA channel 0-3 mask register (see #P004)
+000B  -W  DMA channel 0-3 mode register (see #P005)
+
+000C  -W  DMA clear byte pointer flip-flop
+000D  R-  DMA read temporary register
+000D  -W  DMA master clear
+000E  -W  DMA clear mask register
+000F  -W  DMA write mask register
+
+Bitfields for DMA channel 0-3 status register:
+Bit(s)	Description	(Table P001)
+ 7	channel 3 request active
+ 6	channel 2 request active
+ 5	channel 1 request active
+ 4	channel 0 request active
+ 3	channel terminal count on channel 3
+ 2	channel terminal count on channel 2
+ 1	channel terminal count on channel 1
+ 0	channel terminal count on channel 0
+SeeAlso: #P002,#P078
+
+Bitfields for DMA channel 0-3 command register:
+Bit(s)	Description	(Table P002)
+ 7	DACK sense active high
+ 6	DREQ sense active high
+ 5	=1 extended write selection
+	=0 late write selection
+ 4	rotating priority instead of fixed priority
+ 3	compressed timing
+ 2	=1 enable controller
+	=0 enable memory-to-memory
+ 1-0	channel number
+SeeAlso: #P001,#P004,#P005,#P079
+
+Bitfields for DMA channel 0-3 request register:
+Bit(s)	Description	(Table P003)
+ 7-3	reserved (0)
+ 2	=0 clear request bit
+	=1 set request bit
+ 1-0	channel number
+	00 channel 0 select
+	01 channel 1 select
+	10 channel 2 select
+	11 channel 3 select
+SeeAlso: #P004
+
+Bitfields for DMA channel 0-3 mask register:
+Bit(s)	Description	(Table P004)
+ 7-3	reserved (0)
+ 2	=0 clear mask bit
+	=1 set mask bit
+ 1-0	channel number
+	00 channel 0 select
+	01 channel 1 select
+	10 channel 2 select
+	11 channel 3 select
+SeeAlso: #P001,#P002,#P003,#P080
+
+Bitfields for DMA channel 0-3 mode register:
+Bit(s)	Description	(Table P005)
+ 7-6	transfer mode
+	00 demand mode
+	01 single mode
+	10 block mode
+	11 cascade mode
+ 5	direction
+	=0 address increment select
+	=1 address decrement select
+ 3-2	operation
+	00 verify operation
+	01 write to memory
+	10 read from memory
+	11 reserved
+ 1-0	channel number
+	00 channel 0 select
+	01 channel 1 select
+	10 channel 2 select
+	11 channel 3 select
+SeeAlso: #P002,#P081
+----------P0010001F--------------------------
+PORT 0010-001F - DMA CONTROLLER (8237) ON PS/2 MODEL 60 & 80
+----------P0018------------------------------
+PORT 0018 - PS/2 - EXTENDED FUNCTION REGISTER
+
+0018  -W  PS/2 extended function register
+----------P001A------------------------------
+PORT 001A - PS/2 - EXTENDED FUNCTION EXECUTE
+----------P0020003F--------------------------
+PORT 0020-003F - PIC 1 - PROGRAMMABLE INTERRUPT CONTROLLER (8259A)
+SeeAlso: PORT 00A0h-00AFh"PIC 2",INT 08"IRQ0",INT 0F"IRQ7"
+
+0020  -W  PIC initialization command word ICW1 (see #P006)
+0020  -W  PIC output control word OCW2 (see #P011)
+0020  -W  PIC output control word OCW3 (see #P012)
+0020  R-  PIC  interrupt request/in-service registers after OCW3
+		request register:
+		 bit 7-0 = 0  no active request for the corresponding int. line
+			 = 1  active request for corresponding interrupt line
+		in-service register:
+		 bit 7-0 = 0  corresponding line not currently being serviced
+			 = 1  corresponding int. line currently being serviced
+
+0021  -W  PIC ICW2,ICW3,ICW4 immed after ICW1 to 0020 (see #P007,#P008,#P009)
+0021  RW  PIC master interrupt mask register OCW1 (see #P010)
+
+Bitfields for PIC initialization command word ICW1:
+Bit(s)	Description	(Table P006)
+ 7-5	0 (only used in 8080/8085 mode)
+ 4	ICW1 is being issued
+ 3	(LTIM)
+	=0  edge triggered mode
+	=1  level triggered mode
+ 2	interrupt vector size
+	=0 successive interrupt vectors use 8 bytes (8080/8085)
+	=1 successive interrupt vectors use 4 bytes (80x86)
+ 1	(SNGL)
+	=0  cascade mode
+	=1  single mode, no ICW3 needed
+ 0	ICW4 needed
+SeeAlso: #P007,#P008,#P009
+
+Bitfields for PIC initialization command word ICW2:
+Bit(s)	Description	(Table P007)
+ 7-3	address lines A0-A3 of base vector address for PIC
+ 2-0	reserved
+SeeAlso: #P006,#P008,#P009
+
+Bitfields for PIC initialization command word ICW3:
+Bit(s)	Description	(Table P008)
+ 7-0	=0 slave controller not attached to corresponding interrupt pin
+	=1 slave controller attached to corresponding interrupt pin
+SeeAlso: #P006,#P007,#P009
+
+Bitfields for PIC initialization command word ICW4:
+Bit(s)	Description	(Table P009)
+ 7-5	reserved (0)
+ 4	running in special fully-nested mode
+ 3-2	mode
+	0x nonbuffered mode
+	10 buffered mode/slave
+	11 buffered mode/master
+ 1	Auto EOI
+ 0	=0  8085 mode
+	=1  8086/8088 mode
+SeeAlso: #P006,#P007,#P008
+
+Bitfields for PIC output control word OCW1:
+Bit(s)	Description	(Table P010)
+ 7	disable IRQ7 (parallel printer interrupt)
+ 6	disable IRQ6 (diskette interrupt)
+ 5	disable IRQ5 (fixed disk interrupt)
+ 4	disable IRQ4 (serial port 1 interrupt)
+ 3	disable IRQ3 (serial port 2 interrupt)
+ 2	disable IRQ2 (video interrupt)
+ 1	disable IRQ1 (keyboard, mouse, RTC interrupt)
+ 0	disable IRQ0 (timer interrupt)
+SeeAlso: #P011,#P012,#P077
+
+Bitfields for PIC output control word OCW2:
+Bit(s)	Description	(Table P011)
+ 7-5	operation
+	000 rotate in auto EOI mode (clear)
+	001 (WORD_A) nonspecific EOI
+	010 (WORD_H) no operation
+	011 (WORD_B) specific EOI
+	100 (WORD_F) rotate in auto EOI mode (set)
+	101 (WORD_C) rotate on nonspecific EOI command
+	110 (WORD_E) set priority command
+	111 (WORD_D) rotate on specific EOI command
+ 4-3	reserved (00 - signals OCW2)
+ 2-0	interrupt request to which the command applies
+	(only used by WORD_B, WORD_D, and WORD_E)
+SeeAlso: #P010,#P012
+
+Bitfields for PIC output control word OCW3:
+Bit(s)	Description	(Table P012)
+ 7	reserved (0)
+ 6-5	special mask
+	0x  no operation
+	10  reset special mask
+	11  set special mask mode
+ 4-3	reserved (01 - signals OCW3)
+ 2	poll command
+ 1-0	function
+	0x  no operation
+	10  read interrupt request register on next read from PORT 0020h
+	11  read interrupt in-service register on next read from PORT 0020h
+Note:	the special mask mode permits all other interrupts (even those with
+	  lower priority) to be processed while an interrupt is already in
+	  service, but will not re-issue an interrupt for a particular IRQ
+	  while it remains in service
+SeeAlso: #P010,#P011
+----------P00220023--------------------------
+PORT 0022-0023 - CHIP SET DATA
+
+0022  -W  index for accesses to data port
+0023  RW  chip set data
+----------P00220023--------------------------
+PORT 0022-0023 - Cyrix Cx486SLC/DLC PROCESSOR - CACHE CONFIGURATION REGISTERS
+SeeAlso: PORT 0022h"5x86",PORT 0022h"6x86"
+
+0022  -W  index for accesses to next port (see #P013)
+0023  RW  cache configuration register array (indexed by PORT 0022h)
+
+(Table P013)
+Values for Cyrix Cx486SLC/DLC Cache Configuration register number:
+ C0h	CR0 (see #P015)
+ C1h	CR1 (see #P016)
+ C4h	non-cacheable region 1, start address bits 31-24
+ C5h	non-cacheable region 1, start address bits 23-16
+ C6h	non-cacheable region 1, start addr 15-12, size (low nibble) (see #P014)
+ C7h	non-cacheable region 2, start address bits 31-24
+ C8h	non-cacheable region 2, start address bits 23-16
+ C9h	non-cacheable region 2, start addr 15-12, size (low nibble) (see #P014)
+ CAh	non-cacheable region 3, start address bits 31-24
+ CBh	non-cacheable region 3, start address bits 23-16
+ CCh	non-cacheable region 3, start addr 15-12, size (low nibble) (see #P014)
+ CDh	non-cacheable region 4, start address bits 31-24
+ CEh	non-cacheable region 4, start address bits 23-16
+ CFh	non-cacheable region 4, start addr 15-12, size (low nibble) (see #P014)
+SeeAlso: #P017,#P283
+
+(Table P014)
+Values for Cyrix Cx486SLC/DLC non-cacheable region sizes:
+ 00h	disabled
+ 01h	4K
+ 02h	8K
+ 03h	16K
+ 04h	32K
+ 05h	64K
+ 06h	128K
+ 07h	256K
+ 08h	512K
+ 09h	1M
+ 0Ah	2M
+ 0Bh	4M
+ 0Ch	8M
+ 0Dh	16M
+ 0Eh	32M
+ 0Fh	4G
+SeeAlso: #P013
+
+Bitfields for Cyrix Cx486SLC/DLC Configuration Register 0:
+Bit(s)	Description	(Table P015)
+ 0	"NC0" first 64K of each 1M noncacheable in real/V86
+ 1	"NC1" 640K-1M noncacheable
+ 2	"A20M" enables A20M# input pin
+ 3	"KEN"  enables KEN# input pin
+ 4	"FLUSH" enables KEN# input pin
+ 5	"BARB" enables internal cache flushing on bus holds
+ 6	"C0" cache direct-mapped instead of 2-way associative
+ 7	"SUSPEND" enables SUSP# input and SUSPA# output pins
+SeeAlso: #P013,#P016
+
+Bitfields for Cyrix Cx486SLC/DLC Configuration Register 1:
+Bit(s)	Description	(Table P016)
+ 0	"RPL" enables output pins RPLSET and RPLVAL#
+SeeAlso: #P013,#P015
+----------P00220023--------------------------
+PORT 0022-0023 - Cyrix 5x86 PROCESSOR - CONFIGURATION CONTROL REGISTERS
+SeeAlso: PORT 0022h"Cx486",PORT 0022h"6x86"
+
+0022  -W  index for accesses to next port (see #P017)
+0023  RW  configuration control register array (indexed by PORT 0022h)
+
+(Table P017)
+Values for Cyrix 5x86 configuration registers:
+ 20h	Performance Control (see #P022)
+ C1h	Configuration Control #1 (CCR1) (see #P018)
+ C2h	Configuration Control #2 (CCR2) (see #P019)
+ C3h	Configuration Control #3 (CCR3) (see #P020)
+ CDh	System Memory Management address region #0 (smar0) (see #P023)
+ CEh	System Memory Management address region #1 (smar1)
+ CFh	System Memory Management address region #2 (smar2)
+ E8h	Configuration Control Register 4
+ F0h	Power Management (see #P024)
+ FEh R	Device Identification #0
+	CPU device ID
+ FFh R	Device Identification #1
+	bits 3-0: revision
+	bits 7-4: stepping
+Note:	accesses to indices other than 20h,C0h-CFh, or F0h-FFh generate
+	  external I/O cycles
+SeeAlso: #P013,#P283
+
+Bitfields for Cyrix 5x86 Configuration Control Register 1 (CCR1):
+Bit(s)	Description	(Table P018)
+ 0	reserved
+ 1	enable SMM pins
+ 2	system management memory access
+ 3	main memory access
+ 7-4	reserved
+SeeAlso: #P019,#P020,#P021
+
+Bitfields for Cyrix 5x86 Configuration Control Register 2 (CCR2):
+Bit(s)	Description	(Table P019)
+ 0	reserved
+ 1	enable write-back cache interface pins
+ 2	lock NW bit
+ 3	suspend on HLT instruction
+ 4	write-through region 1
+ 5	reserved
+ 6	enable burst write cycles
+ 7	enable suspend pins
+SeeAlso: #P018,#P020,#P021
+
+Bitfields for Cyrix 5x86 Configuration Control Register 3 (CCR3):
+Bit(s)	Description	(Table P020)
+ 0	SMM register lock
+ 1	NMI enable
+ 2	linear address burst cycles
+ 3	SMM mode
+ 7-4	map enable (0001 to enable several configuration registers)
+SeeAlso: #P018,#P019,#P021,#P022,#P024
+
+Bitfields for Cyrix 5x86 Configuration Control Register 4 (CCR4):
+Bit(s)	Description	(Table P021)
+ 2-0	I/O recovery time
+ 3	enable memory-read bypassing
+ 4	enable directory table entry cache
+ 6-5	reserved
+ 7	enable CPUID instruction (stepping 1+ and Cx6x86)
+Note:	this register is only accessible when bits 7-4 of CCR3 are 0001
+SeeAlso: #P018,#P019,#P020
+
+Bitfields for Cyrix 5x86 Performance Control register:
+Bit(s)	Description	(Table P022)
+ 0	return stack enabled
+ 1	branch-target buffer enabled
+ 2	loop enable
+ 6-3	reserved (0)
+ 7	load-store serialization enabled
+Note:	this register is only accessible when bits 7-4 of CCR3 are 0001
+SeeAlso: #P024,#P018
+
+Bitfields for Cyrix 5x86 SMM Address Region register:
+Bit(s)	Description	(Table P023)
+ 3-0	block size
+ 23-4	starting address
+
+Bitfields for Cyrix 5x86 Power Management register:
+Bit(s)	Description	(Table P024)
+ 1-0	core clock to bus clock ratio
+ 2	CPU running at half bus speed
+Note:	this register is only accessible when bits 7-4 of CCR3 are 0001
+----------P00220023--------------------------
+PORT 0022-0023 - Cyrix 6x86 PROCESSOR - CONFIGURATION CONTROL REGISTERS
+SeeAlso: PORT 0022h"Cx486",PORT 0022h"5x86"
+
+0022  -W  index for accesses to next port (see #P017)
+0023  RW  configuration control register array (indexed by PORT 0022h)
+
+(Table P283)
+Values for Cyrix 6x86 configuration registers:
+ 20h	Performance Control (see #P022)
+ C0h	Configuration Control Register 0 (CCR0)
+ C1h	Configuration Control #1 (CCR1) (see #P018)
+ C2h	Configuration Control #2 (CCR2) (see #P019)
+ C3h	Configuration Control #3 (CCR3) (see #P020)
+ C4h	Address region 0 (bits 31-24)
+ C5h	Address region 0 (bits 23-16)
+ C6h	Address region 0 (bits 15-12 and size)
+ C7h	Address region 1 (bits 31-24)
+ C8h	Address region 1 (bits 23-16)
+ C9h	Address region 1 (bits 15-12 and size)
+ CAh	Address region 2 (bits 31-24)
+ CBh	Address region 2 (bits 23-16)
+ CCh	Address region 2 (bits 15-12 and size)
+ CDh	Address region 3 (bits 31-24)
+ CEh	Address region 3 (bits 23-16)
+ CFh	Address region 3 (bits 15-12 and size)
+ D0h	Address region 4 (bits 31-24)
+ D1h	Address region 4 (bits 23-16)
+ D2h	Address region 4 (bits 15-12 and size)
+ D3h	Address region 5 (bits 31-24)
+ D4h	Address region 5 (bits 23-16)
+ D5h	Address region 5 (bits 15-12 and size)
+ D6h	Address region 6 (bits 31-24)
+ D7h	Address region 6 (bits 23-16)
+ D8h	Address region 6 (bits 15-12 and size)
+ D9h	Address region 7 (bits 31-24)
+ DAh	Address region 7 (bits 23-16)
+ DBh	Address region 7 (bits 15-12 and size)
+ DCh	Region Control 0
+ DDh	Region Control 1
+ DEh	Region Control 2
+ DFh	Region Control 3
+ E0h	Region Control 4
+ E1h	Region Control 5
+ E2h	Region Control 6
+ E3h	Region Control 7
+ E8h	Configuration Control Register 4
+ E9h	Configuration Control Register 5
+ FEh R	Device Identification #0
+	CPU device ID
+ FFh R	Device Identification #1
+	bits 3-0: revision
+	bits 7-4: stepping
+Note:	accesses to indices other than 20h,C0h-CFh, or F0h-FFh generate
+	  external I/O cycles
+SeeAlso: #P013,#P017
+--------X-P00220023--------------------------
+PORT 0022-0023 - Intel 82358DT 'Mongoose' EISA CHIPSET - 82359 DRAM CONTROLLER
+Notes:	this chip uses a chip ID of 01
+	the LIM register herein use a chip ID of 1A
+Index: Intel 82351
+
+0022  -W  index for accesses to data port (see #P025,#P276,#P277)
+0023  RW  chip set data
+
+(Table P278)
+Values for Intel 82351/82359 chip ID:
+ 01h	82359 DRAM controller, general registers
+ 02h	82351 EISA local I/O support
+ A1h	82359 DRAM controller, EMS registers
+ FFh	no chip accessible (default)
+SeeAlso: #P025,#P276,#P277
+
+(Table P025)
+Values for 82359 DRAM controller general register index:
+ 00h	DRAM bank 0 type
+	bit 7	unknown
+	bit 6-4	000 DRAM in bank 0 (standard)
+		001 bank 1
+		010 bank 2
+		011 bank 3
+		100 banks 0,1
+		101 banks 2,3
+		110 banks 0,1,2,3
+		111 empty (standard for 1,2,3)
+	bit 3-2	unknown
+	bit 1-0	00 64K chips used
+		01 256K
+		10 1M
+		11 4M
+ 01h	DRAM bank 1 type
+ 02h	DRAM bank 2 type
+ 03h	DRAM bank 3 type
+ 04h	DRAM speed detection/selection
+ 05h	DRAM interleave control
+ 06h	RAS line mode
+ 07h	cache-enable selection
+ 08h	mode register A (DRAM, cache)
+ 09h	mode register B (cache, burst modes, BIOS size)
+ 0Ah	mode register C (concurrency control, burst/cycle speed)
+ 10h	host timing
+ 11h	host-system delay timing
+ 12h	system timing
+ 13h	DRAM row precharge time
+ 14h	DRAM row timing
+ 15h	DRAM column timing
+ 16h	CAS pulse width
+ 17h	CAS-to-MDS delay
+ 21h	chip ID register -- selects which chip responds on these ports
+	(see #P278)
+ 28h-2Ch	parity-error trap address
+ 30h	page hit cycle length (read)
+ 31h	page miss cycle length (read)
+ 32h	row miss cycle length (read)
+ 33h	page hit cycle length (write)
+ 34h	page miss cycle length (write)
+ 35h	row miss cycle length (write)
+ 40h	memory enable 00000h-7FFFFh
+ 41h	memory enable 80000h-9FFFFh
+ 42h	memory enable A0000h-AFFFFh
+ 43h	memory enable B0000h-BFFFFh
+ 44h	memory enable C0000h-CFFFFh
+ 45h	memory enable D0000h-DFFFFh
+ 46h	memory enable E0000h-EFFFFh
+ 47h	memory enable F0000h-FFFFFh
+ 4Eh	remap 80000h-FFFFFh to extended memory
+ 50h-53h	programmable attribute map 1
+ 54h-57h	programmable attribute map 2
+ 58h-5Bh	programmable attribute map 3
+ 5Ch-5Fh	programmable attribute map 4
+ 83h-84h	split address register (address bits A31-A20)
+ 85h	cache control
+ 8Bh	system throttle
+ 8Ch	host throttle
+ 8Dh	host memory throttle watchdog
+ 8Eh	host system throttle
+ 8Fh	host system throttle watchdog
+ 90h	RAM enable
+ 91h	RAM disable
+ 92h-93h	elapsed-time registers
+ 94h-95h	host memory ownership request
+ 96h-97h	system memory ownership request
+ 98h-99h	host memory ownership
+ 9Ah-9Bh	system bus ownership
+ 9Ch-9Dh	host system bus request
+ 9Eh-9Fh	memory ownership transfer
+SeeAlso: #P276,#P277
+
+(Table P276)
+Values for Intel 82359 DRAM controller EMS register index:
+ 00h	EMS cotnrol
+ 21h	chip ID register -- selects which chip responds on these ports
+	(see #P278)
+ 80h-8Fh	EMS page registers, pages 0-7
+SeeAlso: #P025,#P277
+
+(Table P277)
+Values for Intel 82351 EISA Local I/O register index:
+ 21h	chip ID register -- selects which chip responds on these ports
+	(see #P278)
+ C0h	peripheral enable register A
+ C1h	peripheral enable register B
+ C2h	parallel configuration register
+ C3h	serial configuration register A
+ C4h	floppy disk controller configuration register
+ C5h	serial configuration register B
+ C6h	COM3 port address (low)
+ C7h	COM3 port address (high)
+ C8h	COM4 port address (low)
+ C9h	COM4 port address (high)
+ D0h-D3h	general chip select lines 0-3 (mask registers)
+ D4h-D7h	general chip select line addresses 0-3 (low bytes)
+ D8h-DBh	general chip select line addresses 0-3 (high bytes)
+ DCh	extended CMOS RAM page port address (low)
+ DDh	extended CMOS RAM page port address (high)
+ DFh	extended CMOS RAM access select address (high byte)
+ E8h-EBh	EISA ID configuration registers (reflect at PORT 0C80h)
+SeeAlso: #P025,#P276
+----------P00220023--------------------------
+PORT 0022-0023 - CHIPSET FROM ETEC CHEETAH ET6000 (SINGLE CHIP)
+
+0022  RW  chip set data
+0023  ?W  index for accesses to data port (see #P026)
+
+(Table P026)
+Values for Etec Cheetah ET6000 chip set register index:
+ 10h	system configuration register (see #P027)
+ 11h	cache configuration & non-cacheable block size register (see #P028)
+ 12h	non-cacheable block address register
+	bit 7-1	non-cacheable address, A25-A19
+	bit 0	reserved
+ 13h	DRAM bank & type configuration register (see #P029)
+ 14h	DRAM configuration register (see #P030)
+ 15h	shadow RAM configuration register (see #P031)
+
+Bitfields for Etec Cheetah ET6000 system configuration register:
+Bit(s)	Description	(Table P027)
+ 7-6	00 turbo/non-turbo
+	01 local device supported
+	10 suspend mode
+	11 illegal
+ 5	reserved
+ 4	refresh selection
+	0 = AT type refresh
+	1 = concurrent refresh
+ 3	slow refresh  95mSec enabled
+ 2	fast reset delay
+	0 = do not use delay
+	1 = wait for 2mSec delay
+ 1	wait for HALT after KBDRST
+ 0	RAM at A0000-BFFFF
+	0 = AT bus cycle
+	1 = local bus cycle
+SeeAlso: #P026
+
+Bitfields for Etec Cheetah ET6000 cache configuration register:
+Bit(s)	Description	(Table P028)
+ 7-5	000 disabled
+	001 512K
+	010 1M
+	011 2M
+	100 4M
+	101 8M
+	110 16M
+	111 32M
+ 4	DRAM banks
+	0 = 2-bank DRAM
+	1 = 4-bank DRAM
+ 3-0	reserved
+SeeAlso: #P026
+
+Bitfields for Etec Cheetah ET6000 DRAM bank & type configuration register:
+Bit(s)	Description	(Table P029)
+ 7-6	bank 3 DRAM type
+	00 none
+	01 256K
+	10 1M
+	11 4M
+ 5-4	bank 2 DRAM type
+ 3-2	bank 1 DRAM type
+ 1-0	bank 0 DRAM type
+SeeAlso: #P026
+
+Bitfields for Etec Cheetah ET6000 DRAM configuration register:
+Bit(s)	Description	(Table P030)
+ 7	on-board memory range 15M to 16M disabled
+ 6	on-board memory range 512K-640K disabled
+ 5	ROM chip select at C0000-DFFFF enabled
+ 4	RAS to CAS time
+	0 = 1 SYSCLCK,	not for R0WS
+	1 = 2 SYSCLCK
+ 3	RAS precharge time
+	0 = 1.5 SYSCLCK
+	1 = 2.5 SYSCLCK
+ 2-1	read cycle wait state
+	00 = 0 wait state
+	01 = 1 ws
+	10 = 2 ws
+	11 = 3 ws
+ 0	write cycle wait state
+	0 = 0 ws
+	1 = 1 ws
+SeeAlso: #P026
+
+Bitfields for Etec Cheetah ET6000 shadow RAM configuration register:
+Bit(s)	Description	(Table P031)
+ 7	shadow at C0000-FFFFF
+	0 = non-cacheable
+	1 = cacheable and cache-write-proteced
+ 6	access ROM/RAM at F0000-FFFFF
+	0 = read from ROM, write to RAM
+	1 = read from shadow, write is protected
+ 5	access ROM/RAM at E0000-EFFFF
+	0 = access on-board ROM, AT bus cycle
+	1 = access shadow E0000-EFFFF enabled
+ 4	RAM at E0000-EFFFF is read-only
+ 3	access ROM/RAM at D0000-DFFFF
+	0 = access on-board ROM, AT bus cycle
+	1 = access shadow D0000-DFFFF enabled
+ 2	RAM at D0000-DFFFF is read-only
+ 1	access ROM/RAM at C0000-CFFFF
+	0 = access on-board ROM, AT bus cycle
+	1 = access shadow C0000-CFFFF enabled
+ 0	RAM at C0000-CFFFF is read-only
+SeeAlso: #P026
+----------P00220023--------------------------
+PORT 0022-0023 - Hewlett-Packard Hornet chipset (HP 100LX/200LX)
+
+0022  RW  index for accesses to data port (see Table P189)
+0023  RW  chip set data
+
+(Table P032)
+Values for HP Hornet chipset register index:
+ 1Eh	buzzer volume/clock oscillator speed
+	bit 7-6: buzzer volume
+	bit 5-4: system oscillator speed
+		00: 10.738636MHz
+		01: 15.836773MHz(HP 100/200LX has oscillator with this speed)
+		10: 21.477272MHz
+		11: 31.673550MHz
+ 21h	display timing???
+ 23h	LCD contrast (see INT15h AH=62h)
+	valid values: 00h-1fh (1fh is the darkest)
+ 51h	power adapter status
+	bit 7-1: ???
+	bit 0: power adapter status(0=inactive/1=active)
+ 52h	nicad charge status
+	bit 7-3: ???
+	bit 2: battery charging status(0=???/1=slow charge)
+	bit 1-0: ???
+ 53h	nicad charge status
+	bit 7-1: ???
+	bit 0: battery charging status(0=???/1=fast charge)
+ 80h	memory wait for internal ROM
+	valid values: 00h-07h
+ 81h	memory wait for internal RAM
+	valid values: 00h-03h
+ 82h	memory wait for external RAM
+	valid values: 00h-0fh
+ 87h	battery status???
+----------P00220024--------------------------
+PORT 0022-0024 - CHIPSET FROM PICO POWER, UMC or PCChips
+
+0022  ?W  index for accesses to data port
+0024  RW  chip set data
+----------P00220025--------------------------
+PORT 0022-0025 - INTEL 82360SL CHIPSET (FOR 386SL)
+
+0022  -W  CPU write mode register
+0023  R-  configuration status register
+		bit 7: 82360 configuration is open
+0024  -W  82360 configuration index
+0025  RW  82360 configuration data
+
+Bitfields for Intel 82360SL CPU write mode register:
+Bit(s)	Description	(Table P033)
+ 0	unlock configuration space
+ 1	enable selected unit
+ 3-2	unit
+	00 memory configuration
+	01 cache
+	10 internal bus
+	11 external bus
+----------P0022002B--------------------------
+PORT 0022-002B - INTEL 82355, PART OF CHIPSET FOR 386sx
+Note:	initialisation in POST will disable these addresses, only a hard
+	  reset will enable them again.
+
+0022w RW  82335 MCR memory configuration register (if LOCK=0) (see #P034)
+0024w RW  82335 RC1 roll compare register (if LOCK=0) (see #P035)
+0026w RW  82335 RC2 roll compare register (if LOCK=0) (see #P035)
+0028w RW  82335 CC0 address range compare register (if LOCK=0) (see #P036)
+002Aw RW  82335 CC1 address range compare register (if LOCK=0) (see #P036)
+
+Bitfields for 82335 MCR memory configuration register:
+Bit(s)	Description	(Table P034)
+ 15-12	reserved
+ 11	"VRO"	video read only (0=r/w, 1=r/o)
+ 10	"EN#"
+	0=enable video RAM accesses (A0000h-8FFFFh)
+	1=disable accesses
+ 9	"ENADP#"
+	0=enable adapter ROM accesses (C0000h-8FFFFh)
+	1=disable adapter ROM accesses, shadow enabled
+ 8	"ROMSIZE" 0=256KB ROM, 1=512KB ROM
+ 7-6	"INTERL" memory interleaving
+	00 = 1 memory bank installed (no interleave)
+	01 = 2 memory banks installed
+	10 = 3 memory banks installed
+	11 = 4 memory banks installed
+ 5	reserved
+ 4	"DSIZE"	 0=1MBx1DRAMs, 1=256KBx1 or 256KBx4 DRAMs
+ 3	"S640"	 base memory size is 0=512KB, 1=640KB
+ 2-1	reserved
+ 0	"ROMEN#" ROM enable
+	0 enable BIOS ROM accesses (E0000h-FFFFFh)
+	1 disable BIOS ROM accesses, enable shadow
+Note:	One of the remaining reserved bits is the LOCK bit, which will be set
+	  during power on, disabling access to the 82335s registers.
+
+Bitfields for 82335 roll compare register:
+Bit(s)	Description	(Table P035)
+ 15-9	selects address range to be remapped (C23-C17)
+ 8	reserved
+ 7-1	selects address bits to be included in re-mapping comparision (M23-M17)
+ 0	"EN" enables roll address mapping
+
+Bitfields for 82335 address range compare register:
+Bit(s)	Description	(Table P036)
+ 15-11	specifies top of address range (C23-C19)
+ 10-8	reserved
+ 7-3	selects address bits to be included in address range comparision
+	  (M23-M19)
+ 2-1	reserved
+ 0	"EN" enable address range comparision
+----------P00240028--------------------------
+PORT 0024-0028 - HEADLAND HTK340 SHASTA 386/486 CHIPSET
+
+0024  Rw  data port
+0028  ?W  index port to chipset registers (see #P037,#P038)
+
+(Table P037)
+Values for Headland HT321 register index:
+ 00h R	chip/revision,read-only
+	  bit7-4: reserved (=0)
+	  bit3-0: chip revision, 0=A, 1=B, 3=D
+ 01h RW system clocking (default=00h)
+	  bit7-4: reserved (=0)
+	  bit3-0: ISA speed set
+ 02h RW system parameters (default=00h) (see #P039)
+ 04h RW co-processor (default=00h)
+	  bit7-3: reserved (=0)
+	  bit2=1: soft-NPU reset blocked (386 only)
+	  bit1=1: weitek installed
+	  bit0=1: 387 installed
+ 06h RW DMA (default=00h) (see #P040)
+ 07h RW EPROM (default=00h) (see #P041)
+ 08h RW I/O and memory map holes (default=00h)
+	  bit7-4: reserved (=0)
+	  bit3	: 0/1 I/O map hole-A
+	  bit2	: reserved (=0)
+	  bit1	: 0/1 memory map hole-B
+	  bit0	: reserved (=0)
+ 10h RW hole-A low address (default=00h)
+ 11h RW hole-A high address (default=00h)
+ 19h RW mem hole-B start address, lower (default=00h)
+ 1Ah RW mem hole-B start address, higher (default=00h)
+	  bit7-6: reserved (=0)
+	  bit5-0: address of mem hole-B start
+ 1Ch RW mem hole-B end address, lower (default=00h)
+ 1Dh RW mem hole-B end address, higher (default=00h)
+	  bit7-6: reserved (=0)
+	  bit5-0: address of mem hole-B end
+SeeAlso: #P038
+
+(Table P038)
+Values for Headland HT342 register index:
+ 20h R	identifier port read
+	  bit7-4: DRAM controller identifier (0010b)
+	  bit3-0: revision number (0=A)
+ 21h R	feature port read    (default=00h)
+ 24h RW DRAM options port #1 (default=00h)
+	  bit7	: 0/1 staggered refresh
+	  bit6	: refresh type
+	  bit5	: 0/1 DRAM paging
+	  bit4-2: CAS interleave
+	  bit1-0: banks
+ 25h	DRAM options port #2 (default=00h)
+	  bit7-6: DRAM bank 1 type
+	  bit5-4: DRAM bank 2 type
+	  bit3-2: DRAM bank 1?? type
+	  bit1-0: DRAM bank 0 type
+ 26h RW DRAM options port #3 (default=FFh) (see #P042)
+ 27h RW DRAM options port #4 (default=FFh) (see #P043)
+ 28h RW data transfer control port (default=00h)
+	doubled indexed registers (28h-2Ah)
+	  bit7	: initiate transfer
+	  bit6	: read/write transfer
+	  bit5-4: reserved
+	  bit3-0: transfer/destination
+ 29h RW RAM address register (default=00h)
+	doubled indexed registers (28h-2Ah)
+	  bit7-5: reserved
+	  bit4-0: RAM address registers contents
+ 2Ah RW data transfer port   (default=00h)
+	doubled indexed registers (28h-2Ah)
+	  bit7-6: reserved
+	  bit5	: EMS translation
+	  bit4	: reserved
+	  bit3	: 0/1 cacheing
+	  bit2	: 0/1 write
+	  bit1	: 0/1 read
+	  bit0	: 0/1 shadow
+ 2Bh RW other options	      (default=00h) (see #P044)
+ 2Dh RW DRAM options port #5 (default=03h)
+	  bit7-5: reserved
+	  bit4	: 0/1 10ćs RAS timeout
+	  bit3-2: BUS speed
+	  bit1-0: BUS recovery for DRAM cycles
+		   00b=0: 4-1-1-1    10b=0.5
+		   01b=1: 4-2-2-2    11b=1??
+ 82h	read transfer
+ C2h	write transfer
+SeeAlso: #P037
+
+Bitfields for Headland HT321 register 02h (system parameters):
+Bit(s)	Description	(Table P039)
+ 7-6	IO recovery time (rev. D+)
+ 5	parity override
+ 4-3	cycle-width
+ 2	0/1 PORT 0092h functionality
+ 1	IO decode
+ 0	0/1 posted backplane MEMWN cycles
+SeeAlso: #P037
+
+Bitfields for Headland HT321 register 06h (DMA control):
+Bit(s)	Description	(Table P040)
+ 7	reserved (=0)
+ 6	1/0 IOCHRDY during master cycle (rev. C+)
+ 5	0/1 fast sample DMA
+ 4-3	DMA waitstate 00b=3 .. 11b=0
+ 2	0/1 DMA flow-through mode
+ 1	0/1 extended DMA page register
+ 0	DMA clock
+SeeAlso: #P037
+
+Bitfields for Headland HT321 register 07h (EPROM control):
+Bit(s)	Description	(Table P041)
+ 7-6	reserved (=0)
+ 5	0/1 EADS CACHE invalidation for EPROM writes (rev. D+)
+ 4	0/1 ROMEN for EPROM writes (rev. C+)
+ 3	0/1 middle BIOS region of 64KB space below 16MB
+ 2	ROM-size (0=64KB, 1=128KB)
+ 1	V-BIOS-add (0=separate, 1=same device)
+ 0	ROM-access time (0=250ns, 1=125ns)
+SeeAlso: #P037
+
+Bitfields for Headland HT342 register 26h (DRAM CAS control):
+Bit(s)	Description	(Table P042)
+ 7	CAS hold on RAS (CAS before RAS refresh)
+ 6	CAS precharge
+ 5	CAS burst delay
+ 4	CAS delay (writes)
+ 3	CAS delay (reads)
+ 2	CAS active time (writes)
+ 1-0	CAS active time (reads)
+SeeAlso: #P038,#P043
+
+Bitfields for Headland HT342 register 27h (DRAM RAS control):
+Bit(s)	Description	(Table P043)
+ 7	RAS delay
+ 6-5	RAS active (writes)
+ 4-2	RAS active (reads)
+ 1-0	RAS precharge
+SeeAlso: #P038,#P042
+
+Bitfields for Headland HT342 register 2Bh (other options):
+Bit(s)	Description	(Table P044)
+ 7	reserved
+ 6	0/1 middle BIOS
+ 5	0/1 data pipeline
+ 4	0/1 data pipeline
+ 3	IO-decode
+ 2	reserved
+ 1	16bit DMA bridge
+ 0	0/1 write buffering
+SeeAlso: #P038
+----------P00260027--------------------------
+PORT 0026-0027 - INTEL 82347 POWER MANAGEMENT PERIPHERAL
+SeeAlso: PORT 0178h-0179h
+
+0026  -W  index for data port (see #P279)
+0027  RW  power management data
+
+(Table P279)
+Values for Intel 82437 Power Management Peripheral register index:
+ C0h	suspend/wakeup status, system state
+ C1h	power supply and activity status, general-purpose output/control
+ C2h	control bits
+ C3h	activity mask
+ C4h	NMI mask
+ C5h	I/O range for activity monitor
+ C6h	power output control bits, ON state
+ C7h	power output control bits, Doze state
+ C8h	power output control bits, Sleep state
+ C9h	power output control bits, Suspend state
+ CAh	power control bits polarity control
+ CBh	current output bits
+ CCh	Doze timeout
+ CDh	Sleep timeout
+ CEh	Suspend timeout
+ CFh	LCD display power timeout
+ D0h	EL display power timeout
+----------P002E002F--------------------------
+PORT 002E-002F - DELL ENHANCED PARALLEL PORT
+SeeAlso: PORT 015Ch,PORT 026Eh,PORT 0398h
+
+002E  -W  index for data port (see #P045)
+002F  RW  EPP command data
+
+(Table P045)
+Values for Dell Enhanced Parallel Port register index:
+ 00h	bit 0: ???
+ 02h	bit 7: port in bidirectional mode
+ 04h	bits 0 and 2: ECP/EPP mode control
+----------P002E002F--------------------------
+PORT 002E-002F - Intel "Nonolet" Motherboard - POWER MANAGEMENT
+
+002E  ?W  index for data port
+002F  ?W  data port
+
+code sequence posted in fido7.nice.sources by Konstantin Mohorea:
+     out 2Eh,0Ch
+     out 2Fh,75h
+     out 2Eh,11h
+     out 2Fh,00h
+     out 2Eh,0Dh
+     out 2Fh,A0h
+----------P0038003F--------------------------
+PORT 0038-003F - PC radio by CoZet Info Systems
+Notes:	The I/O address range is dipswitch selectable from:
+	   038-03F and 0B0-0BF
+	   078-07F and 0F0-0FF
+	   138-13F and 1B0-1BF
+	   178-17F and 1F0-1FF
+	   238-23F and 2B0-2BF
+	   278-27F and 2F0-2FF
+	   338-33F and 3B0-3BF
+	   378-37F and 3F0-3FF
+	All of these addresses show a readout of FF in initial state.
+	Once started, all of the addresses show	 FB, whatever might happen.
+----------P0040005F--------------------------
+PORT 0040-005F - PIT - PROGRAMMABLE INTERVAL TIMER (8253, 8254)
+Note:	XT & AT use ports 40h-43h; PS/2 uses ports 40h, 42h-44h, and 47h
+SeeAlso: PORT 0044h,PORT 0048h
+
+0040  RW  PIT  counter 0, counter divisor	      (XT, AT, PS/2)
+0041  RW  PIT  counter 1, RAM refresh counter	(XT, AT)
+			don't set below 3 on PCs (default 12h)
+0042  RW  PIT  counter 2, cassette & speaker	(XT, AT, PS/2)
+	During normal operation mode (8253) 40h-42h set the counter values on
+	write and get the current counter value on read. In 16bit modes two
+	consequtive writes/reads must be issued, first with the low byte,
+	followed by the high byte. In 8254 read back modes, all selected
+	counters and status are latched and must be read out completely
+	before normal operation is valid again.	 Each counter switches back
+	to normal operation after read out.  In 'get status and counter'
+	mode the first byte read is the status, followed by one or two
+	counter values. (see #P046)
+0043  RW  PIT  mode port, control word register for counters 0-2 (see #P047)
+	Once a control word has been written (43h), it must be followed
+	immediately by performing the corresponding action to the counter
+	registers (40h-42h), else the system may hang!!
+
+Bitfields for 8254 PIT counter status byte:
+Bit(s)	Description	(Table P046)
+ 7	PIN status of OUTx Pins (1=high, 0=low)
+ 6	counter start value loaded
+	=0: yes, so counter latch is valid to be read
+	=1: no, wait for counter latch to be set (may last a while)
+5-0	counter mode, same as bit5-0 at 43h
+SeeAlso: #P047
+
+Bitfields for 8253/8254 PIT mode control word:
+Bit(s)	Description	(Table P047)
+ 7-6	counter select
+	00  counter 0 select
+	01  counter 1 select	  (not PS/2)
+	10  counter 2 select
+	11  (8253) reserved
+	    (8254) read back counter (see #P046)
+---if counter select---
+ 5-4	counter access
+	00  counter latch command
+		BUG:	Intel Neptune/Mercury Chipset 8237IB (SIO) needs a
+			  short delay after issueing this command, else the
+			  MSB may be outdated concerning the LSB, resulting
+			  in large measuring errors.
+			Workaround: Check for this condition by comparing
+			  results with last results and don't use errornous
+			  results.
+	01  read/write counter bits 0-7 only
+	10  read/write counter bits 8-15 only
+	11  read/write counter bits 0-7 first, then 8-15
+ 3-1	counter mode
+	000 mode 0 select - zero detection interrupt
+	001 mode 1 select - programmable one shot
+	x10 mode 2 select - rate generator
+	x11 mode 3 select - square wave generator
+		divisor factor 3 not allowed!
+	100 mode 4 select - software triggered strobe
+	101 mode 5 select - hardware triggered strobe
+ 0	counting style
+	0  binary counter 16 bits
+	1  BCD counter (4 decades)
+---if read back---
+ 5-4	what to read
+	00 reserved
+	01 counter status
+	10 counter value
+	11 counter status and value
+ 3	select counter 2
+ 2	select counter 1
+ 1	select counter 0
+ 0	reserved (0)
+Note:	after issuing a read back 'get status' command, any new read back
+	  command is ignored until the status is read from all selected
+	  counters.
+----------P00430047--------------------------
+PORT 0044-0047 - Microchannel - PROGRAMMABLE INTERVAL TIMER 2
+SeeAlso: PORT 0040h,PORT 0048h
+
+0044  RW  PIT  counter 3 (PS/2)
+		used as fail-safe timer. generates an NMI on time out.
+		for user generated NMI see at 0462.
+0047  -W  PIT  control word register counter 3 (PS/2, EISA)
+	bit 7-6 = 00  counter 3 select
+		= 01  reserved
+		= 10  reserved
+		= 11  reserved
+	bit 5-4 = 00  counter latch command counter 3
+		= 01  read/write counter bits 0-7 only
+		= 1x  reserved
+	bit 3-0 = 00
+---------------------------------------------
+PORT 0048-004B - EISA - PROGRAMMABLE INTERVAL TIMER 2
+SeeAlso: PORT 0040h,PORT 0044h
+
+0048  RW  EISA PIT2 counter 3 (Watchdog Timer)
+0049  ??  EISA 8254 timer 2, not used (counter 4)
+004A  RW  EISA PIT2 counter 5 (CPU speed control)
+004B  -W  EISA PIT2 control word
+----------P0060006F--------------------------
+PORT 0060-006F - KEYBOARD CONTROLLER 804x (8041, 8042) (or PPI (8255) on PC,XT)
+Note:	XT uses ports 60h-63h, AT uses ports 60h-64h
+
+0060  RW  KB controller data port or keyboard input buffer (ISA, EISA)
+		should only be read from after status port bit0 = 1
+		should only be written to if status port bit1 = 0
+0060  R-  KeyBoard or KB controller data output buffer (via PPI on XT)
+		PC: input from port A of 8255, if bit7 in 61h set (see #P063)
+		get scancodes, special codes (in PC: with bit7 in 61h cleared)
+		  (see #P057)
+
+0061  R-  KB controller port B control register (ISA, EISA)
+		system control port for compatibility with 8255 (see #P060)
+0061  -W  KB controller port B (ISA, EISA)   (PS/2 port A is at 0092)
+		system control port for compatibility with 8255 (see #P059)
+0061  -W  PPI Programmable Peripheral Interface 8255 (XT only)
+		system control port (see #P061)
+0062  RW  PPI (XT only) data port C (see #P062)
+0063  RW  PPI (XT only) command mode register (see #P064)
+
+0064  R-  keyboard controller read status (see #P065,#P066,#P067)
+0064  -W  keyboard controller input buffer (ISA, EISA) (see #P068)
+
+0064  -W  (Amstrad/Schneider PC1512) set 'DIP switch S1' setting
+	  stored in CMOS RAM that PPI should report for compatibility
+0065  -W  (Amstrad/Schneider PC1512) set 'DIP switch S2' RAM size setting
+	  stored in CMOS RAM, that PPI port C (PORT 0064h) should report for
+	  compatibility
+
+0065  R-  communications port (Olivetti M24)
+
+0068  -W  (HP-Vectra) control buffer (HP commands) (see #P069)
+0069  R-  (HP-Vectra) SVC (keyboard request SerViCe port)
+006A  -W  (HP-Vectra) Acknowledge (clear processing, done)
+006C-006F	HP-HIL	(Human Interface Link = async. serial inputs 0-7)
+
+Bitfields for AT keyboard controller input port:
+Bit(s)	Description	(Table P048)
+ 7	keyboard enabled
+ 6	=0  CGA, else MDA
+ 5	=0  manufacturing jumper installed
+ 4	=0  system RAM 512K, else 640K
+ 3-0	reserved
+SeeAlso: #P049,#P051
+
+Bitfields for AT keyboard controller input port (Compaq):
+Bit(s)	Description	(Table P049)
+ 7	security lock is unlocked
+ 6	=0  Compaq dual-scan display, 1=non-Compaq display
+ 5	system board dip switch 5 is OFF
+ 4	=0  auto speed selected, 1=high speed selected
+ 3	=0  slow (4MHz), 1 = fast (8MHz)
+ 2	no math coprocessor installed
+ 1-0	reserved
+SeeAlso: #P050
+
+Bitfields for AT keyboard controller output port:
+Bit(s)	Description	(Table P050)
+ 7	keyboard data output
+ 6	keyboard clock output
+ 5	input buffer NOT full
+ 4	output buffer NOT empty
+ 3	reserved (see note)
+ 2	reserved (see note)
+ 1	gate A20
+ 0	system reset
+Note:	bits 2 and 3 are the turbo speed switch or password lock on
+	  Award/AMI/Phoenix BIOSes.  These bits make use of nonstandard
+	  keyboard controller BIOS functionality to manipulate
+		pin 23 (8041 port 22) as turbo switch for AWARD
+		pin 35 (8041 port 15) as turbo switch/pw lock for Phoenix
+SeeAlso: #P048,#P051
+
+Bitfields for HP Vectra keyboard controller output port:
+Bit(s)	Description	(Table P051)
+ 7-5	reserved
+ 4	output buffer full (OBF) interrupt
+ 3	HP SVC interrupt
+ 2	HP-HIL controller AutoPoll
+ 1	A20 gate
+ 0	system reset
+SeeAlso: #P050,#P052
+
+Bitfields for HP Vectra command byte:
+Bit(s)	Description	(Table P052)
+ 7	reserved (0)
+ 6	scancode conversion mode (1 = PC/XT, 0 = PC/AT)
+ 5	unused
+ 4	disable keyboard (unless bit 3 set)
+ 3	override keyboard disable
+ 2	System Flag (may be read from PORT 0060h)
+ 1	reserved
+ 0	OBF interrupt enable
+SeeAlso: #P051
+
+(Table P053)
+Values for keyboard commands (data also goes to PORT 0060h):
+Value	Count	Description
+ EDh	double	set/reset mode indicators Caps Num Scrl
+		bit 2 = CapsLk, bit 1 = NumLk, bit 0 = ScrlLk
+		all other bits must be zero.
+ EEh	sngl	diagnostic echo. returns EEh.
+ EFh	sngl	NOP (No OPeration). reserved for future use
+ EF+26h	double	[Cherry MF2 G80-1501HAD] read 256 bytes of chipcard data
+		keyboard must be disabled before this and has to
+		be enabled after finished.
+ F0h	double	get/set scan code set
+		00h get current set
+		01h scancode set 1 (PCs and PS/2 mod 30, except Type 2 ctrlr)
+		02h scancode set 2 (ATs, PS/2, default)
+		03h scancode set 3
+ F2h	sngl	read keyboard ID (read two ID bytes)
+		AT keyboards returns FA (ACK)
+		MF2 returns AB 41 (translation) or
+			    AB 83 (pass through)
+ F3h	double	set typematic rate/delay
+		format of the second byte:
+		bit7=0 : reserved
+		bit6-5 : typemativ delay
+			 00b=250ms     10b= 750ms
+			 01b=500ms     11b=1000ms
+		bit4-0 : typematic rate (see #P058)
+ F4h	sngl	enable keyboard
+ F5h	sngl	disable keyboard. set default parameters (no keyboard scanning)
+ F6h	sngl	set default parameters
+ F7h	sngl	[MCA] set all keys to typematic (scancode set 3)
+ F8h	sngl	[MCA] set all keys to make/release
+ F9h	sngl	[MCA] set all keys to make only
+ FAh	sngl	[MCA] set all keys to typematic/make/release
+ FBh	sngl	[MCA] set al keys to typematic
+ FCh	double	[MCA] set specific key to make/release
+ FDh	double	[MCA] set specific key to make only
+ FEh	sngl	resend last scancode
+ FFh	sngl	perform internal power-on reset function
+Note:	each command is acknowledged by FAh (ACK), if not mentioned otherwise.
+	  See PORT 0060h-R for details.
+SeeAlso: #P054
+
+(Table P054)
+Values for Mouse functions (for PS/2-like pointing devices):
+Value	Count	Description
+ E6h	sngl	set mouse scaling to 1:1
+ E7h	sngl	set mouse scaling to 2:1
+ E8h	double	set mouse resolution
+		(00h=1/mm, 01h=2/mm, 02h=4/mm, 03h=8/mm)
+ E9h	sngl	get mouse information
+		read two status bytes:
+		  byte 0: flags (see #P055)
+		  byte 1: resolution
+ EAh	sngl	set mouse to stream mode (mouse sends data on any changes)
+ EBh	sngl	get mouse data (from mouse to controller) (see #P056)
+		on reading, each data packet consists of 8 bytes:
+ ECh	sngl	reset mouse wrap mode (to normal mode)
+ EEh	sngl	set wrap mode
+ F0h	sngl	set remote mode (instead of stream mode), mouse sends data
+		  only on issueing command EBh.
+ F2h	sngl	read mouse ID (read one, two?? ID bytes)
+		00h=mouse
+ F3h	double	set mouse sample rate in reports per second
+		0Ah=10/s	   50h= 80/s
+		14h=20/s	   64h=100/s
+		28h=40/s	   C8h=200/s
+		3Ch=60/s
+ F4h	sngl	enable mouse (in stream mode)
+ F5h	sngl	disable mouse (in steam mode), set default parameters
+ F6h	sngl	reset to defaults: 100/s, scaling 1:1, stream-mode, 4/mm,
+		  disabled
+ FEh	sngl	resend last mouse data (8 bytes, see EBh)
+ FFh	sngl	reset mouse
+Notes:	 must issue command D4h to PORT 0064h first to access mouse functions
+	 all commands except ECh and FFh are acknowledged by FAh (ACK) or
+	   FEh (Resend); get mouse ID (F2h) returns mouse ID.
+SeeAlso: #P053
+
+Bitfields for mouse status byte 0:
+Bit(s)	Description	(Table P055)
+ 7	unused
+ 6	remote rather than stream mode
+ 5	mouse enabled
+ 4	scaling set to 2:1
+ 3	unused
+ 2	left button pressed
+ 1	unused
+ 0	right button pressed
+SeeAlso: #P054,#P056
+
+Format of mouse data packet:
+Offset	Size	Description	(Table P056)
+ 00h	BYTE	status
+		bit7	: y-data overrun
+		bit6	: x-data overrun
+		bit5	: y-data negative
+		bit4	: x-data negative
+		bit3-2=0: reserved
+		bit1	: right button pressed
+		bit0	: left button pressed
+ 01h	BYTE	reserved
+ 02h	BYTE	x-data
+ 03h	BYTE	reserved
+ 04h	BYTE	y-data
+ 05h	BYTE	reserved
+ 06h	BYTE	z-data (0)
+ 07h	BYTE	reserved
+SeeAlso: #P054,#P055
+
+(Table P057)
+Values for keyboard special codes:
+ 00h	(MF2 in codeset2&3 or AT keyboards) keydetection/overrun error
+ 00h	(mouse) ID
+ AAh	BAT completion code (sent after errorfree Basic Assurance Test)
+ ABh	first byte of general MF2 keyboard ID
+ EEh	Echo command return
+ FAh	Acknowledge (all general commands except Resend and Echo)
+ FAh	(mouse) Acknowledge (all commands except commands ECh,F2h,FFh)
+ FCh	(MF2) BAT Failure Code (error in second half of the power on self test)
+ FDh	(AT-keyboard) BAT Failure Code (error in the second half of the
+	  power-on self test)
+ FEh	Resend: CPU to controller should resend last keyboard-command
+ FEh	(mouse) CPU to controller should resend last mouse-command
+ FFh	(MF2 in codeset1) keydetection/overrun error
+Note:	keyboard stops scanning and waits for next command after returning
+	  code FCh or FDh
+SeeAlso: PORT 0060h-R
+
+(Table P058)
+Values for keyboard typematic rate:
+ 00000b=30.0   10000b=7.5
+ 00001b=26.7   10001b=6.7
+ 00010b=24.0   10010b=6.0
+ 00011b=21.8   10011b=5.5
+ 00100b=20.0   10100b=5.0
+ 00101b=18.5   10101b=4.6
+ 00110b=17.1   10110b=4.3
+ 00111b=16.0   10111b=4.0
+ 01000b=15.0   11000b=3.7
+ 01001b=13.3   11001b=3.3
+ 01010b=12.0   11010b=3.0
+ 01011b=10.9   11011b=2.7
+ 01100b=10.0   11100b=2.5
+ 01101b= 9.2   11101b=2.3
+ 01110b= 8.5   11110b=2.1
+ 01111b= 8.0   11111b=2.0
+SeeAlso: #P053
+
+Bitfields for KB controller port B (system control port) [output]:
+Bit(s)	Description	(Table P059)
+ 7	pulse to 1 for IRQ1 reset (PC,XT)
+ 6-4	reserved
+ 3	I/O channel parity check disable
+ 2	RAM parity check disable
+ 1	speaker data enable
+ 0	timer 2 gate to speaker enable
+SeeAlso: PORT 0061h-W,#P060
+
+Bitfields for KB controller port B control register (system control port) [input]:
+Bit(s)	Description	(Table P060)
+ 7	RAM parity error occurred
+ 6	I/O channel parity error occurred
+ 5	mirrors timer 2 output condition
+ 4	toggles with each refresh request
+ 3	NMI I/O channel check status
+ 2	NMI parity check status
+ 1	speaker data status
+ 0	timer 2 clock gate to speaker status
+SeeAlso: PORT 0061h-R,#P059
+
+Bitfields for Progr. Peripheral Interface (8255) system control port [output]:
+Bit(s)	Description	(Table P061)
+ 7	clear keyboard (only pulse, normally kept at 0)
+ 6	=0  hold keyboard clock low
+ 5	NMI I/O parity check disable
+ 4	NMI RAM parity check disable
+ 3	=0 read low nybble of switches S2
+	=1 read high nybble of switches S2
+ 2	reserved, often used as turbo switch
+	original PC: cassette motor off
+ 1	speaker data enable
+ 0	timer 2 gate to speaker enable
+Note:	bits 2 and 3 are sometimes used as turbo switch
+SeeAlso: PORT 0061h-W,#P0051,#P062,#P063,#P064
+
+Bitfields for PPI (XT only) data port C:
+Bit(s)	Description	(Table P062)
+ 7	RAM parity error occurred
+ 6	I/O channel parity error occurred
+ 5	timer 2 channel out
+ 4	reserved
+	original PC: cassette data input
+---
+ 3	system board RAM size type 1
+ 2	system board RAM size type 2
+ 1	coprocessor installed
+ 0	loop in POST
+---
+ 3-0	DIL switch S2 high/low nybble (depending on PORT 0061h bit 3)
+SeeAlso: PORT 0062h-RW,#P061,#P063,#P064
+
+Bitfields for PPI (PC,XT only) equipment switches [input]:
+Bit(s)	Description	(Table P063)
+ 7-6	number of disk drives
+	00  1 diskette drive
+	01  2 diskette drives
+	10  3 diskette drives
+	11  4 diskette drives
+ 5-4	initial video
+	00  reserved (video adapter has on-board BIOS)
+	01  40*25 color (mono mode)
+	10  80*25 color (mono mode)
+	11  MDA 80*25
+ 3-2	memory size (using 256K chips)
+	00  256K
+	01  512K
+	10  576K
+	11  640K
+ 3-2	memory size (using 64K chips)
+	00  64K
+	01  128K
+	10  192K
+	11  256K
+ 3-2	memory size (original PC)
+	00  16K
+	01  32K
+	10  48K
+	11  64K
+ 1-0	reserved
+ 1	NPU (math coprocessor) present
+ 0	boot from floppy
+SeeAlso: #P062,#P064,PORT 0060h-R
+
+Bitfields for PPI (8255) command mode register:
+Bit(s)	Description	(Table P064)
+ 7	activation function (0 = bit set/reset, 1 = mode set function)
+ 6,5	port A mode: 00 = mode0, 01 = mode1, 1x = mode2
+ 4	port A direction: 0 = output, 1 = input
+ 3	port C bits 7-4 direction: 0 = output, 1 = input
+ 2	port B mode: 0 = mode0, 1 = mode1
+ 1	port B direction: 0 = output, 1 = input
+ 0	port C bits 3-0 direction: 0 = output, 1 = input
+Note:	Attention: Never write anything other than 99h to this port
+	  (better: never write anything to this port, only during BIOS
+	  init), as other values may connect multiple output drivers
+	  and will cause hardware damage in PC/XTs!  By setting command
+	  word to 99h, PPI will be set in input/output modes as it is
+	  necessary to support the commonly known IO-ports 60, 61, 62
+	  as desired.
+SeeAlso: #P061,#P062,#P063
+
+Bitfields for keyboard controller read status (ISA, EISA):
+Bit(s)	Description	(Table P065)
+ 7	parity error on transmission from keyboard
+ 6	receive timeout
+ 5	transmit timeout
+ 4	keyboard interface inhibited by keyboard lock
+ 3	=1 data written to input register is command (PORT 0064h)
+	=0 data written to input register is data (PORT 0060h)
+ 2	system flag status: 0=power up or reset	 1=selftest OK
+ 1	input buffer full (input 60/64 has data for 8042)
+	no write access allowed until bit clears
+ 0	output buffer full (output 60 has data for system)
+	bit is cleared after read access
+SeeAlso: PORT 0064h-R,#P066,#P067,#P068
+
+Bitfields for keyboard controller read status (MCA):
+Bit(s)	Description	(Table P066)
+ 7	parity error on transmission from keyboard
+ 6	general timeout
+ 5	mouse output buffer full
+ 4	keyboard interface inhibited by keyboard lock
+ 3	=1 data written to input register is command (PORT 0064h)
+	=0 data written to input register is data (PORT 0060h)
+ 2	system flag status: 0=power up or reset	 1=selftest OK
+ 1	input buffer full (60/64 has data for 804x)
+	no write access allowed until bit clears
+ 0	output buffer full (output 60 has data for system)
+	bit is cleared after read access
+SeeAlso: #P065,#P067,#P068
+
+Bitfields for keyboard controller read status (Compaq):
+Bit(s)	Description	(Table P067)
+ 7	parity error detected (11-bit format only). If an
+	  error is detected, a Resend command is sent to the
+	  keyboard once only, as an attempt to recover.
+ 6	receive timeout. transmission didn't finish in 2mS.
+ 5	transmission timeout error
+	bit 5,6,7  cause
+		1 0 0  No clock
+		1 1 0  Clock OK, no response
+		1 0 1  Clock OK, parity error
+ 4	=0 security lock engaged
+ 3	=1 data in OUTPUT register is command
+	=0 data in OUTPUT register is data
+ 2	system flag status: 0=power up or reset	 1=soft reset
+ 1	input buffer full (60/64 has data for 804x)
+	no write access allowed until bit clears
+ 0	output buffer full (PORT 0060h has data for system)
+	bit is cleared after read access
+SeeAlso: #P065,#P066,#P068
+
+(Table P068)
+Values for keyboard controller commands (data goes to PORT 0060h):
+Value		Description
+ 20h	read	read byte zero of internal RAM, this is the last KB command
+		  sent to the 8041/8042
+	Compaq	put current command byte on PORT 0060h (see #P070,#P071)
+ 21-3F	read	reads the byte specified in the lower 5 bits of the command
+		  in the 804x's internal RAM
+ 60-7F	double	writes the data byte to the address specified in the 5 lower
+		  bits of the command
+ 60h	Compaq	Load new command (60 to [64], command to [60]) (see #P071)
+		(also general AT-class machines)
+ A0h	AMI	get ASCIZ copyright message on PORT 0060h
+ A1h	AMI	get controller version byte on PORT 0060h
+ A1h	Compaq	unknown speedfunction ??
+ A2h	Compaq	unknown speedfunction ??
+ A2h	AMI	set keyboard controller pins 22 and 23 low
+ A3h	Compaq	Enable system speed control
+ A3h	AMI	set keyboard controller pins 22 and 23 high
+ A4h	MCA	check if password installed
+ A4h	Compaq	Toggle speed
+ A4h	AMI	set internal system speed flag to low
+ A5h	MCA	load password
+ A5h	AMI	set internal system speed flag to high
+ A5h	Compaq	Special read. the 8042 places the real values of port 2
+		  except for bits 4 and 5 wich are given a new definition in
+		  the output buffer. No output buffer full is generated.
+			if bit 5 = 0, a 9-bit keyboard is in use
+			if bit 5 = 1, an 11-bit keyboard is in use
+			if bit 4 = 0, output-buff-full interrupt disabled
+			if bit 4 = 1, output-buffer-full interrupt enabled
+ A6h	MCA	check password
+ A6h	AMI	get internal system speed flag on PORT 0060h
+ A6h	Compaq	unknown speedfunction ??
+ A7h	MCA	disable mouse port
+ A7h	AMI	set internal flag indicating bad write cache
+ A8h	MCA	enable mouse port
+ A8h	AMI	set internal flag indicating good write cache
+ A9h	MCA	test mouse port
+ A9h	AMI	get internal flag indicating cache OK to 0060
+ AAh	sngl	initiate self-test. will return 55h to data port if self-test
+		  successful, FCh if failed
+ AAh	Compaq	initializes ports 1 and 2, disables the keyboard and clears
+		  the buffer pointers. It then places 55h in the output buffer.
+ ABh	sngl	initiate interface test. result values:
+		00h no error
+		01h keyboard clock line stuck low
+		02h keyboard clock line stuck high
+		03h keyboard data line is stuck low
+		04h keyboard data line stuck high
+		05h (Compaq only) diagnostic feature
+ ACh	read	diagnostic dump. the contents of the 804x RAM, output port,
+		  input port, status word are sent.
+ ADh	sngl	disable keyboard (sets bit 4 of commmand byte)
+ ADh	Vectra	HP Vectra diagnostic dump
+ AEh	sngl	enable keyboard	 (resets bit 4 of commmand byte)
+ AFh	AWARD	Enhanced Command: read keyboard version
+ B1h	AMI	set keyboard controller P11 line low
+ B2h	AMI	set keyboard controller P12 line low
+ B3h	AMI	set keyboard controller P13 line low
+ B4h	AMI	set keyboard controller P22 line low
+ B5h	AMI	set keyboard controller P23 line low
+ B8h	AMI	set keyboard controller P10 line high
+ B9h	AMI	set keyboard controller P11 line high
+ BAh	AMI	set keyboard controller P12 line high
+ BBh	AMI	set keyboard controller P13 line high
+ BCh	AMI	set keyboard controller P22 line high
+ BDh	AMI	set keyboard controller P23 line high
+ C0h	read	read input port and place on PORT 0060h
+		bit 7	keyboard NOT locked
+		bit 6	=0 first video is CGA
+			=1 first video is MDA
+		bit 5	=0 factory testmode
+			=1 normal
+		bit 4	=0 256KB RAM, 1=512KB
+		bit 5,3-0 are used in Intel chipset 386sx machines with
+			AMI/Phoenix BIOSes for BIOS specific hardware settings
+ C0h	Compaq	places status of input port in output buffer.  Use this
+		  command only when the output buffer is empty
+ C1h	MCA	Enhanced Command: poll input port Low nibble
+ C2h	MCA	Enhanced Command: poll input port High nibble
+ C8h	AMI	unblock keyboard controller lines P22 and P23
+ C9h	AMI	block keyboard controller lines P22 and P23
+ CAh	AMI	read keyboard mode, return in 0060 bit 0
+		  (bit clear if ISA mode, set if PS/2 mode)
+ CBh	AMI	set keyboard mode (write back mode byte returned by CAh,
+		  modifying only bit 0)
+ D0h	read	read output port and place on PORT 0060h (see #P072)
+ D0h	Compaq	places byte in output port in output buffer. Use this command
+		  only when the output buffer is empty
+ D1h	double	write output port.  The next byte written to PORT 0060h will
+		  be written to the 804x output port; the original IBM AT and
+		  many compatibles use bit 1 of the output port to control
+		  the A20 gate.
+		Important: bit 0 (system reset) should always be set here, as
+			  the system may hang constantly, use pulse output port
+			  (FEh) instead.
+ D1h	Compaq	the system speed bits are not set by this command use
+		  commands A1-A6 (!) for speed functions.
+ D2h	MCA	Enhanced Command: write keyboard output buffer
+ D3h	MCA	Enhanced Command: write pointing device out.buf.
+ D4h	MCA	write to mouse/pointing device instead of to keyboard; this
+		  controller command must precede every PORT 0060h command
+		  directed to the mouse, otherwise it will be sent to the
+		  keyboard
+ D4h	AWARD	Enhanced Command: write to auxiliary device
+ DDh	sngl	disable address line A20 (HP Vectra only???)
+		default in Real Mode
+ DFh	sngl	enable address line A20 (HP Vectra only???)
+ E0h	read	read test inputs.
+		bit0 = kbd clock, bit1 = kbd data
+ Exxx	AWARD	Enhanced Command: active output port
+ EDh	double	this is a two part command to control the state of the
+		  NumLock, CpasLock and ScrollLock LEDs
+		The second byte contains the state to set LEDs.
+		    bit 7-3	reserved. should be set to 0.
+		    bit 2 = 0	Caps Lock LED off
+		    bit 1 = 0	Num Lock LED off
+		    bit 0 = 0	Scroll Lock LED off
+ F0-FF	sngl	pulse output port low for 6 microseconds.
+		bits 0-3 contain the mask for the bits to be pulsed.  A bit is
+		  pulsed if its mask bit is zero
+		bit0=system reset. Don't set to zero. Pulse only!
+Note:	 keyboard controllers are widely different from each other.  You
+	   cannot generally exchange them between different machines.
+	 (Award) Derived from Award's Enhanced KB controller advertising sheet.
+	 (Compaq) Derived from the Compaq Deskpro 386 Tech. Ref. Guide.
+
+(Table P069)
+Values for HP Vectra control buffer command code:
+ 00h-54h insert standard key make code into 8041 scancode buf
+ 55h-77h insert HP key make code into 8041 scancode buffer
+ 7Ah	pass through next data byte
+ 7Bh	set RAM Switch to 0
+ 7Ch	set RAM Switch to 1 (default)
+ 7Dh	set CRT Switch to 0
+ 7Eh	set CRT Switch to 1 (default)
+ 7Fh	reserved
+ 80h-D4h insert standard key break code into scancode buffer
+ D5h-F7h insert HP key break code into scancode buffer
+ F8h	enable AutoPoll
+ F9h	disable AutoPoll
+ FAh-FEh reserved
+ FFh	keyboard overrun
+SeeAlso: PORT 0068h-W
+
+Bitfields for Compaq keyboard command byte:
+Bit(s)	Description	(Table P070)
+ 7	reserved
+ 6	=1 convert KB codes to 8086 scan codes
+ 5	=0 use 11-bit codes, 1=use 8086 codes
+ 4	=0 enable keyboard, 1=disable keyboard
+ 3	ignore security lock state
+ 2	this bit goes into bit2 status reg.
+ 1	reserved (0)
+ 0	generate interrupt when output buffer full
+SeeAlso: #P071
+
+Bitfields for keyboard command byte (alternate description):
+Bit(s)	Description	(Table P071)
+ 7	reserved (0)
+ 6	IBM PC compatibility mode
+ 5	IBM PC mode
+	no parity, no stop bits, no translation
+	(PS/2) force mouse clock low
+ 4	disable keyboard (clock)
+ 3	inhibit override
+	(PS/2) reserved
+ 2	system flag
+ 1	reserved (0)
+	(PS/2) enable mouse output buffer full interrupt
+ 0	enable output buffer full interrupt
+SeeAlso: #P070,#P072
+
+Bitfields for keyboard controller output port:
+Bit(s)	Description	(Table P072)
+ 7	keyboard data (output)
+ 6	keyboard clock (output)
+ 5	input buffer empty
+ 4	output buffer empty
+ 3	undefined
+ 2	undefined
+	used by Intel 386sx Chipset with AMI/Phoenix BIOSes for BIOS-specific
+	  configuration of turbo switch
+ 1	gate address A20
+ 0	system reset
+Note:	bit 0 (system reset) should always be set when writing the output
+	  port, as the system may hang constantly; use pulse output port
+	  (command FEh) instead.
+SeeAlso: #P071
+----------P0065------------------------------
+PORT 0065 - AT&T 6300+ - HIGH/LOW CHIP SELECT
+----------P0065------------------------------
+PORT 0065 - ???
+
+0065  RW  ???
+		bit 2: A20 gate control (set = A20 enabled, clear = disabled)
+----------P00660067--------------------------
+PORT 0066-0067 - AT&T 6300+ - SYSTEM CONFIGURATION SWITCHES
+----------P0066------------------------------
+PORT 0066 - IBM 4717 Magnetic Stripe Reader - ???
+SeeAlso: PORT 0069h"Magnetic Stripe"
+----------P0068------------------------------
+PORT 0068 - C&T CHIPSETS - TURBO MODE CONTROL
+
+Note:	  on Micronics 386-25/386-33/486-25 motherboards, setting this port to
+	    00h enables full speed; setting it to C0h slows the system down by
+	    a factor corresponding to the value programmed into the EISA
+	    interval timer 2 at ports 004Ah and 004Bh
+----------P0069------------------------------
+PORT 0069 - IBM 4717 Magnetic Stripe Reader - ???
+SeeAlso: PORT 0066h"Magnetic Stripe"
+----------P006B006F--------------------------
+PORT 006B-006F - SSGA CONTROL REGISTERS
+
+006B  ??  RAM enable/remap
+006C  ??  undocumented
+006D  ??  undocumented
+006E  ??  undocumented
+006F  ??  undocumented
+----------P0070007F--------------------------
+PORT 0070-007F - CMOS RAM/RTC (REAL TIME CLOCK)
+Note:	the real-time clock may be either a discrete MC146814, MC146818, or
+	  an emulation thereof built into the motherboard chipset
+
+0070  -W  CMOS RAM index register port (ISA, EISA)
+		 bit 7	= 1  NMI disabled
+			= 0  NMI enabled
+		 bit 6-0     CMOS RAM index (64 bytes, sometimes 128 bytes)
+
+		any write to 0070 should be followed by an action to 0071
+		or the RTC wil be left in an unknown state.
+
+0071  RW  CMOS RAM data port (ISA, EISA) (see #P073)
+
+(Table P073)
+Values for Real-Time Clock register number (see also CMOS.LST):
+ 00h-0Dh clock registers
+ 0Eh	diagnostics status byte
+ 0Fh	shutdown status byte
+ 10h	diskette drive type for A: and B:
+ 11h	reserved / IBM fixed disk / setup options
+ 12h	fixed disk drive type for drive 0 and drive 1
+ 13h	reserved / AMI Extended CMOS setup (AMI Hi-Flex BIOS)
+ 14h	equipment byte
+ 15h	LSB of system base memory in Kb
+ 16h	MSB of system base memory in Kb
+ 17h	LSB of total extended memory in Kb
+ 18h	MSB of total extended memory in Kb
+ 19h	drive C extension byte
+ 1Ah	drive D extension byte
+ 1Bh-2Dh reserved
+ 20h-27h commonly used for first user-configurable drive type
+ 2Eh	CMOS MSB checksum over 10-2D
+ 2Fh	CMOS LSB checksum over 10-2D
+ 30h	LSB of extended memory found above 1Mb at POST
+ 31h	MSB of extended memory found above 1Mb at POST
+ 32h	date century in BCD
+ 33h	information flags
+ 34h-3Fh	reserved
+ 35h-3Ch commonly used for second user-configurable drive type
+ 3Dh-3Eh word to 82335 MCR memory config register at [22] (Phoenix)
+ 42h-4Ch AMI 1990 Hyundai super-NB368S notebook
+	???
+ 54h-57h AMI 1990 Hyundai super-NB368S notebook
+	???
+ 5Ch-5Dh AMI 1990 Hyundai super-NB368S notebook
+	???
+ 60h-61h AMI 1990 Hyundai super-NB368S notebook
+	???
+----------P0073------------------------------
+PORT 0073 - Intel 82378IB ("Saturn"/"Neptune" chipsets) - MBOARD CONFIGURATION
+SeeAlso: PORT 0075h
+
+0073  RW  ???
+	bit 7: ???
+	bit 6: disable ROM shadowing
+	bit 5: ??? (related to IDE controller)
+	bit 4: ???
+	bit 3: ???
+----------P00740076--------------------------
+PORT 0074-0076 - SECONDARY CMOS (Compaq), NVRAM (IBM) ACCESS
+Note:	NVRAM may be 2K, 8K, or 16K
+SeeAlso: PORT 0070h-007Fh,CMOS.LST
+
+0074  -W  secondary CMOS RAM (IBM NVRAM) index, low byte
+0075  -W  secondary CMOS RAM (IBM NVRAM) index, high (in bits 2-0)
+0076  RW  secondary CMOS RAM (IBM NVRAM) data byte
+----------P0075------------------------------
+PORT 0075 - Intel 82378IB ("Saturn"/"Neptune" chipsets) - MBOARD CONFIGURATION
+SeeAlso: PORT 0073h,PORT 0078h"82378IB"
+
+0075  R-  ???
+	  bits 3-2: external bus speed???
+	       00  50 MHz
+	       01  66 MHz
+	       10  60 MHz
+	       11  40 MHz
+----------P0078------------------------------
+PORT 0078 - HP-Vectra - HARD RESET: NMI ENABLE/DISABLE
+
+0078  ?W  NMI enable/disable
+		bit 7 = 0  disable & clear hard reset from HP-HIL controller
+		      = 1  enable hard reset from HP-HIL controller chip
+		bit 6-0	   reserved
+----------P0078------------------------------
+PORT 0078 - Intel 82378IB ("Saturn"/"Neptune" chipsets) - BIOS COUNT-DOWN TIMER
+Notes:	the BIOS uses this port for certain fine timings; presumably it is
+	  independent of processor speed (it appears to decrement at 1 MHz)
+	the address at which this port appears may be set via the 82378's
+	  PCI configuration space word at offset 0080h (see #0642), or the
+	  timer may be disabled entirely
+SeeAlso: PORT 0075h
+
+0078w -W  set count-down timer
+0078w R-  get current count (timer stops when it reaches 0000h)
+----------P0078007F--------------------------
+PORT 0078-007F - PC radio by CoZet Info Systems
+Range:	The I/O address range is dipswitch selectable from:
+	   038-03F and 0B0-0BF
+	   078-07F and 0F0-0FF
+	   138-13F and 1B0-1BF
+	   178-17F and 1F0-1FF
+	   238-23F and 2B0-2BF
+	   278-27F and 2F0-2FF
+	   338-33F and 3B0-3BF
+	   378-37F and 3F0-3FF
+Note:	All of these addresses show a readout of FFh in initial state.
+	Once started, all of the addresses show FBh, whatever might happen.
+----------P007C007D--------------------------
+PORT 007C-007D - HP-Vectra - PIC 3 - PROGRAMMABLE INTERRUPT CONTROLLER (8259)
+Notes:	cascaded to first controller.
+	used for keyboard and input device interface.
+SeeAlso: PORT 0020h-0021h,INT 68"Vectra",INT 6E"Vectra"
+
+007C  RW  HP-Vectra  PIC 3  see at 0020	 PIC 1
+007D  RW  HP-Vectra  PIC 3  see at 0021	 PIC 1
+----------P0080------------------------------
+PORT 0080 - MANUFACTURING DIAGNOSTICS PORT
+Note:	sometimes used for a POST hex display
+
+0080  -W  Manufacturing Diagnostics port
+0080  R-  ???
+
+(Table P074)
+Values for AMI BIOS diagnostics codes:
+ 00h	system boot completed, control passed to INT 19 bootstrap loader
+ 01h	register test
+ 02h	video initialization; NMIs disabled
+ 03h	power-on delay complete
+ 04h	pre-keyboard-test initializations complete
+ 05h	soft-reset/power-on setting determined
+ 06h	ROM enabled
+ 07h	ROM BIOS checksum test passed
+ 08h	keyboard BAT command issued
+ 09h	keyboard controller BAT result verified
+ 0Ah	keyboard controller command code issued
+ 0Bh	keyboard controller command byte written
+ 0Ch	keyboard controller pins 23/24 blocked and unblocked
+ 0Dh	keyboard controller NOP processing in progress
+ 0Eh	CMOS RAM shutdown register read/write test passed
+ 0Fh	CMOS RAM checksum calculation complete
+ 10h	CMOS RAM initialization complete
+ 11h	CMOS RAM status register initialized
+ 12h	DMA controllers 1/2 and interrupt controllers 1/2 disabled
+ 13h	video display disabled, port B initialized
+ 14h	chipset initialization, auto memory detection
+ 15h	8254 channel 2 test half complete
+ 16h	8254 channel 2 test completed
+ 17h	8254 channel 1 test completed
+ 18h	8254 channel 0 test completed
+ 19h	memory refresh started
+ 1Ah	memory refresh line is toggling
+ 1Bh	memory refresh test completed
+ 20h	base 64K memory test started
+ 21h	address line test passed
+ 22h	parity toggle complete
+ 23h	base 64K sequential read/write test passed
+ 24h	pre-interrupt-vector-initialization configuration complete
+ 25h	interrupt vectors initialized
+ 26h	8042 input port read
+ 27h	global data initialization complete
+ 28h	post-interrupt-vector-initialization initialization complete
+ 29h	monochrome mode set
+ 2Ah	color mode set
+ 2Bh	parity toggle on option video ROM test complete
+ 2Ch	initialization before video ROM control complete
+ 2Dh	video ROM check complete
+ 2Eh	!!!
+ A9h	returned from E0000h adapter ROM
+ AAh	final initializations after adapter ROM initializations complete
+----------P0080008F--------------------------
+PORT 0080-008F - DMA PAGE REGISTERS (74612)
+
+0080  RW  extra page register (temporary storage)
+0081  RW  DMA channel 2 address byte 2
+0082  RW  DMA channel 3 address byte 2
+0083  RW  DMA channel 1 address byte 2
+0084  RW  extra page register
+0085  RW  extra page register
+0086  RW  extra page register
+0087  RW  DMA channel 0 address byte 2
+0088  RW  extra page register
+0089  RW  DMA channel 6 address byte 2
+008A  RW  DMA channel 7 address byte 2
+008B  RW  DMA channel 5 address byte 2
+008C  RW  extra page register
+008D  RW  extra page register
+008E  RW  extra page register
+008F  RW  DMA refresh page register
+----------P0080009F--------------------------
+PORT 0080-009F - Intel386sx CHIPSET 82231
+Note:	includes the DMA controller functionality on PORT 0080h to PORT 008Fh
+----------P0084------------------------------
+PORT 0084 - Compaq POST Diagnostic
+--------X-P0084------------------------------
+PORT 0084 - EISA - SYNCHRONIZE BUS CYCLE
+----------P00850086--------------------------
+PORT 0085-0086 - Intel "Triton" chipset - ???
+SeeAlso: PORT 00EBh"Triton"
+
+0085  ?W  ???
+0086  ?W  ???
+----------P0090009F--------------------------
+PORT 0090-009F - PS/2 - POS (PROGRAMMABLE OPTION SELECT)
+
+0090  ??  Central arbitration control port
+0091  R-  Card selection feedback
+0092  RW  PS/2 system control port A  (port B is at 0061) (see #P075)
+0094  -W  system board enable/setup register (see #P076)
+0095  --  reserved
+0096  -W  adapter enable / setup register
+		 bit 3 = 1  setup adapters
+		       = 0  enable registers
+0097  --  reserved
+
+Bitfields for PS/2 system control port A:
+Bit(s)	Description	(Table P075)
+ 7-6	any bit set to 1 turns activity light on
+ 5	reserved
+ 4	watchdog timout occurred
+ 3	=0 RTC/CMOS security lock (on password area) unlocked
+	=1 CMOS locked (done by POST)
+ 2	reserved
+ 1	A20 is active
+ 0	=0 system reset or write
+	=1 pulse alternate reset pin (alternate CPU reset)
+SeeAlso: #P076,MSR 00001000h
+
+Bitfields for PS/2 system board enable/setup register:
+Bit(s)	Description	(Table P076)
+ 7	=1  enable functions
+	=0  setup functions
+ 5	=1  enables VGA
+	=0  setup VGA
+ 2	=1  enable integrated SCSI (PS/2 M77)
+	=0  setup integrated SCSI
+SeeAlso: #P075
+----------P00A000AF--------------------------
+PORT 00A0-00AF - PIC 2 - PROGRAMMABLE INTERRUPT CONTROLLER (8259A)
+SeeAlso: PORT 0020h-003Fh"PIC 1",INT 70"IRQ8",INT 77"IRQ15"
+
+00A0  RW  NMI mask register (XT)
+		 bit 7 = 0 disabled
+		       = 1 enabled
+00A0  RW  PIC 2	 same as 0020 for PIC 1
+00A1  RW  PIC 2	 same as 0021 for PIC 1 except for OCW1 (see #P077)
+
+Bitfields for PIC2 output control word OCW2:
+Bit(s)	Description	(Table P077)
+ 7	disable IRQ15 (reserved)
+ 6	disable IRQ14 (fixed disk interrupt)
+ 5	disable IRQ13 (coprocessor exception interrupt)
+ 4	disable IRQ12 (mouse interrupt)
+ 3	disable IRQ11 (reserved)
+ 2	disable IRQ10 (reserved)
+ 1	disable IRQ9  (redirect cascade)
+ 0	disable IRQ8  (real-time clock interrupt)
+SeeAlso: #P010
+----------P00B000BF--------------------------
+PORT 00B0-00BF - PC radio by CoZet Info Systems
+Range:	The I/O address range is dipswitch selectable from:
+	   038-03F and 0B0-0BF
+	   078-07F and 0F0-0FF
+	   138-13F and 1B0-1BF
+	   178-17F and 1F0-1FF
+	   238-23F and 2B0-2BF
+	   278-27F and 2F0-2FF
+	   338-33F and 3B0-3BF
+	   378-37F and 3F0-3FF
+Notes:	All of these addresses show a readout of FFh in initial state.
+	Once started, all of the addresses show	FBh, whatever might happen.
+----------P00B2------------------------------
+PORT 00B2 - Intel chipsets - Advanced Power Management Control
+Notes:	used to pass data between the operating system and the System
+	  Management Interrupt (SMI) handler
+	writes to this port can cause an SMI; reads can cause STPCLK# to be
+	  asserted (putting the CPU in sleep mode)
+	supported by 82420EX, 82371, and other Intel chipsets
+SeeAlso: PORT 00B3h,#3345
+
+00B2  RW  control
+----------P00B3------------------------------
+PORT 00B3 - Intel chipsets - Advanced Power Management Status
+Notes:	used to pass data between the operating system and the System
+	  Management Interrupt (SMI) handler
+	supported by 82420EX, 82371, and other Intel chipsets
+SeeAlso: PORT 00B2h
+
+00B3  RW  status
+----------P00C0------------------------------
+PORT 00C0 - TI SN746496 programmable tone/noise generator (PCjr)
+----------P00C000DF--------------------------
+PORT 00C0-00DF - DMA 2 - SECOND DIRECT MEMORY ACCESS CONTROLLER (8237)
+
+00C0  RW  DMA channel 4 memory address bytes 1 and 0 (low) (ISA, EISA)
+00C2  RW  DMA channel 4 transfer count bytes 1 and 0 (low) (ISA, EISA)
+00C4  RW  DMA channel 5 memory address bytes 1 and 0 (low) (ISA, EISA)
+00C6  RW  DMA channel 5 transfer count bytes 1 and 0 (low) (ISA, EISA)
+00C8  RW  DMA channel 6 memory address bytes 1 and 0 (low) (ISA, EISA)
+00CA  RW  DMA channel 6 transfer count bytes 1 and 0 (low) (ISA, EISA)
+00CC  RW  DMA channel 7 memory address byte 0 (low), then 1 (ISA, EISA)
+00CE  RW  DMA channel 7 transfer count byte 0 (low), then 1 (ISA, EISA)
+
+00D0  R-  DMA channel 4-7 status register (ISA, EISA) (see #P078)
+00D0  -W  DMA channel 4-7 command register (ISA, EISA) (see #P079)
+00D2  -W  DMA channel 4-7 write request register (ISA, EISA)
+00D4  -W  DMA channel 4-7 write single mask register (ISA, EISA) (see #P080)
+00D6  -W  DMA channel 4-7 mode register (ISA, EISA) (see #P081)
+00D8  -W  DMA channel 4-7 clear byte pointer flip-flop (ISA, EISA)
+
+00DA  R-  DMA channel 4-7 read temporary register (ISA, EISA)
+00DA  -W  DMA channel 4-7 master clear (ISA, EISA)
+00DC  -W  DMA channel 4-7 clear mask register (ISA, EISA)
+00DE  -W  DMA channel 4-7 write mask register (ISA, EISA)
+
+Bitfields for DMA channel 4-7 status register:
+Bit(s)	Description	(Table P078)
+ 7 = 1	channel 7 request
+ 6 = 1	channel 6 request
+ 5 = 1	channel 5 request
+ 4 = 1	channel 4 request
+ 3 = 1	terminal count on channel 7
+ 2 = 1	terminal count on channel 6
+ 1 = 1	terminal count on channel 5
+ 0 = 1	terminal count on channel 4
+SeeAlso: #P001,#P079
+
+Bitfields for DMA channel 4-7 command register:
+Bit(s)	Description	(Table P079)
+ 7	DACK sense active high
+ 6	DREQ sense active high
+ 5	=1  extended write selection
+	=0  late write selection
+ 4	rotating priority instead of fixed priority
+ 3	compressed timing
+ 2	=1  enable controller
+	=0  enable memory-to-memory transfer
+ 1-0	channel number (00 = 4 to 11 = 7)
+SeeAlso: #P002,#P078,#P080
+
+Bitfields for DMA channel 4-7 write single mask register:
+Bit(s)	Description	(Table P080)
+ 7-3	reserved
+ 2	=0  clear mask bit
+	=1  set mask bit
+ 1-0	channel select
+	00 channel 4 select
+	01 channel 5 select
+	10 channel 6 select
+	11 channel 7 select
+SeeAlso: #P004,#P079
+
+Bitfields for DMA channel 4-7 mode register:
+Bit(s)	Description	(Table P081)
+ 7-6	transfer mode
+	00  demand mode
+	01  single mode
+	10  block mode
+	11  cascade mode
+ 5	direction
+	0  address increment select
+	1  address decrement select
+ 4	autoinitialisation enabled
+ 3-2	operation
+	00  verify operation
+	01  write to memory
+	10  rea
