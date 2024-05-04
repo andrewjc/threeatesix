@@ -1482,6 +1482,30 @@ func INSTR_INC(core *CpuCore) {
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
+func INSTR_INC_RM16(core *CpuCore) {
+	var dest *uint16
+	var destName string
+
+	core.currentByteAddr++
+
+	modrm, bytesConsumed, err := core.consumeModRm()
+	if err != nil {
+		goto eof
+	}
+	core.currentByteAddr += bytesConsumed
+
+	dest, destName, err = core.readRm16(&modrm)
+	if err != nil {
+		goto eof
+	}
+
+	*dest = *dest + 1
+
+eof:
+	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", destName))
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
 func INSTR_INC_SHORT_REL8(core *CpuCore) {
 
 	var dest *uint16
@@ -1526,6 +1550,31 @@ func INSTR_DEC(core *CpuCore) {
 		doCoreDump(core)
 	}
 
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_DEC_RM16(core *CpuCore) {
+	var dest *uint16
+	var destName string
+
+	core.currentByteAddr++
+
+	modrm, bytesConsumed, err := core.consumeModRm()
+	if err != nil {
+		goto eof
+	}
+	core.currentByteAddr += bytesConsumed
+
+	dest, destName, err = core.readRm16(&modrm)
+	if err != nil {
+		goto eof
+	}
+
+	*dest = *dest - 1
+
+	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "DEC", destName))
+
+eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 

@@ -6,7 +6,14 @@ import (
 	"log"
 )
 
-func INSTR_CALLF_M16(core *CpuCore, modrm *ModRm) {
+func INSTR_CALL_M16(core *CpuCore) {
+	core.currentByteAddr++
+	modrm, _, err := core.consumeModRm()
+	core.currentByteAddr--
+	if err != nil {
+		goto eof
+	}
+
 	if modrm.mod == 3 {
 		reg, reg_str := core.registers.registers16Bit[modrm.rm], core.registers.index16ToString(modrm.rm)
 
@@ -21,6 +28,34 @@ func INSTR_CALLF_M16(core *CpuCore, modrm *ModRm) {
 		core.registers.IP = uint16(addr)
 		core.logInstruction(fmt.Sprintf("[%#04x] CALLF %#04x", core.GetCurrentlyExecutingInstructionAddress(), uint16(addr)))
 	}
+
+eof:
+}
+
+func INSTR_CALL_RM16(core *CpuCore) {
+	core.currentByteAddr++
+	modrm, _, err := core.consumeModRm()
+	core.currentByteAddr--
+	if err != nil {
+		goto eof
+	}
+
+	if modrm.mod == 3 {
+		reg, reg_str := core.registers.registers16Bit[modrm.rm], core.registers.index16ToString(modrm.rm)
+
+		stackPush16(core, uint16(core.GetIP()+2))
+
+		core.registers.IP = uint16(*reg)
+		core.logInstruction(fmt.Sprintf("[%#04x] CALL %s (%#04x)", core.GetCurrentlyExecutingInstructionAddress(), reg_str, uint16(*reg)))
+	} else {
+		addr := modrm.getAddressMode16(core)
+		stackPush16(core, uint16(core.GetIP()+2))
+
+		core.registers.IP = uint16(addr)
+		core.logInstruction(fmt.Sprintf("[%#04x] CALL %#04x", core.GetCurrentlyExecutingInstructionAddress(), uint16(addr)))
+	}
+
+eof:
 }
 
 func INSTR_DEC_COUNT_JMP_SHORT_ECX(core *CpuCore) {
@@ -92,7 +127,6 @@ func INSTR_JMP_FAR_M16(core *CpuCore, modrm *ModRm) {
 		core.registers.IP = uint16(addr)
 		core.logInstruction(fmt.Sprintf("[%#04x] JMP %#04x (JMP_FAR_M16)", core.GetCurrentlyExecutingInstructionAddress(), uint16(addr)))
 	}
-
 }
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {
