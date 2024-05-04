@@ -75,10 +75,11 @@ func (r *RealModeAccessProvider) PeekNextBytesImpl(addr uint32, numBytes uint32)
 
 	for i := uint32(0); i < numBytes; i++ {
 
-		if r.resetVectorBaseAddr > 0 {
-			buffer[i], _ = r.ReadFromBiosAddressSpace(addr + i)
+		iBuff, err := r.ReadMemoryAddr8(addr)
+		if err != nil {
+			break
 		} else {
-			buffer[i] = (*r.backingRam)[addr+i]
+			buffer[i] = iBuff
 		}
 	}
 
