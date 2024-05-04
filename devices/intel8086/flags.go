@@ -74,3 +74,38 @@ func INSTR_CLC(core *CpuCore) {
 	core.currentByteAddr++
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
+
+func INSTR_SMSW(core *CpuCore) {
+	var value uint16
+	var dest *uint16
+	var destName string
+
+	core.currentByteAddr++
+	modrm, bytesConsumed, err := core.consumeModRm()
+	if err != nil {
+		goto eof
+	}
+	core.currentByteAddr += bytesConsumed
+
+	value = uint16(core.registers.CR0)
+
+	// mask out the reserved bits
+	value = value & 0xFFFF
+
+	if modrm.mod == 3 {
+		dest = core.registers.registers16Bit[modrm.rm]
+		destName = core.registers.index16ToString(modrm.rm)
+		*dest = value
+	} else {
+		addressMode := modrm.getAddressMode16(core)
+		err = core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), value)
+		if err != nil {
+			goto eof
+		}
+		destName = "rm/16"
+	}
+
+eof:
+	core.logInstruction(fmt.Sprintf("[%#04x] smsw %s", core.GetCurrentlyExecutingInstructionAddress(), destName))
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
