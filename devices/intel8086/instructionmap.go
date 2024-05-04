@@ -158,12 +158,13 @@ func mapOpCodes(c *CpuCore) {
 		// Group 1 opcodes, dynamically handled based on ModR/M byte
 		0x80: INSTR_80_OPCODES,
 		0x81: INSTR_80_OPCODES,
+		0x82: INSTR_80_OPCODES,
 		0x83: INSTR_80_OPCODES,
 		// Test opcodes, handled based on ModR/M byte
-		0x84: INSTR_TEST,       // Test 8-bit register/memory with 8-bit register
-		0x85: INSTR_TEST,       // Test 16-bit register/memory with 16-bit register
-		0xF6: INSTR_FF_OPCODES, // Group 3 operations (TEST, NOT, NEG, MUL, IMUL, DIV, IDIV)
-		0xF7: INSTR_FF_OPCODES,
+		0x84: INSTR_TEST, // Test 8-bit register/memory with 8-bit register
+		0x85: INSTR_TEST, // Test 16-bit register/memory with 16-bit register
+		//0xF6: handleGroup5Opcode, // Group 3 operations (TEST, NOT, NEG, MUL, IMUL, DIV, IDIV)
+		//0xF7: handleGroup5Opcode,
 	}
 
 	// Register-based opcodes dynamically generated from register lists

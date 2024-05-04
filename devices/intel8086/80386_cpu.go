@@ -19,6 +19,7 @@ func New80386CPU() *CpuCore {
 	initializeSegmentRegisters(cpuCore)
 
 	cpuCore.registers.IP = 0x0000 // Instruction pointer set to the start
+	cpuCore.registers.SP = 0xFFFE // Stack pointer set to the top of the stack
 
 	cpuCore.opCodeMap = make([]OpCodeImpl, 256)
 	cpuCore.opCodeMap2Byte = make([]OpCodeImpl, 256)
@@ -29,13 +30,12 @@ func New80386CPU() *CpuCore {
 }
 
 func initializeSegmentRegisters(cpuCore *CpuCore) {
-	cpuCore.registers.CS = SegmentRegister{Base: 0xFFFF0, Limit: 0xFFFF}
-	cpuCore.registers.DS = SegmentRegister{Base: 0, Limit: 0xFFFF}
 	cpuCore.registers.ES = SegmentRegister{Base: 0, Limit: 0xFFFF}
+	cpuCore.registers.CS = SegmentRegister{Base: 0xFFFF0, Limit: 0xFFFF}
+	cpuCore.registers.SS = SegmentRegister{Base: 0, Limit: 0xFFFF}
+	cpuCore.registers.DS = SegmentRegister{Base: 0, Limit: 0xFFFF}
 	cpuCore.registers.FS = SegmentRegister{Base: 0, Limit: 0xFFFF}
 	cpuCore.registers.GS = SegmentRegister{Base: 0, Limit: 0xFFFF}
-	cpuCore.registers.SS = SegmentRegister{Base: 0, Limit: 0xFFFF}
-	cpuCore.registers.SP = 0xFFFE
 }
 
 func initializeRegisters(cpuCore *CpuCore) {
@@ -223,6 +223,20 @@ func (core *CpuCore) GetCurrentCodePointer() uint32 {
 	return addr
 }
 
+func (core *CpuCore) GetCurrentSegmentWidth() uint8 {
+	segment := core.registers.registersSegmentRegisters[common.SEGMENT_CS]
+
+	if core.flags.MemorySegmentOverride > 0 {
+		segment = core.registers.registersSegmentRegisters[core.flags.MemorySegmentOverride]
+	}
+
+	if segment.Limit == 0xFFFF {
+		return 16
+	} else {
+		return 32
+	}
+}
+
 func (core *CpuCore) SegmentAddressToLinearAddress(segment SegmentRegister, offset uint16) uint32 {
 
 	if core.flags.MemorySegmentOverride > 0 {
@@ -333,6 +347,15 @@ func (core *CpuCore) FriendlyPartName() string {
 	}
 
 	return "Unknown"
+}
+
+func (device *CpuCore) getEffectiveAddress32(modRm *ModRm) (*uint32, string) {
+	if modRm.mod == 3 {
+		return device.registers.registers32Bit[modRm.rm], device.registers.index32ToString(modRm.rm)
+	}
+
+	addressMode := modRm.getAddressMode32(device)
+	return &addressMode, fmt.Sprintf("dword_F%#04x", addressMode)
 }
 
 func (core *CpuCore) readImm8() (uint8, error) {
