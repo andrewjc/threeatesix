@@ -11,9 +11,9 @@ func mapOpCodes(c *CpuCore) {
 		0xE9: INSTR_JMP_NEAR_REL16,
 		0xE8: INSTR_CALL_NEAR_REL16,
 		0xEB: INSTR_JMP_SHORT_REL8,
-		0xE0: INSTR_DEC_COUNT_JMP_SHORT_ECX,
-		0xE1: INSTR_DEC_COUNT_JMP_SHORT_ECX,
-		0xE2: INSTR_DEC_COUNT_JMP_SHORT_ECX,
+		0xE0: INSTR_DEC_COUNT_JMP_SHORT_Z,
+		0xE1: INSTR_DEC_COUNT_JMP_SHORT_Z,
+		0xE2: INSTR_DEC_COUNT_JMP_SHORT,
 		0xE3: INSTR_JCXZ_SHORT_REL8,
 		0xFA: INSTR_CLI,
 		0xFC: INSTR_CLD,
@@ -161,10 +161,10 @@ func mapOpCodes(c *CpuCore) {
 		0x82: INSTR_80_OPCODES,
 		0x83: INSTR_80_OPCODES,
 		// Test opcodes, handled based on ModR/M byte
-		0x84: INSTR_TEST, // Test 8-bit register/memory with 8-bit register
-		0x85: INSTR_TEST, // Test 16-bit register/memory with 16-bit register
-		//0xF6: handleGroup5Opcode, // Group 3 operations (TEST, NOT, NEG, MUL, IMUL, DIV, IDIV)
-		//0xF7: handleGroup5Opcode,
+		0x84: INSTR_TEST,              // Test 8-bit register/memory with 8-bit register
+		0x85: INSTR_TEST,              // Test 16-bit register/memory with 16-bit register
+		0xF6: handleGroup3OpCode_byte, // Group 3 byte operations (TEST, NOT, NEG, MUL, IMUL, DIV, IDIV)
+		0xF7: handleGroup5Opcode_word, // Group 3 word operations (TEST, NOT, NEG, MUL, IMUL, DIV, IDIV)
 	}
 
 	// Register-based opcodes dynamically generated from register lists

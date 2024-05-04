@@ -1471,6 +1471,8 @@ func INSTR_INC(core *CpuCore) {
 
 			*val = *val + 1
 
+			core.registers.SetFlag(ZeroFlag, *val == 0)
+
 			core.logInstruction(fmt.Sprintf("[%#04x] inc %s", core.GetCurrentlyExecutingInstructionAddress(), valName))
 
 		}
@@ -1501,6 +1503,8 @@ func INSTR_INC_RM16(core *CpuCore) {
 
 	*dest = *dest + 1
 
+	core.registers.SetFlag(ZeroFlag, *dest == 0)
+
 eof:
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", destName))
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
@@ -1526,6 +1530,8 @@ func INSTR_INC_SHORT_REL8(core *CpuCore) {
 
 	*dest = *dest + 1
 
+	core.registers.SetFlag(ZeroFlag, *dest == 0)
+
 eof:
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", destName))
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
@@ -1541,6 +1547,8 @@ func INSTR_DEC(core *CpuCore) {
 			val, valName := core.registers.registers16Bit[core.currentOpCodeBeingExecuted-0x48], core.registers.index16ToString(core.currentOpCodeBeingExecuted-0x48)
 
 			*val = *val - 1
+
+			core.registers.SetFlag(ZeroFlag, *val == 0)
 
 			core.logInstruction(fmt.Sprintf("[%#04x] dec %s", core.GetCurrentlyExecutingInstructionAddress(), valName))
 
@@ -1571,6 +1579,8 @@ func INSTR_DEC_RM16(core *CpuCore) {
 	}
 
 	*dest = *dest - 1
+
+	core.registers.SetFlag(ZeroFlag, *dest == 0)
 
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "DEC", destName))
 
@@ -2227,4 +2237,360 @@ success:
 
 eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_MUL(core *CpuCore) {
+	core.currentByteAddr++
+
+	var term1 uint32
+	var term2 uint32
+	var result uint32
+
+	var bitLength uint32
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0xF6:
+		{
+			// MUL r/m8
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm8(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*t1)
+			term2 = uint32(core.registers.AL)
+			result = term1 * term2
+			core.registers.AX = uint16(result)
+			core.registers.SetFlag(CarryFlag, result>>16 != 0)
+
+			core.logInstruction(fmt.Sprintf("[%#04x] mul %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, "AL"))
+			goto success
+		}
+	case 0xF7:
+		{
+			// MUL r/m16
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm16(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*t1)
+			term2 = uint32(core.registers.AX)
+			result = term1 * term2
+			core.registers.DX = uint16(result >> 16)
+			core.registers.AX = uint16(result)
+
+			core.logInstruction(fmt.Sprintf("[%#04x] mul %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, "AX"))
+			goto success
+		}
+	default:
+		log.Fatal(fmt.Sprintf("Unrecognised MUL instruction: %#04x!", core.currentOpCodeBeingExecuted))
+	}
+
+success:
+	bitLength = uint32(bits.Len32(result))
+
+	// update flags
+	core.registers.SetFlag(OverFlowFlag, false)
+	core.registers.SetFlag(CarryFlag, result>>bitLength != 0)
+	core.registers.SetFlag(SignFlag, result>>bitLength != 0)
+	core.registers.SetFlag(ZeroFlag, result == 0)
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
+
+eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_DIV(core *CpuCore) {
+	core.currentByteAddr++
+
+	var term1 uint32
+	var term2 uint32
+	var result uint32
+
+	var bitLength uint32
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0xF6:
+		{
+			// DIV r/m8
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm8(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*t1)
+			term2 = uint32(core.registers.AL)
+			result = term2 / term1
+			core.registers.AX = uint16(result)
+			core.registers.AL = uint8(term2 % term1)
+
+			core.logInstruction(fmt.Sprintf("[%#04x] div %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, "AL"))
+			goto success
+		}
+	case 0xF7:
+		{
+			// DIV r/m16
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm16(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*t1)
+			term2 = uint32(core.registers.AX)
+			result = term2 / term1
+			core.registers.DX = uint16(result % term1)
+			core.registers.AX = uint16(result)
+
+			core.logInstruction(fmt.Sprintf("[%#04x] div %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, "AX"))
+			goto success
+		}
+	default:
+		log.Fatal(fmt.Sprintf("Unrecognised DIV instruction: %#04x!", core.currentOpCodeBeingExecuted))
+	}
+
+success:
+	bitLength = uint32(bits.Len32(result))
+
+	// update flags
+	core.registers.SetFlag(OverFlowFlag, false)
+	core.registers.SetFlag(CarryFlag, result>>bitLength != 0)
+	core.registers.SetFlag(SignFlag, result>>bitLength != 0)
+	core.registers.SetFlag(ZeroFlag, result == 0)
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
+
+eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_IDIV(core *CpuCore) {
+	core.currentByteAddr++
+
+	var term1 int32
+	var term2 int32
+	var result int32
+
+	var bitLength uint32
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0xF6:
+		{
+			// IDIV r/m8
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm8(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = int32(*t1)
+			term2 = int32(core.registers.AL)
+			result = term2 / term1
+			core.registers.AX = uint16(result)
+			core.registers.AL = uint8(term2 % term1)
+
+			core.logInstruction(fmt.Sprintf("[%#04x] idiv %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, "AL"))
+			goto success
+		}
+	case 0xF7:
+		{
+			// IDIV r/m16
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm16(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = int32(*t1)
+			term2 = int32(core.registers.AX)
+			result = term2 / term1
+			core.registers.DX = uint16(result % term1)
+			core.registers.AX = uint16(result)
+
+			core.logInstruction(fmt.Sprintf("[%#04x] idiv %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, "AX"))
+			goto success
+		}
+	default:
+		log.Fatal(fmt.Sprintf("Unrecognised IDIV instruction: %#04x!", core.currentOpCodeBeingExecuted))
+	}
+
+success:
+	bitLength = uint32(bits.Len32(uint32(result)))
+
+	// update flags
+	core.registers.SetFlag(OverFlowFlag, false)
+	core.registers.SetFlag(CarryFlag, result>>bitLength != 0)
+	core.registers.SetFlag(SignFlag, result>>bitLength != 0)
+	core.registers.SetFlag(ZeroFlag, result == 0)
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(uint32(result))%2 == 0)
+
+eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_NEG(core *CpuCore) {
+	core.currentByteAddr++
+
+	var term1 uint32
+	var result uint32
+
+	var bitLength uint32
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0xF6:
+		{
+			// NEG r/m8
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm8(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*t1)
+			result = 0 - term1
+			tmp := uint8(result)
+			err = core.writeRm8(&modrm, &tmp)
+			if err != nil {
+				goto eof
+			}
+
+			core.logInstruction(fmt.Sprintf("[%#04x] neg %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name))
+			goto success
+		}
+	case 0xF7:
+		{
+			// NEG r/m16
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm16(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*t1)
+			result = 0 - term1
+			tmp := uint16(result)
+			err = core.writeRm16(&modrm, &tmp)
+			if err != nil {
+				goto eof
+			}
+
+			core.logInstruction(fmt.Sprintf("[%#04x] neg %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name))
+			goto success
+		}
+	default:
+		log.Fatal(fmt.Sprintf("Unrecognised NEG instruction: %#04x!", core.currentOpCodeBeingExecuted))
+	}
+
+success:
+	bitLength = uint32(bits.Len32(uint32(result)))
+
+	// update flags
+	core.registers.SetFlag(OverFlowFlag, false)
+	core.registers.SetFlag(CarryFlag, result>>bitLength != 0)
+	core.registers.SetFlag(SignFlag, result>>bitLength != 0)
+	core.registers.SetFlag(ZeroFlag, result == 0)
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(uint32(result))%2 == 0)
+
+eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func INSTR_NOT(core *CpuCore) {
+	core.currentByteAddr++
+
+	var term1 uint32
+	var result uint32
+
+	var bitLength uint32
+
+	switch core.currentOpCodeBeingExecuted {
+	case 0xF6:
+		{
+			// NOT r/m8
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm8(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*t1)
+			result = ^term1
+			tmp := uint8(result)
+			err = core.writeRm8(&modrm, &tmp)
+			if err != nil {
+				goto eof
+			}
+
+			core.logInstruction(fmt.Sprintf("[%#04x] not %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name))
+			goto success
+		}
+	case 0xF7:
+		{
+			// NOT r/m16
+			modrm, bytesConsumed, err := core.consumeModRm()
+			if err != nil {
+				goto eof
+			}
+			t1, t1Name, err := core.readRm16(&modrm)
+			if err != nil {
+				goto eof
+			}
+			core.currentByteAddr += bytesConsumed
+			term1 = uint32(*t1)
+			result = ^term1
+			tmp := uint16(result)
+			err = core.writeRm16(&modrm, &tmp)
+			if err != nil {
+				goto eof
+			}
+
+			core.logInstruction(fmt.Sprintf("[%#04x] not %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name))
+			goto success
+		}
+	default:
+		log.Fatal(fmt.Sprintf("Unrecognised NOT instruction: %#04x!", core.currentOpCodeBeingExecuted))
+	}
+success:
+	bitLength = uint32(bits.Len32(uint32(result)))
+
+	// update flags
+	core.registers.SetFlag(OverFlowFlag, false)
+	core.registers.SetFlag(CarryFlag, result>>bitLength != 0)
+	core.registers.SetFlag(SignFlag, result>>bitLength != 0)
+	core.registers.SetFlag(ZeroFlag, result == 0)
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(uint32(result))%2 == 0)
+
+eof:
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
 }

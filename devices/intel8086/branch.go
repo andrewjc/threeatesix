@@ -58,7 +58,43 @@ func INSTR_CALL_RM16(core *CpuCore) {
 eof:
 }
 
-func INSTR_DEC_COUNT_JMP_SHORT_ECX(core *CpuCore) {
+func INSTR_DEC_COUNT_JMP_SHORT(core *CpuCore) {
+
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	if err != nil {
+		return
+	}
+
+	var destAddr = uint16(core.registers.IP + 2)
+	destAddr += uint16(offset) // Correctly calculate destination address
+
+	term1 := uint16(core.registers.CX)
+	term1-- // Decrement CX
+	core.registers.CX = term1
+
+	silenceLogging := false
+	if core.lastExecutedInstructionPointer == core.GetCurrentlyExecutingInstructionAddress() {
+		silenceLogging = true
+	}
+
+	if !silenceLogging {
+		core.logInstruction(fmt.Sprintf("[%#04x] LOOP %#04x (SHORT REL8)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
+	}
+	if term1 != 0 {
+		core.registers.IP = uint16(destAddr)
+		if !silenceLogging {
+			core.logInstruction(fmt.Sprintf("[%#04x]   |-> jumped (CX %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.CX))
+		}
+	} else {
+		core.registers.IP += 2
+		if !silenceLogging {
+			core.logInstruction(fmt.Sprintf("[%#04x]   |-> not jumped (CX %#04x)", core.GetCurrentlyExecutingInstructionAddress(), core.registers.CX))
+		}
+	}
+
+}
+
+func INSTR_DEC_COUNT_JMP_SHORT_Z(core *CpuCore) {
 
 	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {

@@ -177,6 +177,51 @@ func (core *CpuCore) Is32BitOperand() bool {
 	}
 }
 
+func handleGroup3OpCode_byte(core *CpuCore) {
+	core.currentByteAddr++
+	modrm, _, err := core.consumeModRm()
+	if err != nil {
+		log.Printf("Error consuming ModR/M byte: %v\n", err)
+		return // Exit early on error
+	}
+	core.currentByteAddr--
+
+	switch modrm.reg {
+	/*
+		reg = 0: TEST (Tests bits by performing a bitwise AND)
+		reg = 2: NOT (Bitwise NOT)
+		reg = 3: NEG (Two's complement negation)
+		reg = 4: MUL (Unsigned multiply)
+		reg = 5: IMUL (Signed multiply)
+		reg = 6: DIV (Unsigned divide)
+		reg = 7: IDIV (Signed divide)
+	*/
+	case 0:
+		INSTR_TEST(core)
+	case 2:
+		INSTR_NOT(core)
+	case 3:
+		INSTR_NEG(core)
+	case 4:
+		INSTR_MUL(core)
+	case 5:
+		INSTR_IMUL(core)
+	case 6:
+		INSTR_DIV(core)
+	case 7:
+		INSTR_IDIV(core)
+
+	default:
+		log.Printf("INSTR_80_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm)
+		doCoreDump(core)
+		panic(0)
+	}
+}
+
+func handleGroup5Opcode_word(core *CpuCore) {
+	handleGroup5Opcode(core) //TODO! Implement this
+}
+
 func handleGroup5Opcode(core *CpuCore) {
 
 	if core.Is32BitOperand() {

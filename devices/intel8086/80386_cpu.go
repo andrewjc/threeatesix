@@ -223,6 +223,11 @@ func (core *CpuCore) GetCurrentCodePointer() uint32 {
 	return addr
 }
 
+func (core *CpuCore) GetCurrentDataPointer() uint32 {
+	addr := core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.IP)
+	return addr
+}
+
 func (core *CpuCore) GetCurrentSegmentWidth() uint8 {
 	segment := core.registers.registersSegmentRegisters[common.SEGMENT_CS]
 
@@ -300,34 +305,17 @@ func (core *CpuCore) GetCurrentlyExecutingInstructionAddress() uint32 {
 
 func (core *CpuCore) Step() {
 
-	register_locations_8 := core.registers.registers8Bit
-	register_locations_16 := core.registers.registers16Bit
-	register_locations_32 := core.registers.registers32Bit
-
 	core.currentByteAddr = core.GetCurrentCodePointer()
 	tmp := core.currentByteAddr
 	if core.currentByteAddr == core.lastExecutedInstructionPointer {
-		log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
-		doCoreDump(core)
+		//log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
+		//doCoreDump(core)
+		//log.Printf("looping...")
 	}
 
 	core.currentByteDecodeStart = core.currentByteAddr
 
 	status := core.decodeInstruction()
-
-	// Check that no register pointers were overwritten
-	// checks for bugs
-	for i := 0; i < 8; i++ {
-		if register_locations_8[i] != core.registers.registers8Bit[i] {
-			panic(fmt.Sprintf("8-bit register %s was overwritten", core.registers.index8ToString(uint8(i))))
-		}
-		if register_locations_16[i] != core.registers.registers16Bit[i] {
-			panic(fmt.Sprintf("16-bit register %s was overwritten", core.registers.index16ToString(uint8(i))))
-		}
-		if register_locations_32[i] != core.registers.registers32Bit[i] {
-			panic(fmt.Sprintf("32-bit register %s was overwritten", core.registers.index32ToString(uint8(i))))
-		}
-	}
 
 	if status != 0 {
 		panic(0)
