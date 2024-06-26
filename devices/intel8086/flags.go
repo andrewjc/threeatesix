@@ -47,7 +47,6 @@ func INSTR_CLI(core *CpuCore) {
 	core.logInstruction(fmt.Sprintf("[%#04x] CLI", core.GetCurrentCodePointer()))
 	core.registers.SetFlag(InterruptFlag, false)
 	core.currentByteAddr++
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_CLD(core *CpuCore) {
@@ -55,7 +54,6 @@ func INSTR_CLD(core *CpuCore) {
 	core.currentByteAddr++
 	core.logInstruction(fmt.Sprintf("[%#04x] CLD", core.GetCurrentCodePointer()))
 	core.registers.SetFlag(DirectionFlag, false)
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_CMC(core *CpuCore) {
@@ -65,14 +63,12 @@ func INSTR_CMC(core *CpuCore) {
 	core.registers.SetFlag(CarryFlag, !carryFlag)
 
 	core.currentByteAddr++
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_CLC(core *CpuCore) {
 	core.logInstruction(fmt.Sprintf("[%#04x] CLC", core.GetCurrentCodePointer()))
 	core.registers.SetFlag(CarryFlag, false)
 	core.currentByteAddr++
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_SMSW(core *CpuCore) {
@@ -101,5 +97,4 @@ func INSTR_SMSW(core *CpuCore) {
 
 eof:
 	core.logInstruction(fmt.Sprintf("[%#04x] smsw %s", core.GetCurrentlyExecutingInstructionAddress(), destName))
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }

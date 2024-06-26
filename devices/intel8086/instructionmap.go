@@ -156,10 +156,10 @@ func mapOpCodes(c *CpuCore) {
 		0x1F: INSTR_POP, // Subtract with Borrow from AX with register16
 
 		// Group 1 opcodes, dynamically handled based on ModR/M byte
-		0x80: INSTR_80_OPCODES,
-		0x81: INSTR_80_OPCODES,
-		0x82: INSTR_80_OPCODES,
-		0x83: INSTR_80_OPCODES,
+		0x80: handleGroup80opcode,
+		0x81: handleGroup80opcode,
+		0x82: handleGroup80opcode,
+		0x83: handleGroup80opcode,
 		// Test opcodes, handled based on ModR/M byte
 		0x84: INSTR_TEST,              // Test 8-bit register/memory with 8-bit register
 		0x85: INSTR_TEST,              // Test 16-bit register/memory with 16-bit register

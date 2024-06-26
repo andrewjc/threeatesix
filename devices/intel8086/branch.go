@@ -3,7 +3,6 @@ package intel8086
 import (
 	"fmt"
 	"github.com/andrewjc/threeatesix/common"
-	"log"
 )
 
 func INSTR_CALL_M16(core *CpuCore) {
@@ -172,30 +171,32 @@ func INSTR_JMP_FAR_M16(core *CpuCore) {
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
 	if err != nil {
-		core.logInstruction("Error consuming ModR/M byte: %v\n", err)
-		return // Exit early on error
+		core.logInstruction("Error in INSTR_JMP_FAR_M16: %s\n", err)
+		return
 	}
 	core.currentByteAddr--
 
-	addr, addrName, err := core.readRm16(&modrm)
-	if err != nil {
-		log.Fatalf("Error reading address: %s", err.Error())
-		doCoreDump(core)
-		panic(0)
-	}
+	addr, addrName := core.getEffectiveAddress16(&modrm)
 
-	newCSAddr, _ := core.getEffectiveAddress16(&modrm)
-	newCS, err := core.memoryAccessController.ReadMemoryValue16(uint32(newCSAddr + 2))
+	// Read the offset (IP) and segment (CS) from memory
+	offset, err := core.memoryAccessController.ReadMemoryValue16(uint32(addr))
 	if err != nil {
-		core.logInstruction(fmt.Sprintf("Error reading new CS: %s", err.Error()))
+		core.logInstruction("Error reading offset: %s", err)
+		return
+	}
+	segment, err := core.memoryAccessController.ReadMemoryValue16(uint32(addr + 2))
+	if err != nil {
+		core.logInstruction("Error reading segment: %s", err)
 		return
 	}
 
-	core.registers.IP = uint16(*addr)
-	core.writeSegmentRegister(&core.registers.CS, uint32(newCS))
+	// Update both CS and IP
+	core.registers.IP = offset
+	core.registers.CS.Base = uint32(segment) << 4
+	core.flags.IsFarJump = true
 
 	core.logInstruction(fmt.Sprintf("[%#04x] JMP %s (JMP_FAR_M16) (dst=%#04x:%#04x)",
-		core.GetCurrentlyExecutingInstructionAddress(), addrName, newCS, uint16(*addr)))
+		core.GetCurrentlyExecutingInstructionAddress(), addrName, segment, offset))
 }
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {

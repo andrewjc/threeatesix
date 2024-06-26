@@ -6,108 +6,143 @@ import (
 	"log"
 )
 
-func (core *CpuCore) decodeInstruction() uint8 {
-
-	var instrByte uint8
-	var err error
-	nextInstructionAddr := core.SegmentAddressToLinearAddress32(core.registers.CS, uint32(core.registers.IP))
-
-	core.flags.MemorySegmentOverride = 0
-	core.flags.OperandSizeOverrideEnabled = false
-	core.flags.AddressSizeOverrideEnabled = false
-	core.flags.LockPrefixEnabled = false
-	core.flags.RepPrefixEnabled = false
+func (core *CpuCore) resetFlags() {
+	core.flags = CpuExecutionFlags{}
 	core.is2ByteOperand = false
-
 	core.currentPrefixBytes = []byte{}
-	if bVal, err := core.memoryAccessController.ReadMemoryValue8(nextInstructionAddr); err == nil && isPrefixByte(&bVal) {
+}
 
-		prefixByte := bVal
-		core.currentPrefixBytes = append(core.currentPrefixBytes, prefixByte)
-		switch prefixByte {
-		case 0x2e:
-			// cs segment override
-			core.flags.MemorySegmentOverride = common.SEGMENT_CS
-		case 0x36:
-			// ss segment override
-			core.flags.MemorySegmentOverride = common.SEGMENT_SS
-		case 0x3e:
-			// ds segment override
-			core.flags.MemorySegmentOverride = common.SEGMENT_DS
-		case 0x26:
-			// es segment override
-			core.flags.MemorySegmentOverride = common.SEGMENT_ES
-		case 0x64:
-			// fs segment override
-			core.flags.MemorySegmentOverride = common.SEGMENT_FS
-		case 0x65:
-			// gs segment override
-			core.flags.MemorySegmentOverride = common.SEGMENT_GS
-		case 0xf0:
-			// lock prefix
-			core.flags.LockPrefixEnabled = true
-		case 0xf2:
-			// repne/repnz prefix
-		case 0xf3:
-			// rep or repe/repz prefix
-			core.flags.RepPrefixEnabled = true
-		case 0x66:
-			// operand size override
-			core.flags.OperandSizeOverrideEnabled = true
-		case 0x67:
-			// address size override
-			core.flags.AddressSizeOverrideEnabled = true
+func (core *CpuCore) handlePrefixes() {
+	for {
+		prefixByte, err := core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr)
+		if err != nil || !isPrefixByte(&prefixByte) {
+			break
 		}
-
+		core.handlePrefix(prefixByte)
 		core.currentByteAddr++
-		nextInstructionAddr++
+		core.currentPrefixBytes = append(core.currentPrefixBytes, prefixByte)
 	}
+}
 
+func (core *CpuCore) handlePrefix(prefixByte byte) {
+	switch prefixByte {
+	case 0x2e:
+		core.flags.MemorySegmentOverride = common.SEGMENT_CS
+	case 0x36:
+		core.flags.MemorySegmentOverride = common.SEGMENT_SS
+	case 0x3e:
+		core.flags.MemorySegmentOverride = common.SEGMENT_DS
+	case 0x26:
+		core.flags.MemorySegmentOverride = common.SEGMENT_ES
+	case 0x64:
+		core.flags.MemorySegmentOverride = common.SEGMENT_FS
+	case 0x65:
+		core.flags.MemorySegmentOverride = common.SEGMENT_GS
+	case 0xf0:
+		core.flags.LockPrefixEnabled = true
+	case 0xf2, 0xf3:
+		core.flags.RepPrefixEnabled = true
+	case 0x66:
+		core.flags.OperandSizeOverrideEnabled = true
+	case 0x67:
+		core.flags.AddressSizeOverrideEnabled = true
+	}
+}
+
+func (core *CpuCore) applyFlagsToMemoryController() {
 	core.memoryAccessController.SetSegmentOverride(core.flags.MemorySegmentOverride)
 	core.memoryAccessController.SetAddressSizeOverride(core.flags.AddressSizeOverrideEnabled)
 	core.memoryAccessController.SetOperandSizeOverride(core.flags.OperandSizeOverrideEnabled)
 	core.memoryAccessController.SetLockPrefix(core.flags.LockPrefixEnabled)
 	core.memoryAccessController.SetRepPrefix(core.flags.RepPrefixEnabled)
+}
 
-	instrByte, err = core.memoryAccessController.ReadMemoryValue8(nextInstructionAddr)
+func (core *CpuCore) readInstructionByte() (byte, error) {
+	return core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr)
+}
 
-	if instrByte == 0x00 {
-		print("huh")
+func (core *CpuCore) handleInstructionReadError(err error) {
+	core.logInstruction("Error reading instruction byte: %s\n", err)
+	doCoreDump(core)
+	panic(fmt.Sprintf("Instruction read error: %v", err))
+}
+
+func (core *CpuCore) handleNullInstruction() {
+	core.logInstruction("Null instruction encountered")
+	doCoreDump(core)
+	panic("Null instruction encountered")
+}
+
+func (core *CpuCore) handle2ByteOpcode() OpCodeImpl {
+	core.currentByteAddr++
+	secondByte, err := core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr)
+	if err != nil {
+		core.handleInstructionReadError(err)
+		return nil
+	}
+	core.currentByteAddr++
+
+	core.currentOpCodeBeingExecuted = secondByte
+	instructionImpl := core.opCodeMap2Byte[core.currentOpCodeBeingExecuted]
+
+	if instructionImpl == nil {
+		core.logInstruction("[%#04x] Unrecognised 2-byte opcode: 0x0F %#02x\n", core.registers.IP, secondByte)
+		doCoreDump(core)
+		panic(fmt.Sprintf("Unrecognized 2-byte opcode: 0x0F %#02x", secondByte))
 	}
 
+	core.currentPrefixBytes = append(core.currentPrefixBytes, 0x0F)
+	core.is2ByteOperand = true
+
+	return instructionImpl
+}
+
+func (core *CpuCore) handleUnrecognizedOpcode(instrByte byte) {
+	core.logDebug(fmt.Sprintf("[%#04x] Unrecognised opcode: %#02x %v\n", core.registers.IP, instrByte, core.currentPrefixBytes))
+	core.logDebug("CPU CORE ERROR!!!")
+	doCoreDump(core)
+	panic(fmt.Sprintf("Unrecognized opcode: %#02x", instrByte))
+}
+
+func (core *CpuCore) updateInstructionPointer() {
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+}
+
+func (core *CpuCore) decodeInstruction() uint8 {
+
+	var instrByte uint8
+	var err error
+	nextInstructionAddr := core.SegmentAddressToLinearAddress32(core.registers.CS, uint32(core.registers.IP))
+	core.currentByteAddr = nextInstructionAddr
+	core.currentByteDecodeStart = nextInstructionAddr
+
+	core.resetFlags()
+	core.handlePrefixes()
+	core.applyFlagsToMemoryController()
+
+	instrByte, err = core.readInstructionByte()
 	if err != nil {
-		core.logInstruction("Error reading instruction byte: %s\n", err)
-		doCoreDump(core)
-		panic(0)
+		core.handleInstructionReadError(err)
+		return 0
 	}
 
 	var instructionImpl OpCodeImpl
-	if instrByte == 0x0F {
-		// 2 byte opcode
-		core.currentByteAddr++
-		instrByte, err = core.memoryAccessController.ReadMemoryValue8(uint32(core.currentByteAddr))
-		if err != nil {
-			core.logDebug(fmt.Sprintf("Error reading instruction byte: %s\n", err))
-			doCoreDump(core)
-			panic(0)
-		}
-
-		core.currentOpCodeBeingExecuted = instrByte
-		instructionImpl = core.opCodeMap2Byte[core.currentOpCodeBeingExecuted]
-
-		if instructionImpl == nil {
-			core.logInstruction("[%#04x] Unrecognised 2-bit opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte)
-			doCoreDump(core)
-			panic(0)
-		}
-
-		core.currentPrefixBytes = append(core.currentPrefixBytes, 0x0F)
-		core.is2ByteOperand = true
-	} else if instrByte == 0xFF {
-		// 2 byte opcode dictated by modrm
+	switch instrByte {
+	case 0x00:
+		core.handleNullInstruction()
+		return 0
+	case 0x0F:
+		instructionImpl = core.handle2ByteOpcode()
+	case 0xFF:
 		handleGroup5Opcode(core)
 		return 0
-	} else {
+	case 0x80:
+		handleGroup80opcode(core)
+		return 0
+	case 0x81:
+		handleGroup81opcode(core)
+		return 0
+	default:
 		core.currentOpCodeBeingExecuted = instrByte
 		instructionImpl = core.opCodeMap[core.currentOpCodeBeingExecuted]
 	}
@@ -115,14 +150,10 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	if instructionImpl != nil {
 		instructionImpl(core)
 	} else {
-		core.logDebug(fmt.Sprintf("[%#04x] Unrecognised opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte))
-
-		core.logDebug(fmt.Sprintf("CPU CORE ERROR!!!"))
-
-		doCoreDump(core)
-		panic(0)
+		core.handleUnrecognizedOpcode(instrByte)
 	}
 
+	core.updateInstructionPointer()
 	return 0
 }
 
@@ -217,9 +248,7 @@ func handleGroup3OpCode_byte(core *CpuCore) {
 func handleGroup5Opcode_word(core *CpuCore) {
 	handleGroup5Opcode(core) //TODO! Implement this
 }
-
 func handleGroup5Opcode(core *CpuCore) {
-
 	if core.Is32BitOperand() {
 		handleGroup5Opcode_32(core)
 		return
@@ -235,47 +264,34 @@ func handleGroup5Opcode(core *CpuCore) {
 
 	switch modrm.reg {
 	case 0:
-		if modrm.rm == 0 {
-			// inc rm16
-			INSTR_INC_RM16(core)
-		} else {
-			log.Println("Unexpected ModRM setup for INC instruction")
-		}
+		// INC rm16
+		INSTR_INC_RM16(core)
 	case 1:
-		if modrm.rm == 1 {
-			// dec rm16
-			INSTR_DEC_RM16(core)
-		} else {
-			log.Println("Unexpected ModRM setup for DEC RM16 instruction")
-		}
+		// DEC rm16
+		INSTR_DEC_RM16(core)
 	case 2:
-		if modrm.rm == 2 {
-			// call rm32
-			INSTR_CALL_RM16(core)
-		} else {
-			log.Println("Unexpected ModRM setup for CALL RM16 instruction")
-		}
+		// CALL rm16
+		INSTR_CALL_RM16(core)
 	case 3:
-		if modrm.rm == 3 {
-			// call m16:16
-			INSTR_CALL_M16(core)
-		} else {
-			log.Println("Unexpected ModRM setup for CALL M16 instruction")
-		}
+		// CALL m16:16
+		INSTR_CALL_M16(core)
 	case 4:
-		// jmp rm32
+		// JMP rm16
 		INSTR_JMP_FAR_M16(core)
 	case 5:
-		// jmp m16:16
+		// JMP m16:16
 		INSTR_JMP_FAR_M16(core)
 	case 6:
-		// push rm32
+		// PUSH rm16
 		INSTR_PUSH_RM16(core)
+	case 7:
+		core.logInstruction(fmt.Sprintf("Invalid Group 5 opcode: reg = 7 is undefined\n"))
 	default:
 		core.logInstruction(fmt.Sprintf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
-		doCoreDump(core)
-		panic("Unhandled operation")
 	}
+
+	// Update IP
+	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func handleGroup5Opcode_32(core *CpuCore) {
@@ -333,7 +349,7 @@ func handleGroup5Opcode_32(core *CpuCore) {
 	}
 }
 
-func INSTR_80_OPCODES(core *CpuCore) {
+func handleGroup80opcode(core *CpuCore) {
 
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
@@ -362,7 +378,7 @@ func INSTR_80_OPCODES(core *CpuCore) {
 eof:
 }
 
-func INSTR_81_OPCODES(core *CpuCore) {
+func handleGroup81opcode(core *CpuCore) {
 
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()

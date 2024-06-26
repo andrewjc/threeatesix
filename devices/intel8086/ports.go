@@ -16,7 +16,7 @@ func INSTR_IN(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			core.currentByteAddr++
+			core.currentByteAddr += 2
 
 			data := core.ioPortAccessController.ReadAddr8(uint16(imm))
 
@@ -65,7 +65,6 @@ func INSTR_IN(core *CpuCore) {
 	}
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr-core.currentByteDecodeStart) + 1
 }
 
 func INSTR_INS(core *CpuCore) {
@@ -133,7 +132,6 @@ func INSTR_INS(core *CpuCore) {
 	}
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr-core.currentByteDecodeStart) + 1
 }
 
 func INSTR_OUT(core *CpuCore) {
@@ -151,7 +149,7 @@ func INSTR_OUT(core *CpuCore) {
 			core.logInstruction(fmt.Sprintf("[%#04x] OUT %#08x, AL (data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), imm, core.registers.AL))
 			core.ioPortAccessController.WriteAddr8(uint16(imm), core.registers.AL)
 
-			core.currentByteAddr++
+			core.currentByteAddr += 2
 		}
 	case 0xE7:
 		{
@@ -187,8 +185,6 @@ func INSTR_OUT(core *CpuCore) {
 	}
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr-core.currentByteDecodeStart) + 1
-
 }
 
 func INSTR_OUTS(core *CpuCore) {

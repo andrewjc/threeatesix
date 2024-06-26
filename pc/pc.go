@@ -109,7 +109,7 @@ func NewPc() *PersonalComputer {
 	pc.cgaController = cga.NewMotorola6845()
 	pc.cmos = cmos.NewMotorola146818()
 
-	pc.memController = memmap.NewMemoryController(&pc.ram, &pc.rom.bios)
+	pc.memController = memmap.NewMemoryController(&pc.ram, &pc.rom.bios, &pc.rom.vga)
 
 	pc.ioPortController = io.NewIOPortController()
 

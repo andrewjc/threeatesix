@@ -213,7 +213,6 @@ func INSTR_XCHG(core *CpuCore) {
 eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
-
 func INSTR_CMP(core *CpuCore) {
 	core.currentByteAddr++
 	var term1, term2, result uint32
@@ -253,6 +252,7 @@ func INSTR_CMP(core *CpuCore) {
 		result = term1 - term2
 		dataSize = 16
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP (m16) %d with %d", core.GetCurrentlyExecutingInstructionAddress(), tmp1, tmp2))
+
 	case 0x3A: // CMP r8, r/m8
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
@@ -310,102 +310,110 @@ func INSTR_CMP(core *CpuCore) {
 		result = term1 - term2
 		dataSize = 16
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP AX, %#04x", core.GetCurrentlyExecutingInstructionAddress(), imm16))
-	case 0x38, 0x39: // CMP r/m8, r8 or CMP r/m16, r16
+
+	case 0x38: // CMP r/m8, r8
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
 			return
 		}
 		core.currentByteAddr += bytesConsumed
 
-		var rm8 *uint8
-		var rm16 *uint16
-		var rmStr string
-		if core.currentOpCodeBeingExecuted == 0x38 {
-			rm8, rmStr, err = core.readRm8(&modrm)
-		} else {
-			rm16, rmStr, err = core.readRm16(&modrm)
-		}
+		rm8, rm8Str, err := core.readRm8(&modrm)
 		if err != nil {
 			return
 		}
-		var r8 *uint8
-		var r16 *uint16
-		var rStr string
-		if core.currentOpCodeBeingExecuted == 0x38 {
-			r8, rStr = core.readR8(&modrm)
-		} else {
-			r16, rStr = core.readR16(&modrm)
-		}
-		if err != nil {
-			return
-		}
-		if core.currentOpCodeBeingExecuted == 0x38 {
-			term1 = uint32(*rm8)
-			term2 = uint32(*r8)
-		} else {
-			term1 = uint32(*rm16)
-			term2 = uint32(*r16)
-		}
+		r8, r8Str := core.readR8(&modrm)
+		term1 = uint32(*rm8)
+		term2 = uint32(*r8)
 		result = term1 - term2
-		if core.currentOpCodeBeingExecuted == 0x38 {
-			dataSize = 8
-		} else {
-			dataSize = 16
-		}
-		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rmStr, rStr))
+		dataSize = 8
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, r8Str))
 
-	case 0x80, 0x81, 0x83: // CMP r/m8, imm8 or CMP r/m16, imm16 or CMP r/m16, imm8
+	case 0x39: // CMP r/m16, r16
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
 			return
 		}
 		core.currentByteAddr += bytesConsumed
 
-		if core.currentOpCodeBeingExecuted == 0x80 { // CMP r/m8, imm8
-			rm8, rm8Str, err := core.readRm8(&modrm)
-			if err != nil {
-				return
-			}
-			imm8, err := core.readImm8()
-			if err != nil {
-				return
-			}
-			term1 = uint32(*rm8)
-			term2 = uint32(imm8)
-			core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, imm8))
-		} else { // CMP r/m16, imm16 or CMP r/m16, imm8
-			rm16, rm16Str, err := core.readRm16(&modrm)
-			if err != nil {
-				return
-			}
-			var imm uint32
-			if core.currentOpCodeBeingExecuted == 0x81 {
-				imm16, err := core.readImm16()
-				if err != nil {
-					return
-				}
-				imm = uint32(imm16)
-			} else { // Opcode 0x83, CMP r/m16, imm8
-				imm8, err := core.readImm8()
-				if err != nil {
-					return
-				}
-				imm = uint32(imm8) // Sign-extend the 8-bit immediate to 16-bit if necessary
-			}
-			term1 = uint32(*rm16)
-			term2 = imm
-			core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, imm))
+		rm16, rm16Str, err := core.readRm16(&modrm)
+		if err != nil {
+			return
 		}
-		if core.currentOpCodeBeingExecuted == 0x80 {
-			dataSize = 8
-		} else {
-			dataSize = 16
-		}
+		r16, r16Str := core.readR16(&modrm)
+		term1 = uint32(*rm16)
+		term2 = uint32(*r16)
 		result = term1 - term2
+		dataSize = 16
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, r16Str))
+
+	case 0x80: // CMP r/m8, imm8
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		rm8, rm8Str, err := core.readRm8(&modrm)
+		if err != nil {
+			return
+		}
+		imm8, err := core.readImm8()
+		if err != nil {
+			return
+		}
+		term1 = uint32(*rm8)
+		term2 = uint32(imm8)
+		result = term1 - term2
+		dataSize = 8
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, imm8))
+
+	case 0x81: // CMP r/m16, imm16
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		rm16, rm16Str, err := core.readRm16(&modrm)
+		if err != nil {
+			return
+		}
+		imm16, err := core.readImm16()
+		if err != nil {
+			return
+		}
+		term1 = uint32(*rm16)
+		term2 = uint32(imm16)
+		result = term1 - term2
+		dataSize = 16
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, imm16))
+
+	case 0x83: // CMP r/m16, imm8
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		rm16, rm16Str, err := core.readRm16(&modrm)
+		if err != nil {
+			return
+		}
+		imm8, err := core.readImm8()
+		if err != nil {
+			return
+		}
+		term1 = uint32(*rm16)
+		term2 = uint32(int8(imm8)) // Sign-extend the 8-bit immediate to 32-bit if necessary
+		result = term1 - term2
+		dataSize = 16
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, imm8))
 
 	default:
 		fmt.Printf("Unsupported opcode %#x\n", core.currentOpCodeBeingExecuted)
-		return
+		doCoreDump(core)
+		panic(0)
 	}
 
 	// Update flags
@@ -414,8 +422,6 @@ func INSTR_CMP(core *CpuCore) {
 	core.registers.SetFlag(SignFlag, (result>>(dataSize-1))&0x01 == 1)
 	core.registers.SetFlag(OverFlowFlag, (term1>>(dataSize-1))&0x01 != (term2>>(dataSize-1))&0x01 &&
 		(term1>>(dataSize-1))&0x01 != (result>>(dataSize-1))&0x01)
-
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 // INSTR_TEST_IMM8_AL tests the AL register with an immediate 8-bit value.
@@ -439,8 +445,6 @@ func INSTR_TEST_IMM8_AL(core *CpuCore) {
 	core.registers.SetFlag(ZeroFlag, result == 0)
 	core.registers.SetFlag(SignFlag, (result>>7)&0x01 == 1)
 	core.registers.SetFlag(OverFlowFlag, false) // Always cleared
-
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 
 }
 

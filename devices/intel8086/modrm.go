@@ -21,7 +21,6 @@ func (m *ModRm) String() string {
 	return fmt.Sprintf("ModRm{mod=%d, reg=%d, rm=%d, sib=%d, base=%d, index=%d, scale=%d, disp8=%d, disp16=%d, disp32=%d}",
 		m.mod, m.reg, m.rm, m.sib, m.base, m.index, m.scale, m.disp8, m.disp16, m.disp32)
 }
-
 func (core *CpuCore) consumeModRm() (ModRm, uint32, error) {
 	var bytesConsumed uint32
 	var modrmByte uint8
@@ -49,6 +48,7 @@ func (core *CpuCore) consumeModRm() (ModRm, uint32, error) {
 
 	return m, bytesConsumed, nil
 }
+
 func handleRealModeAddressing(core *CpuCore, m *ModRm, bytesConsumed uint32) (uint32, error) {
 	var err error
 
@@ -78,6 +78,13 @@ func handleRealModeAddressing(core *CpuCore, m *ModRm, bytesConsumed uint32) (ui
 			return bytesConsumed, err
 		}
 		bytesConsumed += 2
+
+	case 3:
+		// Register addressing mode, no displacement
+		return bytesConsumed, nil
+
+	default:
+		return bytesConsumed, fmt.Errorf("unexpected mod value: %d", m.mod)
 	}
 
 	return bytesConsumed, nil
@@ -125,6 +132,13 @@ func handleProtectedModeAddressing(core *CpuCore, m *ModRm, bytesConsumed uint32
 			return bytesConsumed, err
 		}
 		bytesConsumed += 4
+
+	case 3:
+		// Register addressing mode, no displacement
+		return bytesConsumed, nil
+
+	default:
+		return bytesConsumed, fmt.Errorf("unexpected mod value: %d", m.mod)
 	}
 
 	return bytesConsumed, nil

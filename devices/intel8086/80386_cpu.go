@@ -118,6 +118,7 @@ type CpuExecutionFlags struct {
 	MemorySegmentOverride uint32
 	LockPrefixEnabled     bool
 	RepPrefixEnabled      bool
+	IsFarJump             bool //used to determine if the current instruction is a far jump
 }
 
 func (device *CpuCore) GetDeviceBusId() uint32 {
@@ -372,7 +373,6 @@ func (core *CpuCore) getEffectiveAddress8(modrm *ModRm) (uint32, string) {
 
 	return addr, addrDesc
 }
-
 func (core *CpuCore) getEffectiveAddress16(modrm *ModRm) (uint16, string) {
 	var addr uint16
 	var addrDesc string
@@ -387,7 +387,7 @@ func (core *CpuCore) getEffectiveAddress16(modrm *ModRm) (uint16, string) {
 		case 0:
 			if modrm.base == 5 { // Special case, base is absent, only displacement
 				addr = modrm.disp16
-				addrDesc = fmt.Sprintf("Disp32 [0x%X]", modrm.disp16) // Bug: Should be Disp16, not Disp32
+				addrDesc = fmt.Sprintf("Disp16 [0x%X]", modrm.disp16) // Corrected to Disp16
 			} else {
 				addr = baseAddr + indexValue
 				addrDesc = fmt.Sprintf("[%s + %s*%d]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale)
@@ -397,7 +397,7 @@ func (core *CpuCore) getEffectiveAddress16(modrm *ModRm) (uint16, string) {
 			addrDesc = fmt.Sprintf("[%s + %s*%d + 0x%X]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale, int8(modrm.disp8))
 		case 2:
 			addr = baseAddr + indexValue + modrm.disp16
-			addrDesc = fmt.Sprintf("[%s + %s*%d + 0x%X]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale, modrm.disp32) // Bug: Should use modrm.disp16
+			addrDesc = fmt.Sprintf("[%s + %s*%d + 0x%X]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale, modrm.disp16) // Corrected to modrm.disp16
 		}
 	} else {
 		// No SIB byte, direct register addressing or displacement

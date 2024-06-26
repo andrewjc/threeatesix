@@ -21,14 +21,13 @@ func INSTR_MOV(core *CpuCore) {
 
 			segment := core.getSegmentOverride() // Get overridden segment register
 
-			segOff := uint16(offset)
-			byteValue, err := core.memoryAccessController.ReadMemoryValue8(core.SegmentAddressToLinearAddress(segment, segOff))
+			byteValue, err := core.memoryAccessController.ReadMemoryValue8(core.SegmentAddressToLinearAddress(segment, uint16(offset)))
 			if err != nil {
 				core.logInstruction(fmt.Sprintf("Error reading memory: %s", err))
 				return
 			}
 
-			core.logInstruction(fmt.Sprintf("[%#04x] MOV al, byte ptr cs:%#02x", core.GetCurrentlyExecutingInstructionAddress(), segOff))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV al, byte ptr %s:[%#02x]", core.GetCurrentlyExecutingInstructionAddress(), core.registers.indexSegmentToString(uint8(segment.Base)), offset))
 			core.registers.AL = byteValue
 		}
 	case 0xA1:
@@ -36,21 +35,17 @@ func INSTR_MOV(core *CpuCore) {
 
 			// mov ax, moffs16*
 			offset, err := core.memoryAccessController.ReadMemoryValue16(core.currentByteAddr)
-
-			if offset == 0x82da {
-				print("test")
-			}
-
 			if err != nil {
 				goto eof
 			}
 			core.currentByteAddr += 2
 
-			byteValue, err := core.memoryAccessController.ReadMemoryValue16(uint32(offset))
+			segment := core.getSegmentOverride()
+			byteValue, err := core.memoryAccessController.ReadMemoryValue16(core.SegmentAddressToLinearAddress(segment, offset))
 			if err != nil {
 				goto eof
 			}
-			core.logInstruction(fmt.Sprintf("[%#04x] MOV ax, byte ptr cs:%#02x", core.GetCurrentlyExecutingInstructionAddress(), offset))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV ax, word ptr %s:[%#04x]", core.GetCurrentlyExecutingInstructionAddress(), core.registers.indexSegmentToString(uint8(segment.Base)), offset))
 
 			core.registers.AX = byteValue
 		}
@@ -61,17 +56,15 @@ func INSTR_MOV(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-
 			core.currentByteAddr++
 
-			segOff := uint16(offset)
-
-			err = core.memoryAccessController.WriteMemoryAddr8(uint32(segOff), core.registers.AL)
+			segment := core.getSegmentOverride()
+			err = core.memoryAccessController.WriteMemoryAddr8(core.SegmentAddressToLinearAddress(segment, uint16(offset)), core.registers.AL)
 			if err != nil {
 				goto eof
 			}
 
-			core.logInstruction(fmt.Sprintf("[%#04x] MOV byte ptr cs:%#02x, al", core.GetCurrentlyExecutingInstructionAddress(), segOff))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV byte ptr %s:[%#02x], al", core.GetCurrentlyExecutingInstructionAddress(), core.registers.indexSegmentToString(uint8(segment.Base)), offset))
 		}
 	case 0xA3:
 		{
@@ -82,26 +75,21 @@ func INSTR_MOV(core *CpuCore) {
 			}
 			core.currentByteAddr += 2
 
-			segOff := uint16(offset)
-
-			err = core.memoryAccessController.WriteMemoryAddr16(uint32(segOff), core.registers.AX)
+			segment := core.getSegmentOverride()
+			err = core.memoryAccessController.WriteMemoryAddr16(core.SegmentAddressToLinearAddress(segment, offset), core.registers.AX)
 			if err != nil {
 				goto eof
 			}
 
-			core.logInstruction(fmt.Sprintf("[%#04x] MOV byte ptr cs:%#02x, ax", core.GetCurrentlyExecutingInstructionAddress(), segOff))
-
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV word ptr %s:[%#04x], ax", core.GetCurrentlyExecutingInstructionAddress(), core.registers.indexSegmentToString(uint8(segment.Base)), offset))
 		}
 	case 0xA4:
 		{
 			// movsb
-			src := core.registers.DS
-			srcOff := uint32(core.registers.SI)
+			src := core.getSegmentOverride()
 			dest := core.registers.ES
-			destOff := uint32(core.registers.DI)
-
-			srcAddr := src.Base + srcOff
-			destAddr := dest.Base + destOff
+			srcAddr := core.SegmentAddressToLinearAddress(src, core.registers.SI)
+			destAddr := core.SegmentAddressToLinearAddress(dest, core.registers.DI)
 
 			srcData, err := core.memoryAccessController.ReadMemoryValue8(srcAddr)
 			if err != nil {
@@ -113,21 +101,23 @@ func INSTR_MOV(core *CpuCore) {
 				goto eof
 			}
 
-			core.registers.SI++
-			core.registers.DI++
+			if !core.registers.GetFlag(DirectionFlag) {
+				core.registers.SI++
+				core.registers.DI++
+			} else {
+				core.registers.SI--
+				core.registers.DI--
+			}
 
 			core.logInstruction(fmt.Sprintf("[%#04x] MOVSB", core.GetCurrentlyExecutingInstructionAddress()))
 		}
 	case 0xA5:
 		{
 			// movsw
-			src := core.registers.DS
-			srcOff := uint32(core.registers.SI)
+			src := core.getSegmentOverride()
 			dest := core.registers.ES
-			destOff := uint32(core.registers.DI)
-
-			srcAddr := src.Base + srcOff
-			destAddr := dest.Base + destOff
+			srcAddr := core.SegmentAddressToLinearAddress(src, core.registers.SI)
+			destAddr := core.SegmentAddressToLinearAddress(dest, core.registers.DI)
 
 			srcData, err := core.memoryAccessController.ReadMemoryValue16(srcAddr)
 			if err != nil {
@@ -139,8 +129,13 @@ func INSTR_MOV(core *CpuCore) {
 				goto eof
 			}
 
-			core.registers.SI += 2
-			core.registers.DI += 2
+			if !core.registers.GetFlag(DirectionFlag) {
+				core.registers.SI += 2
+				core.registers.DI += 2
+			} else {
+				core.registers.SI -= 2
+				core.registers.DI -= 2
+			}
 
 			core.logInstruction(fmt.Sprintf("[%#04x] MOVSW", core.GetCurrentlyExecutingInstructionAddress()))
 
@@ -148,47 +143,31 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7:
 		{
 			// mov r8, imm8
-			r8, r8Str := core.registers.registers8Bit[core.currentOpCodeBeingExecuted-0xB0], core.registers.index8ToString(core.currentOpCodeBeingExecuted-0xB0)
-			val, err := core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr)
+			regIndex := core.currentOpCodeBeingExecuted - 0xB0
+			r8 := core.registers.registers8Bit[regIndex]
+			r8Str := core.registers.index8ToString(regIndex)
+			val, err := core.readImm8()
 			if err != nil {
 				goto eof
 			}
-			core.currentByteAddr++
 			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), r8Str, val))
 			*r8 = val
 		}
 	case 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
 		{
+			// mov r16, imm16
+			regIndex := uint8(core.currentOpCodeBeingExecuted - 0xB8)
 			immVal, _, err := core.GetImmediate16()
 			if err != nil {
 				goto eof
 			}
 
-			rIdx := uint8(core.currentOpCodeBeingExecuted - 0xB8)
-
-			regName, err := core.SetRegister16(rIdx, uint16(immVal))
-
-			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), regName, immVal))
-		}
-	case 0x85:
-		{
-			/* MOV r/m16, r16 */
-			modrm, bytesConsumed, err := core.consumeModRm()
+			regName, err := core.SetRegister16(regIndex, uint16(immVal))
 			if err != nil {
 				goto eof
 			}
-			core.currentByteAddr += bytesConsumed
 
-			var src *uint16
-			var srcName string
-			var dstName string
-
-			src = core.registers.registers16Bit[modrm.rm]
-			srcName = core.registers.index16ToString(modrm.rm)
-
-			dstName, err = core.writeRm16(&modrm, src)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), regName, immVal))
 		}
 	case 0x88:
 		{
@@ -219,19 +198,19 @@ func INSTR_MOV(core *CpuCore) {
 			}
 			core.currentByteAddr += bytesConsumed
 
-			var destName string
 			src := core.registers.registers16Bit[modrm.reg]
-
 			srcName := core.registers.index16ToString(modrm.reg)
 
-			destName, err = core.writeRm16(&modrm, src)
+			destName, err := core.writeRm16(&modrm, src)
+			if err != nil {
+				goto eof
+			}
 
 			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
-
 		}
 	case 0x8A:
 		{
-			/* 	MOV r8,r/m8 */
+			/* MOV r8,r/m8 */
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
@@ -240,16 +219,15 @@ func INSTR_MOV(core *CpuCore) {
 
 			rm8, srcName, err := core.readRm8(&modrm)
 			if err != nil {
-				log.Fatal("Error reading rm8")
+				goto eof
 			}
 
-			var destName string
-			core.registers.registers8Bit[modrm.reg] = rm8
+			dest := core.registers.registers8Bit[modrm.reg]
+			destName := core.registers.index8ToString(modrm.reg)
 
-			destName = core.registers.index8ToString(modrm.reg)
+			*dest = *rm8
 
 			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
-
 		}
 	case 0x8B:
 		{
@@ -262,16 +240,15 @@ func INSTR_MOV(core *CpuCore) {
 
 			rm16, srcName, err := core.readRm16(&modrm)
 			if err != nil {
-				log.Fatal("Error reading rm16")
+				goto eof
 			}
 
-			var destName string
-			core.registers.registers16Bit[modrm.reg] = rm16
+			dest := core.registers.registers16Bit[modrm.reg]
+			destName := core.registers.index16ToString(modrm.reg)
 
-			destName = core.registers.index16ToString(modrm.reg)
+			*dest = *rm16
 
 			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
-
 		}
 	case 0x8C:
 		{
@@ -282,32 +259,16 @@ func INSTR_MOV(core *CpuCore) {
 			}
 			core.currentByteAddr += bytesConsumed
 
-			// read Sreg
-
-			src := *core.registers.registersSegmentRegisters[modrm.reg]
+			src := core.registers.registersSegmentRegisters[modrm.reg]
 			srcName := core.registers.indexSegmentToString(modrm.reg)
 
-			regBase := uint16(src.Base)
+			regBase := uint16(src.Base >> 4)
 			destName, err := core.writeRm16(&modrm, &regBase)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
-
-		}
-	case 0x8D:
-		{
-			/* LEA r16, m */
-			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
 			}
-			core.currentByteAddr += bytesConsumed
 
-			dest := core.registers.registers16Bit[modrm.reg]
-			destName := core.registers.index16ToString(modrm.reg)
-
-			destName, err = core.writeRm16(&modrm, dest)
-
-			core.logInstruction(fmt.Sprintf("[%#04x] LEA %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, "m"))
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
 		}
 	case 0x8E:
 		{
@@ -319,14 +280,16 @@ func INSTR_MOV(core *CpuCore) {
 			core.currentByteAddr += bytesConsumed
 
 			src, srcName, err := core.readRm16(&modrm)
+			if err != nil {
+				goto eof
+			}
 
 			dest := core.registers.registersSegmentRegisters[modrm.reg]
 			dstName := core.registers.indexSegmentToString(modrm.reg)
 
-			(*dest).Base = uint32(*src)
+			dest.Base = uint32(*src) << 4
 
-			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s,%s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
-
+			core.logInstruction(fmt.Sprintf("[%#04x] MOV %s, %s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
 		}
 	case 0x20:
 		{
@@ -407,5 +370,4 @@ func INSTR_MOV(core *CpuCore) {
 	}
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }

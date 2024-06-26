@@ -3,6 +3,7 @@ package memmap
 import (
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
+	"log"
 )
 
 /*
@@ -10,8 +11,9 @@ import (
 */
 
 type MemoryAccessController struct {
-	backingRam *[]uint8
-	biosImage  *[]uint8
+	backingRam     *[]uint8
+	biosImage      *[]uint8
+	videoBiosImage *[]uint8
 
 	rcAddr uint32
 
@@ -37,9 +39,9 @@ type MemoryAccessProvider interface {
 	WriteMemoryAddr8(address uint32, data uint8) error
 }
 
-func NewMemoryController(ram *[]byte, bios *[]byte) *MemoryAccessController {
+func NewMemoryController(ram *[]byte, bios *[]byte, vBiosImage *[]byte) *MemoryAccessController {
 
-	return &MemoryAccessController{ram, bios, 0, nil, 0, nil, 0, 0, false, false, false, false}
+	return &MemoryAccessController{ram, bios, vBiosImage, 0, nil, 0, nil, 0, 0, false, false, false, false}
 }
 
 func (mem *MemoryAccessController) GetDeviceBusId() uint32 {
@@ -192,75 +194,47 @@ func (mem *MemoryAccessController) SetRepPrefix(enabled bool) {
 }
 
 func (mem *MemoryAccessController) InitShadowBios() {
-	mem.rcAddr = 0xF0000
 	biosImage := *mem.biosImage
 	biosSize := len(biosImage)
 
 	// Copy the IVT (Interrupt Vector Table) to the first 1 KB of memory
-	for i := 0x0024; i < 0x400; i++ {
-		// Read byte from BIOS ROM
-		romByte, err := mem.ReadMemoryValue8(mem.rcAddr + uint32(i))
-		if err != nil {
-			// Handle error
-		}
-
-		// Write byte to shadow RAM
-		shadowAddr := uint32(i)
-		err = mem.WriteMemoryAddr8(shadowAddr, romByte)
-		if err != nil {
-			// Handle error
+	for i := 0x0; i < 0x400; i++ {
+		if i < biosSize {
+			err := mem.WriteMemoryAddr8(uint32(i), biosImage[i])
+			if err != nil {
+				log.Printf("Error writing IVT: %v", err)
+			}
 		}
 	}
 
 	// Copy the BDA (BIOS Data Area) to memory
 	for i := 0x400; i < 0x500; i++ {
-		// Read byte from BIOS ROM
-		romByte, err := mem.ReadMemoryValue8(mem.rcAddr + uint32(i))
-		if err != nil {
-			// Handle error
-		}
-
-		// Write byte to shadow RAM
-		shadowAddr := uint32(i)
-		err = mem.WriteMemoryAddr8(shadowAddr, romByte)
-		if err != nil {
-			// Handle error
+		if i < biosSize {
+			err := mem.WriteMemoryAddr8(uint32(i), biosImage[i])
+			if err != nil {
+				log.Printf("Error writing BDA: %v", err)
+			}
 		}
 	}
 
 	// Shadow the main BIOS code
 	for i := 0; i < biosSize; i++ {
-		// Read byte from BIOS ROM
-		romByte, err := mem.ReadMemoryValue8(uint32(mem.rcAddr))
-		if err != nil {
-			// Handle error
-		}
-
-		// Write byte to shadow RAM
 		shadowAddr := 0xF0000 + uint32(i)
-		err = mem.WriteMemoryAddr8(shadowAddr, romByte)
+		err := mem.WriteMemoryAddr8(shadowAddr, biosImage[i])
 		if err != nil {
-			// Handle error
+			log.Printf("Error shadowing BIOS: %v", err)
 		}
-
-		// Increment RCADDR for the next transfer
-		mem.rcAddr++
 	}
 
 	// Shadow the video BIOS (if present)
 	videoBiosSize := 0x4000 // Assuming a typical video BIOS size of 16 KB
 	for i := 0; i < videoBiosSize; i++ {
-		// Read byte from video BIOS ROM
-		romByte, err := mem.ReadMemoryValue8(0xC0000 + uint32(i))
-		if err != nil {
-			// Handle error
-		}
-
-		// Write byte to shadow RAM
-		shadowAddr := 0xC0000 + uint32(i)
-		err = mem.WriteMemoryAddr8(shadowAddr, romByte)
-		if err != nil {
-			// Handle error
+		if i < len(*mem.videoBiosImage) {
+			shadowAddr := 0xC0000 + uint32(i)
+			err := mem.WriteMemoryAddr8(shadowAddr, (*mem.videoBiosImage)[i])
+			if err != nil {
+				log.Printf("Error shadowing video BIOS: %v", err)
+			}
 		}
 	}
 }

@@ -80,8 +80,8 @@ func INSTR_PUSH(core *CpuCore) {
 			core.logInstruction("Error pushing register: %#04x\n", opcode)
 			return
 		}
-		core.logInstruction(fmt.Sprintf("PUSH %s", core.registers.index16ToString(index)))
-		core.registers.IP += 1 // Increment IP by 1 to simulate the reading of the opcode
+		core.logInstruction(fmt.Sprintf("[%#04x] PUSH %s", core.GetCurrentlyExecutingInstructionAddress(), core.registers.index16ToString(index)))
+		core.currentByteAddr += 2
 	case 0x06: // PUSH ES
 		segmentSelector := uint16(core.registers.ES.Base >> 4)
 		if err := stackPush16(core, segmentSelector); err != nil {
@@ -89,7 +89,7 @@ func INSTR_PUSH(core *CpuCore) {
 			return
 		}
 		core.logInstruction(fmt.Sprintf("PUSH ES"))
-		core.registers.IP += 1 // Increment IP by 1 to simulate the reading of the opcode
+		core.currentByteAddr += 1
 
 	case 0x60:
 		// Save the original SP to push later
@@ -138,7 +138,7 @@ func INSTR_PUSH(core *CpuCore) {
 		}
 
 		core.logInstruction(fmt.Sprintf("[%#04x] PUSHA", core.GetCurrentlyExecutingInstructionAddress()))
-		core.registers.IP += 1 // Increment IP by 1 to simulate the reading of the opcode
+		core.currentByteAddr += 1
 
 	case 0x6A: // PUSH imm8
 		imm8, err := core.readImm8() // Assumes implementation to read the next byte as signed 8-bit
@@ -152,8 +152,7 @@ func INSTR_PUSH(core *CpuCore) {
 			return
 		}
 		core.logInstruction(fmt.Sprintf("PUSH %d (sign-extended)", signExtended))
-		core.registers.IP += 2 // Increment IP by 2 (1 for opcode + 1 for immediate value)
-
+		core.currentByteAddr += 2
 	case 0x68: // PUSH imm16
 		imm16, err := core.readImm16() // Assumes implementation to read the next two bytes as 16-bit
 		if err != nil {
@@ -165,8 +164,7 @@ func INSTR_PUSH(core *CpuCore) {
 			return
 		}
 		core.logInstruction(fmt.Sprintf("PUSH %#04x", imm16))
-		core.registers.IP += 3 // Increment IP by 3 (1 for opcode + 2 for immediate value)
-
+		core.currentByteAddr += 3
 	default:
 		core.logInstruction("Unhandled PUSH opcode: %#04x\n", opcode)
 	}
@@ -193,12 +191,11 @@ func INSTR_PUSH_RM16(core *CpuCore) {
 	}
 
 	core.logInstruction(fmt.Sprintf("[%#04x] PUSH %s", core.GetCurrentlyExecutingInstructionAddress(), addrName))
-	core.registers.IP += 1 // Increment IP by 1 to simulate the reading of the opcode
-
+	core.currentByteAddr += 1
 }
 
 func INSTR_POP(core *CpuCore) {
-	var instructionSize uint16
+	var instructionSize uint32
 
 	switch core.currentOpCodeBeingExecuted {
 	case 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F:
@@ -297,5 +294,5 @@ func INSTR_POP(core *CpuCore) {
 	}
 
 	// Increment the instruction pointer by the size of the instruction
-	core.registers.IP += instructionSize
+	core.currentByteAddr += instructionSize
 }

@@ -1084,10 +1084,11 @@ func INSTR_SUB(core *CpuCore) {
 	var term2 uint32
 	var result uint32
 
-	var signr uint8
-	var sign1 uint32
-	var sign2 uint32
-	var bitLength uint32
+	var size uint8
+	var mask uint32
+
+	var destName string
+	var srcName string
 
 	switch core.currentOpCodeBeingExecuted {
 	case 0x2c:
@@ -1100,8 +1101,11 @@ func INSTR_SUB(core *CpuCore) {
 			term1 = uint32(core.registers.AL)
 			result = uint32(term1) - uint32(term2)
 			core.registers.AL = uint8(result)
+			size = 8
 
-			core.logInstruction(fmt.Sprintf("[%#04x] sub al, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
+			srcName = fmt.Sprintf("#%#04x", term2)
+			destName = "AL"
+
 			goto success
 		}
 	case 0x2d:
@@ -1114,8 +1118,11 @@ func INSTR_SUB(core *CpuCore) {
 			term1 = uint32(core.registers.AX)
 			result = uint32(term1) - uint32(term2)
 			core.registers.AX = uint16(term1)
+			size = 16
 
-			core.logInstruction(fmt.Sprintf("[%#04x] sub ax, %#04x", core.GetCurrentlyExecutingInstructionAddress(), term2))
+			srcName = fmt.Sprintf("#%#04x", term2)
+			destName = "AX"
+
 			goto success
 		}
 	case 0x80:
@@ -1141,8 +1148,11 @@ func INSTR_SUB(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
+			size = 8
 
-			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, term2))
+			srcName = fmt.Sprintf("#%#04x", term2)
+			destName = t1Name
+
 			goto success
 		}
 	case 0x81:
@@ -1152,7 +1162,7 @@ func INSTR_SUB(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			t1, t1Name, err := core.readRm16(&modrm)
+			t1, _, err := core.readRm16(&modrm)
 			if err != nil {
 				goto eof
 			}
@@ -1164,12 +1174,14 @@ func INSTR_SUB(core *CpuCore) {
 			}
 			result = uint32(term1) - uint32(term2)
 			tmp := uint16(result)
-			srcName, err := core.writeRm16(&modrm, &tmp)
+			destName, err = core.writeRm16(&modrm, &tmp)
 			if err != nil {
 				goto eof
 			}
+			size = 16
 
-			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, srcName))
+			srcName = fmt.Sprintf("#%#04x", term2)
+
 			goto success
 		}
 	case 0x83:
@@ -1179,7 +1191,7 @@ func INSTR_SUB(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			t1, t1Name, err := core.readRm16(&modrm)
+			t1, _, err := core.readRm16(&modrm)
 			if err != nil {
 				goto eof
 			}
@@ -1191,12 +1203,14 @@ func INSTR_SUB(core *CpuCore) {
 			}
 			result = uint32(term1) - uint32(term2)
 			tmp := uint16(result)
-			srcName, err := core.writeRm16(&modrm, &tmp)
+			destName, err = core.writeRm16(&modrm, &tmp)
 			if err != nil {
 				goto eof
 			}
+			size = 16
 
-			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, srcName))
+			srcName = fmt.Sprintf("#%#04x", term2)
+
 			goto success
 		}
 	case 0x28:
@@ -1206,7 +1220,7 @@ func INSTR_SUB(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			t1, t1Name, err := core.readRm8(&modrm)
+			t1, _, err := core.readRm8(&modrm)
 			if err != nil {
 				goto eof
 			}
@@ -1217,12 +1231,14 @@ func INSTR_SUB(core *CpuCore) {
 			term2 = uint32(*t2)
 			result = uint32(term1) - uint32(term2)
 			tmp := uint8(result)
-			_, err = core.writeRm8(&modrm, &tmp)
+			destName, err = core.writeRm8(&modrm, &tmp)
 			if err != nil {
 				goto eof
 			}
+			size = 8
 
-			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
+			srcName = t2Name
+
 			goto success
 		}
 	case 0x29:
@@ -1232,7 +1248,7 @@ func INSTR_SUB(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			t1, t1Name, err := core.readRm16(&modrm)
+			t1, _, err := core.readRm16(&modrm)
 			if err != nil {
 				goto eof
 			}
@@ -1243,12 +1259,14 @@ func INSTR_SUB(core *CpuCore) {
 			term2 = uint32(*t2)
 			result = uint32(term1) - uint32(term2)
 			tmp := uint16(result)
-			_, err = core.writeRm16(&modrm, &tmp)
+			destName, err = core.writeRm16(&modrm, &tmp)
 			if err != nil {
 				goto eof
 			}
+			size = 16
 
-			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
+			srcName = t2Name
+
 			goto success
 		}
 	case 0x2A:
@@ -1258,7 +1276,7 @@ func INSTR_SUB(core *CpuCore) {
 			if err != nil {
 				goto eof
 			}
-			t1, t1Name := core.readR8(&modrm)
+			t1, _ := core.readR8(&modrm)
 			term1 = uint32(*t1)
 			t2, t2Name, err := core.readRm8(&modrm)
 			if err != nil {
@@ -1269,12 +1287,14 @@ func INSTR_SUB(core *CpuCore) {
 			term2 = uint32(*t2)
 			result = uint32(term1) - uint32(term2)
 			tmp := uint8(result)
-			_, err = core.writeRm8(&modrm, &tmp)
+			destName, err = core.writeRm8(&modrm, &tmp)
 			if err != nil {
 				goto eof
 			}
+			size = 8
 
-			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
+			srcName = t2Name
+
 			goto success
 		}
 	case 0x2B:
@@ -1296,29 +1316,35 @@ func INSTR_SUB(core *CpuCore) {
 			result = uint32(term1) - uint32(term2)
 			tmp := uint16(result)
 			core.writeR16(&modrm, &tmp)
+			size = 16
 
-			core.logInstruction(fmt.Sprintf("[%#04x] sub %s, %s", core.GetCurrentlyExecutingInstructionAddress(), t1Name, t2Name))
+			srcName = t2Name
+			destName = t1Name
+
 			goto success
 		}
 	default:
 		log.Fatal(fmt.Sprintf("Unrecognised SUB instruction: %#04x!", core.currentOpCodeBeingExecuted))
 	}
-
 success:
-	bitLength = uint32(bits.Len32(result))
 
-	// update flags
-	sign1 = (term1 >> (bitLength)) & 0x01
-	sign2 = (term2 >> (bitLength)) & 0x01
-	signr = uint8((result >> (bitLength)) & 0x01)
+	// Create a mask for the operand size
+	mask = uint32(1<<size - 1)
 
-	core.registers.SetFlag(CarryFlag, result>>(bitLength) != 0)
+	// Update flags
+	core.registers.SetFlag(CarryFlag, term2 > term1)
+	core.registers.SetFlag(ZeroFlag, (result&mask) == 0)
+	core.registers.SetFlag(SignFlag, (result&(1<<(size-1))) != 0)
 
-	core.registers.SetFlag(ZeroFlag, result == 0)
+	// Overflow occurs if the sign of the two operands is different and
+	// the sign of the result is different from the sign of the first operand
+	core.registers.SetFlag(OverFlowFlag,
+		((term1^term2)&(term1^result)&(1<<(size-1))) != 0)
 
-	core.registers.SetFlag(SignFlag, signr != 0)
+	// Update auxiliary carry flag (used for BCD arithmetic)
+	core.registers.SetFlag(AdjustFlag, ((term1&0xF)-(term2&0xF))&0x10 != 0)
 
-	core.registers.SetFlag(OverFlowFlag, (sign1 == 0 && sign2 == 1 && signr == 1) || (sign1 == 1 && sign2 == 0 && signr == 0))
+	core.logInstruction(fmt.Sprintf("[%#04x] SUB %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
 
 eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
@@ -2074,57 +2100,173 @@ eof:
 func INSTR_IMUL(core *CpuCore) {
 	core.currentByteAddr++
 
-	var term1 uint32
-	var term2 uint32
-	var result uint32
-
-	var bitLength uint32
+	var result int32
+	var overflow bool
 
 	switch core.currentOpCodeBeingExecuted {
-	case 0x6B:
-		{
-			// IMUL r16, r/m16, imm8
-			modrm, bytesConsumed, err := core.consumeModRm()
-			if err != nil {
-				goto eof
-			}
-			t1, t1Name := core.readR16(&modrm)
-			core.currentByteAddr += bytesConsumed
-			term1 = uint32(*t1)
-			imm8, err := core.readImm8()
-			if err != nil {
-				goto eof
-			}
-			term2 = uint32(int8(imm8))
-			result = uint32(int16(int32(term1) * int32(int8(term2))))
-			tmp := uint16(result)
-			core.writeR16(&modrm, &tmp)
-			if err != nil {
-				goto eof
-			}
-
-			core.logInstruction(fmt.Sprintf("[%#04x] imul %s, %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), t1Name, modrm.String(), term2))
-			goto success
+	case 0x69:
+		// IMUL r16, r/m16, imm16
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error consuming ModR/M byte: %v", err))
+			return
 		}
+		core.currentByteAddr += bytesConsumed
+
+		dest, destName := core.readR16(&modrm)
+		src, srcName, err := core.readRm16(&modrm)
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error reading r/m16: %v", err))
+			return
+		}
+
+		imm16, err := core.readImm16()
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error reading imm16: %v", err))
+			return
+		}
+
+		term1 := int32(int16(*src))
+		term2 := int32(int16(imm16))
+		result = term1 * term2
+
+		if result > 32767 || result < -32768 {
+			overflow = true
+		}
+
+		*dest = uint16(result)
+
+		core.logInstruction(fmt.Sprintf("[%#04x] imul %s, %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName, imm16))
+
+	case 0x6B:
+		// IMUL r16, r/m16, imm8
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error consuming ModR/M byte: %v", err))
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		dest, destName := core.readR16(&modrm)
+		src, srcName, err := core.readRm16(&modrm)
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error reading r/m16: %v", err))
+			return
+		}
+
+		imm8, err := core.readImm8()
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error reading imm8: %v", err))
+			return
+		}
+
+		term1 := int32(int16(*src))
+		term2 := int32(int8(imm8))
+		result = term1 * term2
+
+		if result > 32767 || result < -32768 {
+			overflow = true
+		}
+
+		*dest = uint16(result)
+
+		core.logInstruction(fmt.Sprintf("[%#04x] imul %s, %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName, imm8))
+
+	case 0x0F, 0xAF:
+		// IMUL r16, r/m16
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error consuming ModR/M byte: %v", err))
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		dest, destName := core.readR16(&modrm)
+		src, srcName, err := core.readRm16(&modrm)
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error reading r/m16: %v", err))
+			return
+		}
+
+		term1 := int32(int16(*dest))
+		term2 := int32(int16(*src))
+		result = term1 * term2
+
+		if result > 32767 || result < -32768 {
+			overflow = true
+		}
+
+		*dest = uint16(result)
+
+		core.logInstruction(fmt.Sprintf("[%#04x] imul %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
+
+	case 0xF6:
+		// IMUL r/m8 (AX <- AL * r/m8)
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error consuming ModR/M byte: %v", err))
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		src, srcName, err := core.readRm8(&modrm)
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error reading r/m8: %v", err))
+			return
+		}
+
+		term1 := int16(int8(core.registers.AL))
+		term2 := int16(int8(*src))
+		result16 := term1 * term2
+
+		if result16 > 127 || result16 < -128 {
+			overflow = true
+		}
+
+		core.registers.AX = uint16(result16)
+
+		core.logInstruction(fmt.Sprintf("[%#04x] imul %s", core.GetCurrentlyExecutingInstructionAddress(), srcName))
+
+	case 0xF7:
+		// IMUL r/m16 (DX:AX <- AX * r/m16)
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error consuming ModR/M byte: %v", err))
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		src, srcName, err := core.readRm16(&modrm)
+		if err != nil {
+			core.logInstruction(fmt.Sprintf("Error reading r/m16: %v", err))
+			return
+		}
+
+		term1 := int32(int16(core.registers.AX))
+		term2 := int32(int16(*src))
+		result = term1 * term2
+
+		if result > 32767 || result < -32768 {
+			overflow = true
+		}
+
+		core.registers.AX = uint16(result)
+		core.registers.DX = uint16(result >> 16)
+
+		core.logInstruction(fmt.Sprintf("[%#04x] imul %s", core.GetCurrentlyExecutingInstructionAddress(), srcName))
+
 	default:
-		log.Fatal(fmt.Sprintf("Unrecognised IMUL instruction: %#04x!", core.currentOpCodeBeingExecuted))
+		core.logInstruction(fmt.Sprintf("Unrecognised IMUL instruction: %#04x!", core.currentOpCodeBeingExecuted))
+		return
 	}
 
-success:
-	bitLength = uint32(bits.Len32(result))
-
-	// update flags
-	core.registers.SetFlag(OverFlowFlag, false)
-
-	core.registers.SetFlag(CarryFlag, false)
-
-	core.registers.SetFlag(SignFlag, (result>>bitLength) != 0)
-
+	// Update flags
+	core.registers.SetFlag(OverFlowFlag, overflow)
+	core.registers.SetFlag(CarryFlag, overflow)
+	core.registers.SetFlag(SignFlag, result < 0)
 	core.registers.SetFlag(ZeroFlag, result == 0)
+	core.registers.SetFlag(ParityFlag, bits.OnesCount32(uint32(result))%2 == 0)
 
-	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
-
-eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
