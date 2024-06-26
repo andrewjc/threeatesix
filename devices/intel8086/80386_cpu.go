@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
+	"github.com/andrewjc/threeatesix/devices/intel8259a"
 	"github.com/andrewjc/threeatesix/devices/io"
 	"github.com/andrewjc/threeatesix/devices/memmap"
 	"log"
@@ -99,8 +100,10 @@ type CpuCore struct {
 	mode  uint8
 	flags CpuExecutionFlags
 
-	busId            uint32
-	interruptChannel chan bus.BusMessage
+	busId                     uint32
+	interruptChannel          chan bus.BusMessage
+	interruptControllerMaster *intel8259a.Intel8259a
+	interruptControllerSlave  *intel8259a.Intel8259a
 
 	currentByteDecodeStart         uint32  //the start addr of the instruction being decoded (including prefixes etc)
 	currentPrefixBytes             []uint8 //current prefix bytes read for the byte being decoded in the instruction
@@ -109,6 +112,7 @@ type CpuCore struct {
 	lastExecutedInstructionPointer uint32
 	is2ByteOperand                 bool
 	halt                           bool
+	interruptEnableDelay           int
 }
 
 type CpuExecutionFlags struct {
@@ -140,7 +144,7 @@ func (device *CpuCore) OnReceiveMessage(message bus.BusMessage) {
 	case message.Subject == common.MESSAGE_INTERRUPT_RAISE:
 		device.AcknowledgeInterrupt(message)
 	case message.Subject == common.MESSAGE_INTERRUPT_EXECUTE:
-		device.HandleInterrupt(message)
+		device.HandleInterruptBusMessage(message)
 	}
 }
 
@@ -189,6 +193,12 @@ func (core *CpuCore) Init(bus *bus.Bus) {
 
 	dev2 := core.bus.FindSingleDevice(common.MODULE_IO_PORT_ACCESS_CONTROLLER).(*io.IOPortAccessController)
 	core.ioPortAccessController = dev2
+
+	pic1 := core.bus.FindSingleDevice(common.MODULE_INTERRUPT_CONTROLLER_1).(*intel8259a.Intel8259a)
+	core.interruptControllerMaster = pic1
+
+	pic2 := core.bus.FindSingleDevice(common.MODULE_INTERRUPT_CONTROLLER_2).(*intel8259a.Intel8259a)
+	core.interruptControllerSlave = pic2
 
 	core.EnterMode(common.REAL_MODE)
 
@@ -330,8 +340,15 @@ func (core *CpuCore) Step() {
 	if status != 0 {
 		panic(0)
 	}
-
 	core.lastExecutedInstructionPointer = tmp
+
+	if core.interruptEnableDelay > 0 {
+		core.interruptEnableDelay--
+		if core.interruptEnableDelay == 0 {
+			// Now actually check for pending interrupts
+			core.checkInterrupts()
+		}
+	}
 
 }
 
@@ -373,12 +390,28 @@ func (core *CpuCore) getEffectiveAddress8(modrm *ModRm) (uint32, string) {
 
 	return addr, addrDesc
 }
-func (core *CpuCore) getEffectiveAddress16(modrm *ModRm) (uint16, string) {
+
+// define addressing mode constants
+const (
+	ADR_TYPE_DIRECT = iota
+	ADR_TYPE_INDIRECT
+	ADR_TYPE_BASE_INDEX
+	ADR_TYPE_BASE_INDEX_DISP8
+	ADR_TYPE_BASE_INDEX_DISP16
+	ADR_TYPE_BASE_INDEX_DISP32
+)
+
+func (core *CpuCore) getEffectiveAddress16(modrm *ModRm) (uint16, string, uint8) {
 	var addr uint16
 	var addrDesc string
+	addrMode := ADR_TYPE_DIRECT
 
-	// Check for SIB byte usage
-	if modrm.mod != 3 && modrm.rm == 4 { // SIB byte is present
+	if modrm.mod == 3 {
+		// Direct register operand
+		addr = *core.registers.registers16Bit[modrm.rm]
+		addrDesc = core.registers.index16ToString(modrm.rm)
+		addrMode = ADR_TYPE_DIRECT
+	} else if modrm.mod != 3 && modrm.rm == 4 { // SIB byte is present
 		baseAddr := *core.registers.registers16Bit[modrm.base]
 		indexValue := *core.registers.registers16Bit[modrm.index] * (1 << modrm.scale)
 
@@ -388,16 +421,20 @@ func (core *CpuCore) getEffectiveAddress16(modrm *ModRm) (uint16, string) {
 			if modrm.base == 5 { // Special case, base is absent, only displacement
 				addr = modrm.disp16
 				addrDesc = fmt.Sprintf("Disp16 [0x%X]", modrm.disp16) // Corrected to Disp16
+				addrMode = ADR_TYPE_INDIRECT
 			} else {
 				addr = baseAddr + indexValue
 				addrDesc = fmt.Sprintf("[%s + %s*%d]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale)
+				addrMode = ADR_TYPE_BASE_INDEX
 			}
 		case 1:
 			addr = baseAddr + indexValue + uint16(int16(int8(modrm.disp8)))
 			addrDesc = fmt.Sprintf("[%s + %s*%d + 0x%X]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale, int8(modrm.disp8))
+			addrMode = ADR_TYPE_BASE_INDEX_DISP8
 		case 2:
 			addr = baseAddr + indexValue + modrm.disp16
 			addrDesc = fmt.Sprintf("[%s + %s*%d + 0x%X]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale, modrm.disp16) // Corrected to modrm.disp16
+			addrMode = ADR_TYPE_BASE_INDEX_DISP16
 		}
 	} else {
 		// No SIB byte, direct register addressing or displacement
@@ -406,20 +443,24 @@ func (core *CpuCore) getEffectiveAddress16(modrm *ModRm) (uint16, string) {
 			if modrm.rm == 6 { // Displacement-only addressing
 				addr = modrm.disp16
 				addrDesc = fmt.Sprintf("Disp16 [0x%X]", modrm.disp16)
+				addrMode = ADR_TYPE_INDIRECT
 			} else {
 				addr = *core.registers.registers16Bit[modrm.rm]
 				addrDesc = fmt.Sprintf("[%s]", core.registers.index16ToString(modrm.rm))
+				addrMode = ADR_TYPE_DIRECT
 			}
 		case 1:
 			addr = *core.registers.registers16Bit[modrm.rm] + uint16(int16(int8(modrm.disp8)))
 			addrDesc = fmt.Sprintf("[%s + 0x%X]", core.registers.index16ToString(modrm.rm), int8(modrm.disp8))
+			addrMode = ADR_TYPE_BASE_INDEX_DISP8
 		case 2:
 			addr = *core.registers.registers16Bit[modrm.rm] + modrm.disp16
 			addrDesc = fmt.Sprintf("[%s + 0x%X]", core.registers.index16ToString(modrm.rm), modrm.disp16)
+			addrMode = ADR_TYPE_BASE_INDEX_DISP16
 		}
 	}
 
-	return addr, addrDesc
+	return addr, addrDesc, uint8(addrMode)
 }
 
 func (core *CpuCore) getEffectiveAddress32(modrm *ModRm) (uint32, string) {
@@ -703,77 +744,6 @@ func (cpuCore *CpuCore) logDebug(logMessage string) {
 	logMessageBytes := []byte(logMessage)
 
 	cpuCore.bus.SendMessageToAll(common.MODULE_DEBUG_MONITOR, bus.BusMessage{Subject: common.MESSAGE_GLOBAL_DEBUG_MESSAGE_LOG, Data: logMessageBytes})
-}
-
-func (core *CpuCore) HandleInterrupt(message bus.BusMessage) {
-
-	vector := message.Data[0]
-
-	// if vector comes from the second interrupt controller, subtract 8
-	if message.Sender == common.MODULE_INTERRUPT_CONTROLLER_2 {
-		vector -= 8
-	}
-
-	// Disable interrupts
-	core.registers.SetFlag(InterruptFlag, false)
-
-	// Push the current flags and CS:IP onto the stack
-	err := stackPush16(core, core.registers.FLAGS)
-	if err != nil {
-		return
-	}
-	err = stackPush32(core, core.registers.CS.Base)
-	if err != nil {
-		return
-	}
-	err = stackPush16(core, core.registers.IP)
-	if err != nil {
-		return
-	}
-
-	// Set the necessary flags
-	core.registers.SetFlag(TrapFlag, false)
-
-	// Set the CS:IP to the interrupt vector
-
-	vectorAddr := uint16(vector) << 2
-
-	// Read IP and CS from the interrupt vector table
-
-	vectorAddr2 := uint32(0x000020)<<4 + uint32(vectorAddr)
-
-	core.registers.IP, _ = core.memoryAccessController.ReadMemoryValue16(uint32(vectorAddr2))
-	newBase, _ := core.memoryAccessController.ReadMemoryValue16(uint32(vectorAddr2 + 3))
-
-	core.registers.CS.Base = uint32(newBase)
-
-	// Re-enable interrupts
-	core.registers.SetFlag(InterruptFlag, true)
-
-	// Send a message to the debug monitor
-	core.logDebug(fmt.Sprintf("Interrupt %d handled", vector))
-
-	// Send EOI message to the 8259A
-	//core.sendEOI(vector)
-	// Send EOI command to the 8259A
-	eoiMessage := bus.BusMessage{
-		Subject: common.MESSAGE_INTERRUPT_COMPLETE,
-		Sender:  message.Sender,
-		Data:    []byte{vector},
-	}
-	err = core.bus.SendMessageToDeviceById(message.Sender, eoiMessage)
-	if err != nil {
-		core.logDebug(fmt.Sprintf("CPU: Error sending EOI message: %v", err))
-	}
-}
-
-func (core *CpuCore) AcknowledgeInterrupt(message bus.BusMessage) {
-	// send message to the interrupt controller that raised the interrupt
-	err := core.bus.SendMessageToDeviceById(message.Sender, bus.BusMessage{Subject: common.MESSAGE_INTERRUPT_ACKNOWLEDGE, Data: message.Data})
-	if err != nil {
-		log.Fatalf("Failed to acknowledge interrupt: %s", err)
-		return
-	}
 }
 
 func (core *CpuCore) SetMemoryAccessController(controller *memmap.MemoryAccessController) {

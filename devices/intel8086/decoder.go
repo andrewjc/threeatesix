@@ -135,25 +135,26 @@ func (core *CpuCore) decodeInstruction() uint8 {
 		instructionImpl = core.handle2ByteOpcode()
 	case 0xFF:
 		handleGroup5Opcode(core)
-		return 0
 	case 0x80:
 		handleGroup80opcode(core)
-		return 0
 	case 0x81:
 		handleGroup81opcode(core)
-		return 0
 	default:
 		core.currentOpCodeBeingExecuted = instrByte
 		instructionImpl = core.opCodeMap[core.currentOpCodeBeingExecuted]
+
+		if instructionImpl != nil {
+			instructionImpl(core)
+		} else {
+			core.handleUnrecognizedOpcode(instrByte)
+		}
 	}
 
-	if instructionImpl != nil {
-		instructionImpl(core)
+	if core.flags.IsFarJump {
+		core.flags.IsFarJump = false
 	} else {
-		core.handleUnrecognizedOpcode(instrByte)
+		core.updateInstructionPointer()
 	}
-
-	core.updateInstructionPointer()
 	return 0
 }
 
@@ -246,8 +247,9 @@ func handleGroup3OpCode_byte(core *CpuCore) {
 }
 
 func handleGroup5Opcode_word(core *CpuCore) {
-	handleGroup5Opcode(core) //TODO! Implement this
+	handleGroup5Opcode(core)
 }
+
 func handleGroup5Opcode(core *CpuCore) {
 	if core.Is32BitOperand() {
 		handleGroup5Opcode_32(core)
@@ -289,20 +291,17 @@ func handleGroup5Opcode(core *CpuCore) {
 	default:
 		core.logInstruction(fmt.Sprintf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 	}
-
-	// Update IP
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func handleGroup5Opcode_32(core *CpuCore) {
 
 	core.currentByteAddr++
-	modrm, _, err := core.consumeModRm()
+	modrm, bytesConsumed, err := core.consumeModRm()
 	if err != nil {
 		core.logInstruction(fmt.Sprintf("Error consuming ModR/M byte: %v\n", err))
 		return // Exit early on error
 	}
-	core.currentByteAddr--
+	core.currentByteAddr += bytesConsumed
 
 	switch modrm.reg {
 	case 0:
@@ -352,8 +351,8 @@ func handleGroup5Opcode_32(core *CpuCore) {
 func handleGroup80opcode(core *CpuCore) {
 
 	core.currentByteAddr++
-	modrm, _, err := core.consumeModRm()
-	core.currentByteAddr--
+	modrm, bytesConsumed, err := core.consumeModRm()
+	core.currentByteAddr += bytesConsumed
 	if err != nil {
 		goto eof
 	}
@@ -381,8 +380,8 @@ eof:
 func handleGroup81opcode(core *CpuCore) {
 
 	core.currentByteAddr++
-	modrm, _, err := core.consumeModRm()
-	core.currentByteAddr--
+	modrm, bytesConsumed, err := core.consumeModRm()
+	core.currentByteAddr += bytesConsumed
 	if err != nil {
 		goto eof
 	}

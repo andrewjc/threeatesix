@@ -214,7 +214,6 @@ eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 func INSTR_CMP(core *CpuCore) {
-	core.currentByteAddr++
 	var term1, term2, result uint32
 	var dataSize uint8
 
@@ -254,6 +253,7 @@ func INSTR_CMP(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP (m16) %d with %d", core.GetCurrentlyExecutingInstructionAddress(), tmp1, tmp2))
 
 	case 0x3A: // CMP r8, r/m8
+		core.currentByteAddr++
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
 			return
@@ -272,6 +272,7 @@ func INSTR_CMP(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), r8Str, rm8Str))
 
 	case 0x3B: // CMP r16, r/m16
+		core.currentByteAddr++
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
 			return
@@ -290,6 +291,7 @@ func INSTR_CMP(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), r16Str, rm16Str))
 
 	case 0x3C: // CMP AL, imm8
+		core.currentByteAddr++
 		imm8, err := core.readImm8()
 		if err != nil {
 			return
@@ -301,6 +303,7 @@ func INSTR_CMP(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP AL, %#02x", core.GetCurrentlyExecutingInstructionAddress(), imm8))
 
 	case 0x3D: // CMP AX, imm16
+		core.currentByteAddr++
 		imm16, err := core.readImm16()
 		if err != nil {
 			return
@@ -312,6 +315,7 @@ func INSTR_CMP(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP AX, %#04x", core.GetCurrentlyExecutingInstructionAddress(), imm16))
 
 	case 0x38: // CMP r/m8, r8
+		core.currentByteAddr++
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
 			return
@@ -330,6 +334,7 @@ func INSTR_CMP(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, r8Str))
 
 	case 0x39: // CMP r/m16, r16
+		core.currentByteAddr++
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
 			return
@@ -348,6 +353,7 @@ func INSTR_CMP(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %s", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, r16Str))
 
 	case 0x80: // CMP r/m8, imm8
+		core.currentByteAddr++
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
 			return
@@ -369,6 +375,7 @@ func INSTR_CMP(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#02x", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, imm8))
 
 	case 0x81: // CMP r/m16, imm16
+		core.currentByteAddr++
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
 			return
@@ -390,6 +397,7 @@ func INSTR_CMP(core *CpuCore) {
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, imm16))
 
 	case 0x83: // CMP r/m16, imm8
+		core.currentByteAddr++
 		modrm, bytesConsumed, err := core.consumeModRm()
 		if err != nil {
 			return
@@ -409,7 +417,30 @@ func INSTR_CMP(core *CpuCore) {
 		result = term1 - term2
 		dataSize = 16
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, imm8))
-
+	case 0xBC:
+		// CMP AL, imm8
+		core.currentByteAddr++
+		imm8, err := core.readImm8()
+		if err != nil {
+			return
+		}
+		term1 = uint32(core.registers.AL)
+		term2 = uint32(imm8)
+		result = term1 - term2
+		dataSize = 8
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP AL, %#02x", core.GetCurrentlyExecutingInstructionAddress(), imm8))
+	case 0xBD:
+		// CMP AX, imm16
+		core.currentByteAddr++
+		imm16, err := core.readImm16()
+		if err != nil {
+			return
+		}
+		term1 = uint32(core.registers.AX)
+		term2 = uint32(imm16)
+		result = term1 - term2
+		dataSize = 16
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP AX, %#04x", core.GetCurrentlyExecutingInstructionAddress(), imm16))
 	default:
 		fmt.Printf("Unsupported opcode %#x\n", core.currentOpCodeBeingExecuted)
 		doCoreDump(core)
@@ -420,8 +451,7 @@ func INSTR_CMP(core *CpuCore) {
 	core.registers.SetFlag(CarryFlag, term1 < term2)
 	core.registers.SetFlag(ZeroFlag, result == 0)
 	core.registers.SetFlag(SignFlag, (result>>(dataSize-1))&0x01 == 1)
-	core.registers.SetFlag(OverFlowFlag, (term1>>(dataSize-1))&0x01 != (term2>>(dataSize-1))&0x01 &&
-		(term1>>(dataSize-1))&0x01 != (result>>(dataSize-1))&0x01)
+	core.registers.SetFlag(OverFlowFlag, ((term1^term2)&(term1^result)&(1<<(dataSize-1))) != 0)
 }
 
 // INSTR_TEST_IMM8_AL tests the AL register with an immediate 8-bit value.

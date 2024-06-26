@@ -169,34 +169,50 @@ func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 func INSTR_JMP_FAR_M16(core *CpuCore) {
 
 	core.currentByteAddr++
-	modrm, _, err := core.consumeModRm()
+	modrm, bytesConsumed, err := core.consumeModRm()
 	if err != nil {
 		core.logInstruction("Error in INSTR_JMP_FAR_M16: %s\n", err)
 		return
 	}
-	core.currentByteAddr--
+	core.currentByteAddr += bytesConsumed
 
-	addr, addrName := core.getEffectiveAddress16(&modrm)
+	addr, addrName, addrMode := core.getEffectiveAddress16(&modrm)
 
-	// Read the offset (IP) and segment (CS) from memory
-	offset, err := core.memoryAccessController.ReadMemoryValue16(uint32(addr))
-	if err != nil {
-		core.logInstruction("Error reading offset: %s", err)
+	if addrMode == ADR_TYPE_DIRECT {
+		// Update both CS and IP with register
+		core.registers.IP = addr
+		// core.registers.CS.Base = uint32(segment) << 4
+		core.flags.IsFarJump = true
+
+		core.logInstruction(fmt.Sprintf("[%#04x] JMP %s (dst=%#04x:%#04x)",
+			core.GetCurrentlyExecutingInstructionAddress(), addrName, addrName))
 		return
-	}
-	segment, err := core.memoryAccessController.ReadMemoryValue16(uint32(addr + 2))
-	if err != nil {
-		core.logInstruction("Error reading segment: %s", err)
-		return
+	} else if addrMode == ADR_TYPE_INDIRECT {
+		// Read the offset (IP) and segment (CS) from memory
+		offset, err := core.memoryAccessController.ReadMemoryValue16(uint32(addr))
+		if err != nil {
+			core.logInstruction("Error reading offset: %s", err)
+			return
+		}
+		segment, err := core.memoryAccessController.ReadMemoryValue16(uint32(addr + 2))
+		if err != nil {
+			core.logInstruction("Error reading segment: %s", err)
+			return
+		}
+		// Update both CS and IP
+		core.registers.IP = offset
+		core.registers.CS.Base = uint32(segment) << 4
+		core.flags.IsFarJump = true
+
+		core.logInstruction(fmt.Sprintf("[%#04x] JMP %s (JMP_FAR_M16) (dst=%#04x:%#04x)",
+			core.GetCurrentlyExecutingInstructionAddress(), addrName, segment, offset))
+
+	} else {
+		core.logInstruction(fmt.Sprintf("Unhandled addressing mode: %d", addrMode))
+		doCoreDump(core)
+		panic(0)
 	}
 
-	// Update both CS and IP
-	core.registers.IP = offset
-	core.registers.CS.Base = uint32(segment) << 4
-	core.flags.IsFarJump = true
-
-	core.logInstruction(fmt.Sprintf("[%#04x] JMP %s (JMP_FAR_M16) (dst=%#04x:%#04x)",
-		core.GetCurrentlyExecutingInstructionAddress(), addrName, segment, offset))
 }
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {

@@ -6,13 +6,18 @@ import (
 	"log"
 )
 
+type InterruptController interface {
+	IsPrimaryDevice(b bool)
+	IsSecondaryDevice(b bool)
+}
+
 type Intel8259a struct {
 	bus                 *bus.Bus
 	busId               uint32
-	irqMask             uint8
-	irqRequest          uint8
+	IrqMask             uint8
+	IrqRequest          uint8
 	inService           uint8
-	interruptVectorBase uint8
+	InterruptVectorBase uint8
 	autoEOI             bool
 	mode8086            bool
 	slaveMode           bool
@@ -25,7 +30,7 @@ type Intel8259a struct {
 
 func NewIntel8259a() *Intel8259a {
 	return &Intel8259a{
-		irqMask: 0xff,
+		IrqMask: 0xff,
 	}
 }
 
@@ -74,12 +79,12 @@ func (d *Intel8259a) ReadAddr8(addr uint16) uint8 {
 			return d.inService
 		} else if d.readIRR {
 			d.readIRR = false
-			return d.irqRequest
+			return d.IrqRequest
 		} else {
-			return d.irqRequest
+			return d.IrqRequest
 		}
 	case 0x21, 0xA1:
-		return d.irqMask
+		return d.IrqMask
 	default:
 		log.Printf("8259A: Unsupported read from address 0x%04X", addr)
 		return 0
@@ -96,13 +101,13 @@ func (d *Intel8259a) WriteAddr8(addr uint16, data uint8) {
 		} else if data&0x04 != 0 {
 			d.operationCommand2(data)
 		} else {
-			d.interruptVectorBase = data & 0xF8
+			d.InterruptVectorBase = data & 0xF8
 		}
 	case 0x21, 0xA1:
 		if d.slaveMode && data&0x04 != 0 {
 			d.slaveID = data & 0x07
 		} else {
-			d.irqMask = data
+			d.IrqMask = data
 		}
 	default:
 		log.Printf("8259A: Unsupported write to address 0x%04X with data 0x%02X", addr, data)
@@ -110,10 +115,10 @@ func (d *Intel8259a) WriteAddr8(addr uint16, data uint8) {
 }
 
 func (d *Intel8259a) initialize(data uint8) {
-	d.irqMask = 0xFF
-	d.irqRequest = 0
+	d.IrqMask = 0xFF
+	d.IrqRequest = 0
 	d.inService = 0
-	d.interruptVectorBase = data & 0xF8
+	d.InterruptVectorBase = data & 0xF8
 	d.autoEOI = data&0x02 != 0
 	d.mode8086 = data&0x01 != 0
 	d.slaveMode = data&0x08 == 0
@@ -152,10 +157,10 @@ func (d *Intel8259a) operationCommand3(data uint8) {
 }
 
 func (d *Intel8259a) assertInterrupt(irq uint8) {
-	d.irqRequest |= 1 << irq
+	d.IrqRequest |= 1 << irq
 	d.bus.SendMessageSingle(common.MODULE_PRIMARY_PROCESSOR, bus.BusMessage{
 		Subject: common.MESSAGE_INTERRUPT_RAISE,
-		Data:    []byte{d.irqRequest},
+		Data:    []byte{d.IrqRequest},
 		Sender:  d.busId,
 	})
 }
@@ -164,8 +169,8 @@ func (d *Intel8259a) acknowledgeInterrupt() {
 	irq := d.findHighestPriorityIRQ()
 	if irq != 0xFF {
 		d.inService |= 1 << irq
-		d.irqRequest &^= 1 << irq
-		interruptVector := d.interruptVectorBase + irq
+		d.IrqRequest &^= 1 << irq
+		interruptVector := d.InterruptVectorBase + irq
 		d.sendInterrupt(interruptVector)
 	}
 }
@@ -176,7 +181,7 @@ func (d *Intel8259a) completeInterrupt(irq uint8) {
 }
 
 func (d *Intel8259a) updateInterruptOutput() {
-	if d.irqRequest&^d.irqMask != 0 {
+	if d.IrqRequest&^d.IrqMask != 0 {
 		d.interruptOutput = true
 		d.bus.SendMessageSingle(common.MODULE_PRIMARY_PROCESSOR, bus.BusMessage{
 			Subject: common.MESSAGE_INTERRUPT_RAISE,
@@ -190,7 +195,7 @@ func (d *Intel8259a) updateInterruptOutput() {
 
 func (d *Intel8259a) findHighestPriorityIRQ() uint8 {
 	for irq := uint8(0); irq < 8; irq++ {
-		if d.irqRequest&(1<<irq) != 0 && d.inService&(1<<irq) == 0 {
+		if d.IrqRequest&(1<<irq) != 0 && d.inService&(1<<irq) == 0 {
 			return irq
 		}
 	}
@@ -198,7 +203,7 @@ func (d *Intel8259a) findHighestPriorityIRQ() uint8 {
 }
 
 func (d *Intel8259a) rotateInterrupt(irq uint8) {
-	d.irqRequest = (d.irqRequest << irq) | (d.irqRequest >> (8 - irq))
+	d.IrqRequest = (d.IrqRequest << irq) | (d.IrqRequest >> (8 - irq))
 	d.inService = (d.inService << irq) | (d.inService >> (8 - irq))
 }
 

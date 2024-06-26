@@ -31,7 +31,7 @@ func INSTR_JMP_FAR_M32(core *CpuCore) {
 		panic(0)
 	}
 
-	addr, addrName := core.getEffectiveAddress16(&modrm)
+	addr, addrName, _ := core.getEffectiveAddress16(&modrm)
 	core.registers.IP = addr
 	core.logInstruction(fmt.Sprintf("[%#04x] JMP %s (JMP_FAR_M16)", core.GetCurrentlyExecutingInstructionAddress(), addrName))
 }

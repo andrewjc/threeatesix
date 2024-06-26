@@ -56,6 +56,17 @@ func INSTR_CLD(core *CpuCore) {
 	core.registers.SetFlag(DirectionFlag, false)
 }
 
+func INSTR_STI(core *CpuCore) {
+	// Set interrupts
+	core.currentByteAddr++
+	core.logInstruction(fmt.Sprintf("[%#04x] STI", core.GetCurrentCodePointer()))
+	core.registers.SetFlag(InterruptFlag, true)
+
+	// Important: Handle delayed interrupt enabling
+	core.interruptEnableDelay = 1 // Enable interrupts after the next instruction
+
+}
+
 func INSTR_CMC(core *CpuCore) {
 	// Complement carry flag
 	carryFlag := core.registers.GetFlag(CarryFlag)
