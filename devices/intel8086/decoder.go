@@ -20,9 +20,9 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	core.is2ByteOperand = false
 
 	core.currentPrefixBytes = []byte{}
-	if isPrefixByte(core.memoryAccessController.PeekNextBytes(nextInstructionAddr, 1)[0]) {
+	if bVal, err := core.memoryAccessController.ReadMemoryValue8(nextInstructionAddr); err == nil && isPrefixByte(&bVal) {
 
-		prefixByte := core.memoryAccessController.PeekNextBytes(nextInstructionAddr, 1)[0]
+		prefixByte := bVal
 		core.currentPrefixBytes = append(core.currentPrefixBytes, prefixByte)
 		switch prefixByte {
 		case 0x2e:
@@ -69,10 +69,14 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	core.memoryAccessController.SetLockPrefix(core.flags.LockPrefixEnabled)
 	core.memoryAccessController.SetRepPrefix(core.flags.RepPrefixEnabled)
 
-	instrByte, err = core.memoryAccessController.ReadMemoryAddr8(nextInstructionAddr)
+	instrByte, err = core.memoryAccessController.ReadMemoryValue8(nextInstructionAddr)
+
+	if instrByte == 0x00 {
+		print("huh")
+	}
 
 	if err != nil {
-		log.Printf("Error reading instruction byte: %s\n", err)
+		core.logInstruction("Error reading instruction byte: %s\n", err)
 		doCoreDump(core)
 		panic(0)
 	}
@@ -81,9 +85,9 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	if instrByte == 0x0F {
 		// 2 byte opcode
 		core.currentByteAddr++
-		instrByte, err = core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr))
+		instrByte, err = core.memoryAccessController.ReadMemoryValue8(uint32(core.currentByteAddr))
 		if err != nil {
-			log.Printf("Error reading instruction byte: %s\n", err)
+			core.logDebug(fmt.Sprintf("Error reading instruction byte: %s\n", err))
 			doCoreDump(core)
 			panic(0)
 		}
@@ -92,7 +96,7 @@ func (core *CpuCore) decodeInstruction() uint8 {
 		instructionImpl = core.opCodeMap2Byte[core.currentOpCodeBeingExecuted]
 
 		if instructionImpl == nil {
-			log.Printf("[%#04x] Unrecognised 2-bit opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte)
+			core.logInstruction("[%#04x] Unrecognised 2-bit opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte)
 			doCoreDump(core)
 			panic(0)
 		}
@@ -111,9 +115,9 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	if instructionImpl != nil {
 		instructionImpl(core)
 	} else {
-		log.Printf("[%#04x] Unrecognised opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte)
+		core.logDebug(fmt.Sprintf("[%#04x] Unrecognised opcode: %#2x %#2x\n", core.registers.IP, core.currentPrefixBytes, instrByte))
 
-		log.Printf("CPU CORE ERROR!!!")
+		core.logDebug(fmt.Sprintf("CPU CORE ERROR!!!"))
 
 		doCoreDump(core)
 		panic(0)
@@ -122,8 +126,8 @@ func (core *CpuCore) decodeInstruction() uint8 {
 	return 0
 }
 
-func isPrefixByte(b byte) bool {
-	switch b {
+func isPrefixByte(b *uint8) bool {
+	switch *b {
 	case 0x2e:
 		// cs segment override
 		return true
@@ -163,17 +167,9 @@ func isPrefixByte(b byte) bool {
 
 func (core *CpuCore) Is32BitOperand() bool {
 	if core.mode == common.PROTECTED_MODE {
-		if core.GetCurrentSegmentWidth() == 32 || core.flags.OperandSizeOverrideEnabled {
-			return true
-		} else {
-			return false
-		}
+		return core.GetCurrentSegmentWidth() == 32 && !core.flags.OperandSizeOverrideEnabled
 	} else {
-		if core.flags.OperandSizeOverrideEnabled {
-			return true
-		} else {
-			return false
-		}
+		return false
 	}
 }
 
@@ -181,7 +177,7 @@ func handleGroup3OpCode_byte(core *CpuCore) {
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
 	if err != nil {
-		log.Printf("Error consuming ModR/M byte: %v\n", err)
+		core.logInstruction("Error consuming ModR/M byte: %v\n", err)
 		return // Exit early on error
 	}
 	core.currentByteAddr--
@@ -212,7 +208,7 @@ func handleGroup3OpCode_byte(core *CpuCore) {
 		INSTR_IDIV(core)
 
 	default:
-		log.Printf("INSTR_80_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm)
+		core.logInstruction("INSTR_80_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm)
 		doCoreDump(core)
 		panic(0)
 	}
@@ -232,7 +228,7 @@ func handleGroup5Opcode(core *CpuCore) {
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
 	if err != nil {
-		log.Printf("Error consuming ModR/M byte: %v\n", err)
+		core.logInstruction(fmt.Sprintf("Error consuming ModR/M byte: %v\n", err))
 		return // Exit early on error
 	}
 	core.currentByteAddr--
@@ -268,15 +264,15 @@ func handleGroup5Opcode(core *CpuCore) {
 		}
 	case 4:
 		// jmp rm32
-		INSTR_JMP_FAR_M16(core, &modrm)
+		INSTR_JMP_FAR_M16(core)
 	case 5:
 		// jmp m16:16
-		INSTR_JMP_FAR_M16(core, &modrm)
+		INSTR_JMP_FAR_M16(core)
 	case 6:
 		// push rm32
 		INSTR_PUSH_RM16(core)
 	default:
-		log.Printf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm)
+		core.logInstruction(fmt.Sprintf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
 		panic("Unhandled operation")
 	}
@@ -287,7 +283,7 @@ func handleGroup5Opcode_32(core *CpuCore) {
 	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
 	if err != nil {
-		log.Printf("Error consuming ModR/M byte: %v\n", err)
+		core.logInstruction(fmt.Sprintf("Error consuming ModR/M byte: %v\n", err))
 		return // Exit early on error
 	}
 	core.currentByteAddr--
@@ -326,12 +322,12 @@ func handleGroup5Opcode_32(core *CpuCore) {
 		INSTR_JMP_FAR_M32(core)
 	case 5:
 		// jmp m16:16
-		INSTR_JMP_FAR_M16(core, &modrm)
+		INSTR_JMP_FAR_M16(core)
 	case 6:
 		// push rm32
 		INSTR_PUSH_32(core)
 	default:
-		log.Printf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm)
+		core.logInstruction("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm)
 		doCoreDump(core)
 		panic("Unhandled operation")
 	}

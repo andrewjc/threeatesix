@@ -153,7 +153,11 @@ func (d *Intel8259a) operationCommand3(data uint8) {
 
 func (d *Intel8259a) assertInterrupt(irq uint8) {
 	d.irqRequest |= 1 << irq
-	d.updateInterruptOutput()
+	d.bus.SendMessageSingle(common.MODULE_PRIMARY_PROCESSOR, bus.BusMessage{
+		Subject: common.MESSAGE_INTERRUPT_RAISE,
+		Data:    []byte{d.irqRequest},
+		Sender:  d.busId,
+	})
 }
 
 func (d *Intel8259a) acknowledgeInterrupt() {

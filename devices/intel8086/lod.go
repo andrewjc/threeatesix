@@ -18,40 +18,35 @@ func INSTR_LODS(core *CpuCore) {
 		extras = fmt.Sprintf("(%d repetitions)", core.registers.CX)
 	}
 
-	for (core.registers.CX > 0 && core.flags.RepPrefixEnabled) || !core.flags.RepPrefixEnabled {
+	segment := core.getSegmentOverride() // Get overridden segment register
 
+	for (core.registers.CX > 0 && core.flags.RepPrefixEnabled) || !core.flags.RepPrefixEnabled {
 		switch core.currentOpCodeBeingExecuted {
 		case 0xAC:
-			{
-				operStr = "LODSB"
-				m8, err := core.memoryAccessController.ReadMemoryAddr8(core.SegmentAddressToLinearAddress(core.registers.DS, uint16(core.registers.SI)))
-				if err != nil {
-					goto eof
-				}
-				core.registers.AL = m8
-				if core.registers.GetFlag(DirectionFlag) {
-					core.registers.SI -= 1
-				} else {
-					core.registers.SI += 1
-				}
+			m8, err := core.memoryAccessController.ReadMemoryValue8(core.SegmentAddressToLinearAddress(segment, uint16(core.registers.SI)))
+			if err != nil {
+				core.logInstruction(fmt.Sprintf("Error reading memory: %s", err))
+				return
+			}
+			core.registers.AL = m8
+			if core.registers.GetFlag(DirectionFlag) {
+				core.registers.SI -= 1
+			} else {
+				core.registers.SI += 1
 			}
 		case 0xAD:
-			{
-				operStr = "LODSW"
-				//log.Printf("Reading from %#04x", core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI))
-				m8, err := core.memoryAccessController.ReadMemoryAddr16(core.SegmentAddressToLinearAddress(core.registers.DS, uint16(core.registers.SI)))
-				if err != nil {
-					goto eof
-				}
-				core.registers.AX = m8
-				if core.registers.GetFlag(DirectionFlag) {
-					core.registers.SI -= 2
-				} else {
-					core.registers.SI += 2
-				}
+			m16, err := core.memoryAccessController.ReadMemoryValue16(core.SegmentAddressToLinearAddress(segment, uint16(core.registers.SI)))
+			if err != nil {
+				core.logInstruction(fmt.Sprintf("Error reading memory: %s", err))
+				return
+			}
+			core.registers.AX = m16
+			if core.registers.GetFlag(DirectionFlag) {
+				core.registers.SI -= 2
+			} else {
+				core.registers.SI += 2
 			}
 		}
-
 		if !core.flags.RepPrefixEnabled {
 			break
 		} else {
@@ -60,8 +55,6 @@ func INSTR_LODS(core *CpuCore) {
 	}
 
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s %s", core.GetCurrentlyExecutingInstructionAddress(), prefixStr, operStr, extras))
-
-eof:
 	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 

@@ -34,7 +34,7 @@ func B(val bool) byte {
 }
 
 func GetMSB(value uint8) uint8 {
-	return (value >> 8) & 1
+	return (value >> 7) & 1
 }
 
 func GetBitValue(value uint8, place uint8) uint8 {
@@ -55,4 +55,15 @@ func Int8Err(u uint8, u2 error) (int8, error) {
 
 func Int16Err(u uint16, u2 error) (int16, error) {
 	return int16(u), u2
+}
+
+func UInt16From8(u uint8, u2 error) (uint16, error) {
+	return uint16(u), u2
+}
+
+func UInt32From8(u uint8, u2 error) (uint32, error) {
+	return uint32(u), u2
+}
+func UInt32From16(u uint16, u2 error) (uint32, error) {
+	return uint32(u), u2
 }

@@ -200,6 +200,8 @@ func (core *CpuCore) Reset() {
 	core.registers.CR0 = 0          // Set to real mode
 	core.registers.FLAGS = 0x0002   // Set default flags
 	core.bus.SendMessage(bus.BusMessage{Subject: common.MESSAGE_GLOBAL_LOCK_BIOS_MEM_REGION, Data: []byte{}})
+
+	core.shadowBios()
 }
 
 func (core *CpuCore) EnterMode(mode uint8) {
@@ -214,7 +216,7 @@ func (core *CpuCore) EnterMode(mode uint8) {
 	} else if core.mode == common.PROTECTED_MODE {
 		modeString = "PROTECTED MODE"
 	}
-	log.Printf("%s entered %s\r\n", processorString, modeString)
+	core.logDebug(fmt.Sprintf("%s entered %s", processorString, modeString))
 }
 
 // Gets the current code segment + IP addr in memory
@@ -243,6 +245,13 @@ func (core *CpuCore) GetCurrentSegmentWidth() uint8 {
 }
 
 func (core *CpuCore) SegmentAddressToLinearAddress(segment SegmentRegister, offset uint16) uint32 {
+	addr := core.SegmentAddressToLinearAddress_NoMask(segment, offset)
+	linearAddr := addr & 0xFFFFF // Mask to 20 bits to simulate real-mode address wrapping.
+
+	return linearAddr
+}
+
+func (core *CpuCore) SegmentAddressToLinearAddress_NoMask(segment SegmentRegister, offset uint16) uint32 {
 
 	if core.flags.MemorySegmentOverride > 0 {
 		// default segment override
@@ -310,7 +319,7 @@ func (core *CpuCore) Step() {
 	if core.currentByteAddr == core.lastExecutedInstructionPointer {
 		//log.Fatalf("CPU appears to be in a loop! Did you forget to increment the IP register?")
 		//doCoreDump(core)
-		//log.Printf("looping...")
+		//core.logInstruction("looping...")
 	}
 
 	core.currentByteDecodeStart = core.currentByteAddr
@@ -336,18 +345,134 @@ func (core *CpuCore) FriendlyPartName() string {
 
 	return "Unknown"
 }
+func (core *CpuCore) getEffectiveAddress8(modrm *ModRm) (uint32, string) {
+	var addr uint32
+	var addrDesc string
 
-func (device *CpuCore) getEffectiveAddress32(modRm *ModRm) (*uint32, string) {
-	if modRm.mod == 3 {
-		return device.registers.registers32Bit[modRm.rm], device.registers.index32ToString(modRm.rm)
+	// Compute the effective address based on the mod and rm fields
+	switch modrm.mod {
+	case 0:
+		if modrm.rm == 6 { // Special case for 16-bit displacement when rm = 6
+			addr = uint32(modrm.disp16)
+			addrDesc = fmt.Sprintf("Disp16 [0x%X]", modrm.disp16)
+		} else {
+			addr = *core.registers.registers32Bit[modrm.rm] // Using 32-bit register for simplification in handling
+			addrDesc = fmt.Sprintf("[%s]", core.registers.index8ToString(modrm.rm))
+		}
+	case 1: // 8-bit displacement added to the register
+		addr = *core.registers.registers32Bit[modrm.rm] + uint32(int32(int8(modrm.disp8)))
+		addrDesc = fmt.Sprintf("[%s + 0x%X]", core.registers.index8ToString(modrm.rm), int8(modrm.disp8))
+	case 2: // 16-bit displacement added to the register
+		addr = *core.registers.registers32Bit[modrm.rm] + uint32(modrm.disp16)
+		addrDesc = fmt.Sprintf("[%s + 0x%X]", core.registers.index8ToString(modrm.rm), modrm.disp16)
+	case 3: // Register direct mode, no memory addressing involved
+		addr = 0 // No effective memory address
+		addrDesc = fmt.Sprintf("Register %s directly", core.registers.index8ToString(modrm.rm))
 	}
 
-	addressMode := modRm.getAddressMode32(device)
-	return &addressMode, fmt.Sprintf("dword_F%#04x", addressMode)
+	return addr, addrDesc
+}
+
+func (core *CpuCore) getEffectiveAddress16(modrm *ModRm) (uint16, string) {
+	var addr uint16
+	var addrDesc string
+
+	// Check for SIB byte usage
+	if modrm.mod != 3 && modrm.rm == 4 { // SIB byte is present
+		baseAddr := *core.registers.registers16Bit[modrm.base]
+		indexValue := *core.registers.registers16Bit[modrm.index] * (1 << modrm.scale)
+
+		// Compute the effective address based on mod value
+		switch modrm.mod {
+		case 0:
+			if modrm.base == 5 { // Special case, base is absent, only displacement
+				addr = modrm.disp16
+				addrDesc = fmt.Sprintf("Disp32 [0x%X]", modrm.disp16) // Bug: Should be Disp16, not Disp32
+			} else {
+				addr = baseAddr + indexValue
+				addrDesc = fmt.Sprintf("[%s + %s*%d]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale)
+			}
+		case 1:
+			addr = baseAddr + indexValue + uint16(int16(int8(modrm.disp8)))
+			addrDesc = fmt.Sprintf("[%s + %s*%d + 0x%X]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale, int8(modrm.disp8))
+		case 2:
+			addr = baseAddr + indexValue + modrm.disp16
+			addrDesc = fmt.Sprintf("[%s + %s*%d + 0x%X]", core.registers.index16ToString(modrm.base), core.registers.index16ToString(modrm.index), 1<<modrm.scale, modrm.disp32) // Bug: Should use modrm.disp16
+		}
+	} else {
+		// No SIB byte, direct register addressing or displacement
+		switch modrm.mod {
+		case 0:
+			if modrm.rm == 6 { // Displacement-only addressing
+				addr = modrm.disp16
+				addrDesc = fmt.Sprintf("Disp16 [0x%X]", modrm.disp16)
+			} else {
+				addr = *core.registers.registers16Bit[modrm.rm]
+				addrDesc = fmt.Sprintf("[%s]", core.registers.index16ToString(modrm.rm))
+			}
+		case 1:
+			addr = *core.registers.registers16Bit[modrm.rm] + uint16(int16(int8(modrm.disp8)))
+			addrDesc = fmt.Sprintf("[%s + 0x%X]", core.registers.index16ToString(modrm.rm), int8(modrm.disp8))
+		case 2:
+			addr = *core.registers.registers16Bit[modrm.rm] + modrm.disp16
+			addrDesc = fmt.Sprintf("[%s + 0x%X]", core.registers.index16ToString(modrm.rm), modrm.disp16)
+		}
+	}
+
+	return addr, addrDesc
+}
+
+func (core *CpuCore) getEffectiveAddress32(modrm *ModRm) (uint32, string) {
+	var addr uint32
+	var addrDesc string
+
+	// Check for SIB byte usage
+	if modrm.mod != 3 && modrm.rm == 4 { // SIB byte is present
+		baseAddr := *core.registers.registers32Bit[modrm.base]
+		indexValue := *core.registers.registers32Bit[modrm.index] * (1 << modrm.scale)
+
+		// Compute the effective address based on mod value
+		switch modrm.mod {
+		case 0:
+			if modrm.base == 5 { // Special case, base is absent, only displacement
+				addr = modrm.disp32
+				addrDesc = fmt.Sprintf("Disp32 [0x%X]", modrm.disp32)
+			} else {
+				addr = baseAddr + indexValue
+				addrDesc = fmt.Sprintf("[%s + %s*%d]", core.registers.index32ToString(modrm.base), core.registers.index32ToString(modrm.index), 1<<modrm.scale)
+			}
+		case 1:
+			addr = baseAddr + indexValue + uint32(int32(int8(modrm.disp8)))
+			addrDesc = fmt.Sprintf("[%s + %s*%d + 0x%X]", core.registers.index32ToString(modrm.base), core.registers.index32ToString(modrm.index), 1<<modrm.scale, int8(modrm.disp8))
+		case 2:
+			addr = baseAddr + indexValue + modrm.disp32
+			addrDesc = fmt.Sprintf("[%s + %s*%d + 0x%X]", core.registers.index32ToString(modrm.base), core.registers.index32ToString(modrm.index), 1<<modrm.scale, modrm.disp32)
+		}
+	} else {
+		// No SIB byte, direct register addressing or displacement
+		switch modrm.mod {
+		case 0:
+			if modrm.rm == 5 { // Displacement-only addressing
+				addr = modrm.disp32
+				addrDesc = fmt.Sprintf("Disp32 [0x%X]", modrm.disp32)
+			} else {
+				addr = *core.registers.registers32Bit[modrm.rm]
+				addrDesc = fmt.Sprintf("[%s]", core.registers.index32ToString(modrm.rm))
+			}
+		case 1:
+			addr = *core.registers.registers32Bit[modrm.rm] + uint32(int32(int8(modrm.disp8)))
+			addrDesc = fmt.Sprintf("[%s + 0x%X]", core.registers.index32ToString(modrm.rm), int8(modrm.disp8))
+		case 2:
+			addr = *core.registers.registers32Bit[modrm.rm] + modrm.disp32
+			addrDesc = fmt.Sprintf("[%s + 0x%X]", core.registers.index32ToString(modrm.rm), modrm.disp32)
+		}
+	}
+
+	return addr, addrDesc
 }
 
 func (core *CpuCore) readImm8() (uint8, error) {
-	retVal, err := core.memoryAccessController.ReadMemoryAddr8(uint32(core.currentByteAddr))
+	retVal, err := core.memoryAccessController.ReadMemoryValue8(uint32(core.currentByteAddr))
 	if err != nil {
 		return 0, err
 	}
@@ -356,7 +481,7 @@ func (core *CpuCore) readImm8() (uint8, error) {
 }
 
 func (core *CpuCore) readImm16() (uint16, error) {
-	retVal, err := core.memoryAccessController.ReadMemoryAddr16(uint32(core.currentByteAddr))
+	retVal, err := core.memoryAccessController.ReadMemoryValue16(uint32(core.currentByteAddr))
 	if err != nil {
 		return 0, err
 	}
@@ -365,7 +490,7 @@ func (core *CpuCore) readImm16() (uint16, error) {
 }
 
 func (core *CpuCore) readImm32() (uint32, error) {
-	retVal, err := core.memoryAccessController.ReadMemoryAddr32(uint32(core.currentByteAddr))
+	retVal, err := core.memoryAccessController.ReadMemoryValue32(uint32(core.currentByteAddr))
 	if err != nil {
 		return 0, err
 	}
@@ -375,29 +500,66 @@ func (core *CpuCore) readImm32() (uint32, error) {
 
 func (core *CpuCore) readRm8(modrm *ModRm) (*uint8, string, error) {
 	if modrm.mod == 3 {
+		// Directly accessing the register when Mod = 3
 		dest := core.registers.registers8Bit[modrm.rm]
 		destName := core.registers.index8ToString(modrm.rm)
 		return dest, destName, nil
-
 	} else {
-		addressMode := modrm.getAddressMode16(core)
-		destValue, err := core.memoryAccessController.ReadMemoryAddr8(uint32(addressMode))
-		destName := fmt.Sprintf("dword_F%#04x", addressMode)
-		return &destValue, destName, err
+		// Calculating the effective address when accessing memory
+		addr, addrDesc := core.getEffectiveAddress8(modrm)
+
+		// Reading the value from memory using the calculated address
+		destValue, err := core.memoryAccessController.ReadMemoryValue8(addr)
+		if err != nil {
+			return nil, "", err // Properly return nil and error if the read fails
+		}
+
+		// Updating the address description to be more informative
+		destName := fmt.Sprintf("Memory at %s", addrDesc)
+		return &destValue, destName, nil
 	}
 }
 
 func (core *CpuCore) readRm16(modrm *ModRm) (*uint16, string, error) {
 	if modrm.mod == 3 {
-		dest := uint16(*core.registers.registers16Bit[modrm.rm])
+		// Direct register access when Mod is 3
+		dest := core.registers.registers16Bit[modrm.rm] // Direct pointer to the register
 		destName := core.registers.index16ToString(modrm.rm)
-		return &dest, destName, nil
-
+		return dest, destName, nil
 	} else {
-		addressMode := modrm.getAddressMode16(core)
-		destValue, err := core.memoryAccessController.ReadMemoryAddr16(uint32(addressMode))
-		destName := fmt.Sprintf("dword_F%#04x", addressMode)
-		return &destValue, destName, err
+		// Calculate the effective address when accessing memory
+		addr, addrDesc := core.getEffectiveAddress32(modrm)
+
+		// Read the 16-bit value from memory
+		destValue, err := core.memoryAccessController.ReadMemoryValue16(addr)
+		if err != nil {
+			return nil, "", err // Handle error by returning nil and the error
+		}
+
+		// Update the destination name to be more descriptive
+		return &destValue, addrDesc, nil
+	}
+}
+
+func (core *CpuCore) readRm32(modrm *ModRm) (*uint32, string, error) {
+	if modrm.mod == 3 {
+		// Direct register access when Mod is 3
+		dest := core.registers.registers32Bit[modrm.rm] // Direct pointer to the register
+		destName := core.registers.index32ToString(modrm.rm)
+		return dest, destName, nil
+	} else {
+		// Calculate the effective address when accessing memory
+		addr, addrDesc := core.getEffectiveAddress32(modrm)
+
+		// Read the 16-bit value from memory
+		destValue, err := core.memoryAccessController.ReadMemoryValue32(addr)
+		if err != nil {
+			return nil, "", err // Handle error by returning nil and the error
+		}
+
+		// Update the destination name to be more descriptive
+		destName := fmt.Sprintf("Memory at %s", addrDesc)
+		return &destValue, destName, nil
 	}
 }
 
@@ -414,32 +576,63 @@ func (core *CpuCore) readR16(modrm *ModRm) (*uint16, string) {
 
 }
 
-func (core *CpuCore) writeRm8(modrm *ModRm, value *uint8) error {
+func (core *CpuCore) writeRm8(modrm *ModRm, value *uint8) (string, error) {
+	var destName string
+	var addr uint32
 	if modrm.mod == 3 {
+		// Direct register access when Mod is 3
 		*core.registers.registers8Bit[modrm.rm] = *value
 	} else {
-		addressMode := modrm.getAddressMode16(core)
-		err := core.memoryAccessController.WriteMemoryAddr8(uint32(addressMode), *value)
+		// Calculate the effective address when accessing memory
+		addr, destName = core.getEffectiveAddress32(modrm) // Discard the address description here as it's not used
+
+		// Write the 8-bit value to memory
+		err := core.memoryAccessController.WriteMemoryAddr8(uint32(addr), *value)
 		if err != nil {
-			return nil
+			return destName, err // Properly return the error
 		}
 	}
 
-	return nil
+	return destName, nil // Return nil explicitly when no error occurs
 }
 
-func (core *CpuCore) writeRm16(modrm *ModRm, value *uint16) error {
+func (core *CpuCore) writeRm16(modrm *ModRm, value *uint16) (string, error) {
+	var destName string
+	var addr uint32
 	if modrm.mod == 3 {
+		// Direct register access when Mod is 3
 		*core.registers.registers16Bit[modrm.rm] = *value
+		destName = core.registers.index16ToString(modrm.rm)
 	} else {
-		addressMode := modrm.getAddressMode16(core)
-		err := core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), *value)
+		// Calculate the effective address when accessing memory
+		addr, destName = core.getEffectiveAddress32(modrm) // Discard the address description here as it's not used
+
+		// Write the 16-bit value to memory
+		err := core.memoryAccessController.WriteMemoryAddr16(uint32(addr), *value)
 		if err != nil {
-			return err
+			return destName, err // Properly return the error
 		}
 	}
 
-	return nil
+	return destName, nil // Return nil explicitly when no error occurs
+}
+
+func (core *CpuCore) writeRm32(modrm *ModRm, value *uint32) error {
+	if modrm.mod == 3 {
+		// Direct register access when Mod is 3
+		*core.registers.registers32Bit[modrm.rm] = *value
+	} else {
+		// Calculate the effective address when accessing memory
+		addr, _ := core.getEffectiveAddress32(modrm) // Discard the address description here as it's not used
+
+		// Write the 16-bit value to memory
+		err := core.memoryAccessController.WriteMemoryAddr32(uint32(addr), *value)
+		if err != nil {
+			return err // Properly return the error
+		}
+	}
+
+	return nil // Return nil explicitly when no error occurs
 }
 
 func (core *CpuCore) writeR8(modrm *ModRm, value *uint8) {
@@ -491,9 +684,16 @@ func (core *CpuCore) writeSegmentRegister(register *SegmentRegister, value uint3
 
 }
 
-func (cpuCore *CpuCore) logInstruction(logMessage string) {
+func (cpuCore *CpuCore) logInstruction(logMessage string, a ...any) {
 	// encode logMessage to utf-8 bytes
-	logMessageBytes := []byte(logMessage)
+
+	if len(a) > 0 {
+		logMessage = fmt.Sprintf(logMessage, a)
+	}
+	logMessageString := fmt.Sprintf("[op=%#04x]"+logMessage, cpuCore.currentOpCodeBeingExecuted)
+
+	// encode logMessage to utf-8 bytes
+	logMessageBytes := []byte(logMessageString)
 
 	cpuCore.bus.SendMessageToAll(common.MODULE_DEBUG_MONITOR, bus.BusMessage{Subject: common.MESSAGE_GLOBAL_CPU_INSTRUCTION_LOG, Data: logMessageBytes})
 }
@@ -535,8 +735,17 @@ func (core *CpuCore) HandleInterrupt(message bus.BusMessage) {
 	core.registers.SetFlag(TrapFlag, false)
 
 	// Set the CS:IP to the interrupt vector
-	core.registers.CS.Base, _ = core.memoryAccessController.ReadMemoryAddr32(uint32(vector * 4))
-	core.registers.IP, _ = core.memoryAccessController.ReadMemoryAddr16(uint32(vector*4 + 2))
+
+	vectorAddr := uint16(vector) << 2
+
+	// Read IP and CS from the interrupt vector table
+
+	vectorAddr2 := uint32(0x000020)<<4 + uint32(vectorAddr)
+
+	core.registers.IP, _ = core.memoryAccessController.ReadMemoryValue16(uint32(vectorAddr2))
+	newBase, _ := core.memoryAccessController.ReadMemoryValue16(uint32(vectorAddr2 + 3))
+
+	core.registers.CS.Base = uint32(newBase)
 
 	// Re-enable interrupts
 	core.registers.SetFlag(InterruptFlag, true)
@@ -554,7 +763,7 @@ func (core *CpuCore) HandleInterrupt(message bus.BusMessage) {
 	}
 	err = core.bus.SendMessageToDeviceById(message.Sender, eoiMessage)
 	if err != nil {
-		log.Printf("CPU: Error sending EOI message: %v", err)
+		core.logDebug(fmt.Sprintf("CPU: Error sending EOI message: %v", err))
 	}
 }
 
@@ -569,6 +778,139 @@ func (core *CpuCore) AcknowledgeInterrupt(message bus.BusMessage) {
 
 func (core *CpuCore) SetMemoryAccessController(controller *memmap.MemoryAccessController) {
 	core.memoryAccessController = controller
+}
+
+func (core *CpuCore) shadowBios() {
+
+	core.memoryAccessController.InitShadowBios()
+}
+
+func (core *CpuCore) GetRegister16(register *uint16) (uint32, string, uint8) {
+
+	var registerIndex uint8
+	for i, reg := range core.registers.registers16Bit {
+		if reg == register {
+			registerIndex = uint8(i)
+			break
+		}
+	}
+
+	if core.flags.OperandSizeOverrideEnabled {
+
+		// find the index of the pointer address in registers16Bit
+		return *core.registers.registers32Bit[registerIndex], core.registers.index32ToString(uint8(registerIndex)), 32
+
+	} else {
+		return uint32(*core.registers.registers16Bit[registerIndex]), core.registers.index16ToString(uint8(registerIndex)), 16
+	}
+}
+
+func (core *CpuCore) SetRegister16(registerIndex uint8, value uint16) (string, error) {
+
+	core.registers.registers16Bit[registerIndex] = &value
+	return core.registers.index16ToString(registerIndex), nil
+}
+
+func (core *CpuCore) GetImmediate16() (uint32, uint8, error) {
+	if core.flags.OperandSizeOverrideEnabled {
+		imm32, err := core.readImm32()
+		return imm32, 32, err
+	} else {
+		imm16, err := core.readImm16()
+		return uint32(imm16), 16, err
+	}
+}
+
+func (core *CpuCore) updateSystemFlags(cr0 uint32) {
+	core.registers.CR0 = cr0
+
+	// Toggle between protected and real mode based on the PE bit
+	if cr0&0x1 == 0x1 {
+		core.EnterMode(common.PROTECTED_MODE)
+	} else {
+		core.EnterMode(common.REAL_MODE)
+	}
+
+	// Handle Paging
+	if cr0&0x80000000 != 0 {
+		core.EnablePaging()
+	} else {
+		core.DisablePaging()
+	}
+
+	// Cache control
+	if cr0&0x40000000 != 0 {
+		core.DisableCache()
+	} else {
+		core.EnableCache()
+	}
+
+	// Write Protection
+	if cr0&0x10000 != 0 {
+		core.EnableWriteProtection()
+	} else {
+		core.DisableWriteProtection()
+	}
+
+	// Numeric Error
+	if cr0&0x20 != 0 {
+		core.EnableNumericError()
+	} else {
+		core.DisableNumericError()
+	}
+}
+
+func (core *CpuCore) EnablePaging() {
+	log.Printf("Paging enabled")
+}
+
+func (core *CpuCore) DisablePaging() {
+	log.Printf("Paging disabled")
+}
+
+func (core *CpuCore) EnableCache() {
+	log.Printf("Cache enabled")
+}
+
+func (core *CpuCore) DisableCache() {
+	log.Printf("Cache disabled")
+}
+
+func (core *CpuCore) EnableWriteProtection() {
+	log.Printf("Write protection enabled")
+}
+
+func (core *CpuCore) DisableWriteProtection() {
+	log.Printf("Write protection disabled")
+}
+
+func (core *CpuCore) EnableNumericError() {
+	log.Printf("Numeric error enabled")
+}
+
+func (core *CpuCore) DisableNumericError() {
+	log.Printf("Numeric error disabled")
+}
+
+func (device *CpuCore) getSegmentOverride() SegmentRegister {
+	if device.flags.MemorySegmentOverride > 0 {
+		switch device.flags.MemorySegmentOverride {
+		case common.SEGMENT_CS:
+			return device.registers.CS
+		case common.SEGMENT_SS:
+			return device.registers.SS
+		case common.SEGMENT_DS:
+			return device.registers.DS
+		case common.SEGMENT_ES:
+			return device.registers.ES
+		case common.SEGMENT_FS:
+			return device.registers.FS
+		case common.SEGMENT_GS:
+			return device.registers.GS
+		}
+	}
+
+	return device.registers.CS
 }
 
 func INSTR_HLT(core *CpuCore) {

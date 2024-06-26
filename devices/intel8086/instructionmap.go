@@ -165,6 +165,13 @@ func mapOpCodes(c *CpuCore) {
 		0x85: INSTR_TEST,              // Test 16-bit register/memory with 16-bit register
 		0xF6: handleGroup3OpCode_byte, // Group 3 byte operations (TEST, NOT, NEG, MUL, IMUL, DIV, IDIV)
 		0xF7: handleGroup5Opcode_word, // Group 3 word operations (TEST, NOT, NEG, MUL, IMUL, DIV, IDIV)
+
+		// Software interrupts
+		//0xCD: INSTR_INT,
+		0xCC: INSTR_INT3,
+		//0xCE: INSTR_INT,
+		//0xCF: INSTR_IRET,
+
 	}
 
 	// Register-based opcodes dynamically generated from register lists

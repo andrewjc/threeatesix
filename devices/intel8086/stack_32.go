@@ -13,7 +13,7 @@ func stackPush32(core *CpuCore, val uint32) error {
 
 func stackPop32(core *CpuCore) (uint32, error) {
 	stackAddr := core.SegmentAddressToLinearAddress32(core.registers.SS, uint32(core.registers.SP))
-	val, err := core.memoryAccessController.ReadMemoryAddr32(stackAddr)
+	val, err := core.memoryAccessController.ReadMemoryValue32(stackAddr)
 	if err != nil {
 		return 0, err
 	}
@@ -28,7 +28,7 @@ func INSTR_PUSH_32(core *CpuCore) {
 		index := opcode - 0x50
 		val := core.registers.registers16Bit[index]
 		if err := stackPush16(core, *val); err != nil {
-			log.Printf("Error pushing register: %#04x\n", opcode)
+			core.logInstruction("Error pushing register: %#04x\n", opcode)
 			return
 		}
 		core.logInstruction(fmt.Sprintf("PUSH %s", core.registers.index16ToString(index)))
@@ -36,7 +36,7 @@ func INSTR_PUSH_32(core *CpuCore) {
 	case 0x06: // PUSH ES
 		segmentSelector := uint16(core.registers.ES.Base >> 4)
 		if err := stackPush16(core, segmentSelector); err != nil {
-			log.Printf("Error pushing ES: %s\n", err)
+			core.logInstruction("Error pushing ES: %s\n", err)
 			return
 		}
 		core.logInstruction(fmt.Sprintf("PUSH ES"))
@@ -94,12 +94,12 @@ func INSTR_PUSH_32(core *CpuCore) {
 	case 0x6A: // PUSH imm8
 		imm8, err := core.readImm8() // Assumes implementation to read the next byte as signed 8-bit
 		if err != nil {
-			log.Printf("Error reading immediate value: %s\n", err)
+			core.logInstruction("Error reading immediate value: %s\n", err)
 			return
 		}
 		signExtended := uint16(int8(imm8))
 		if err := stackPush16(core, signExtended); err != nil {
-			log.Printf("Error pushing sign-extended immediate value: %s\n", err)
+			core.logInstruction("Error pushing sign-extended immediate value: %s\n", err)
 			return
 		}
 		core.logInstruction(fmt.Sprintf("PUSH %d (sign-extended)", signExtended))
@@ -108,18 +108,18 @@ func INSTR_PUSH_32(core *CpuCore) {
 	case 0x68: // PUSH imm16
 		imm16, err := core.readImm16() // Assumes implementation to read the next two bytes as 16-bit
 		if err != nil {
-			log.Printf("Error reading immediate 16-bit value: %s\n", err)
+			core.logInstruction("Error reading immediate 16-bit value: %s\n", err)
 			return
 		}
 		if err := stackPush16(core, imm16); err != nil {
-			log.Printf("Error pushing immediate value: %s\n", err)
+			core.logInstruction("Error pushing immediate value: %s\n", err)
 			return
 		}
 		core.logInstruction(fmt.Sprintf("PUSH %#04x", imm16))
 		core.registers.IP += 3 // Increment IP by 3 (1 for opcode + 2 for immediate value)
 
 	default:
-		log.Printf("Unhandled PUSH opcode: %#04x\n", opcode)
+		core.logInstruction("Unhandled PUSH opcode: %#04x\n", opcode)
 	}
 }
 func INSTR_POP_32(core *CpuCore) {
@@ -157,7 +157,7 @@ func INSTR_POP_32(core *CpuCore) {
 		}
 		val, err := stackPop16(core)
 		if err != nil {
-			log.Printf("Error popping %s from stack: %s\n", regName, err)
+			core.logInstruction("Error popping %s from stack: %s\n", regName, err)
 			return
 		}
 		reg.Base = uint32(val) << 4
@@ -165,7 +165,7 @@ func INSTR_POP_32(core *CpuCore) {
 		instructionSize = 1 // POP segment register instructions are also 1 byte long
 
 	default:
-		log.Printf("Unhandled POP instruction: %#04x\n", core.currentOpCodeBeingExecuted)
+		core.logInstruction("Unhandled POP instruction: %#04x\n", core.currentOpCodeBeingExecuted)
 		return
 	}
 

@@ -23,6 +23,7 @@ import (
 
 type romimages struct {
 	bios []byte
+	vga  []byte
 }
 
 // PersonalComputer represents the virtual PC being emulated
@@ -53,11 +54,12 @@ type PersonalComputer struct {
 }
 
 // BiosFilename - name of the bios image the virtual machine will boot up
-const BiosFilename = "bios.bin"
+const BiosFilename = "bios/bios.bin"
+const VideoBiosFilename = "bios/vgabios.bin"
 
 // MaxRAMBytes - the amount of ram installed in this virtual machine
 const MaxRAMBytes = 0x1E84800 //32 million (32mb)
-// const MaxRAMBytes = 0xF42400 //8mb
+//const MaxRAMBytes = 0xF42400 //8mb
 //const MaxRAMBytes = 0x100000000 //4GB
 
 func (pc *PersonalComputer) Power() {
@@ -155,30 +157,20 @@ func (pc *PersonalComputer) GetBus() *bus.Bus {
 }
 
 func (pc *PersonalComputer) LoadBios() {
-	fi, err := os.Stat(BiosFilename)
-	if err != nil {
-		fmt.Printf("Error obtaining BIOS file info: %s\n", err)
-		return // Optionally, handle more gracefully depending on your application's structure
-	}
 
-	fileLength := int32(fi.Size())
 	biosData, err := ioutil.ReadFile(BiosFilename)
 	if err != nil {
 		fmt.Printf("Failed to load BIOS: %s\n", err)
 		os.Exit(1) // Consider handling this more softly, perhaps returning an error
 	}
 
-	// Ensure the BIOS data fits into the allocated ROM space (assuming typical PC BIOS size mappings)
-	romChipSize := int32(65536) // Example size, adjust based on your system specifics
-	pc.rom.bios = make([]byte, romChipSize)
+	pc.rom.bios = biosData
 
-	// Calculate start index to copy the BIOS into the correct position at the end of the BIOS space
-	startIndex := romChipSize - fileLength
-	if startIndex < 0 {
-		fmt.Printf("BIOS file is too large for the allocated ROM space.\n")
-		return
+	videoBiosData, err := ioutil.ReadFile(VideoBiosFilename)
+	if err != nil {
+		fmt.Printf("Failed to load Video BIOS: %s\n", err)
+		os.Exit(1) // Consider handling this more softly, perhaps returning an error
 	}
 
-	// Copy the BIOS data into the allocated space starting at calculated index
-	copy(pc.rom.bios[startIndex:], biosData)
+	pc.rom.vga = videoBiosData
 }

@@ -12,7 +12,7 @@ func INSTR_IN(core *CpuCore) {
 	case 0xE4:
 		{
 			// Read from port (imm) to AL
-			imm, err := core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr + 1)
 			if err != nil {
 				goto eof
 			}
@@ -38,7 +38,7 @@ func INSTR_IN(core *CpuCore) {
 		{
 			// Read from port (imm) to AX
 
-			imm, err := core.memoryAccessController.ReadMemoryAddr16(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadMemoryValue16(core.currentByteAddr + 1)
 			if err != nil {
 				goto eof
 			}
@@ -76,7 +76,7 @@ func INSTR_INS(core *CpuCore) {
 		{
 			// Read from port (imm) to AL
 
-			imm, err := core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr + 1)
 			if err != nil {
 				goto eof
 			}
@@ -104,7 +104,7 @@ func INSTR_INS(core *CpuCore) {
 		{
 			// Read from port (imm) to AX
 
-			imm, err := core.memoryAccessController.ReadMemoryAddr16(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadMemoryValue16(core.currentByteAddr + 1)
 			if err != nil {
 				goto eof
 			}
@@ -143,7 +143,7 @@ func INSTR_OUT(core *CpuCore) {
 	case 0xE6:
 		{
 			// Write value in AL to port addr imm8
-			imm, err := core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr + 1)
 			if err != nil {
 				goto eof
 			}
@@ -156,7 +156,7 @@ func INSTR_OUT(core *CpuCore) {
 	case 0xE7:
 		{
 			// Write value in AX to port addr imm8
-			imm, err := core.memoryAccessController.ReadMemoryAddr8(core.currentByteAddr + 1)
+			imm, err := core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr + 1)
 			if err != nil {
 				goto eof
 			}

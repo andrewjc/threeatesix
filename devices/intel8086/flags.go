@@ -77,7 +77,6 @@ func INSTR_CLC(core *CpuCore) {
 
 func INSTR_SMSW(core *CpuCore) {
 	var value uint16
-	var dest *uint16
 	var destName string
 
 	core.currentByteAddr++
@@ -92,17 +91,12 @@ func INSTR_SMSW(core *CpuCore) {
 	// mask out the reserved bits
 	value = value & 0xFFFF
 
-	if modrm.mod == 3 {
-		dest = core.registers.registers16Bit[modrm.rm]
-		destName = core.registers.index16ToString(modrm.rm)
-		*dest = value
-	} else {
-		addressMode := modrm.getAddressMode16(core)
-		err = core.memoryAccessController.WriteMemoryAddr16(uint32(addressMode), value)
-		if err != nil {
-			goto eof
-		}
-		destName = "rm/16"
+	destName, err = core.writeRm16(&modrm, &value)
+	if err != nil {
+		core.logInstruction("Error in INSTR_SMSW: %s\n", err)
+		doCoreDump(core)
+		panic(0)
+		return
 	}
 
 eof:

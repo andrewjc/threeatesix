@@ -7,29 +7,21 @@ import (
 )
 
 func INSTR_CALL_M16(core *CpuCore) {
-	core.currentByteAddr++
 	modrm, _, err := core.consumeModRm()
-	core.currentByteAddr--
 	if err != nil {
-		goto eof
+		core.logInstruction(fmt.Sprintf("Error reading ModR/M byte: %s", err))
+		return
 	}
 
-	if modrm.mod == 3 {
-		reg, reg_str := core.registers.registers16Bit[modrm.rm], core.registers.index16ToString(modrm.rm)
-
-		stackPush16(core, uint16(uint16(core.GetIP()+2)))
-
-		core.registers.IP = uint16(*reg)
-		core.logInstruction(fmt.Sprintf("[%#04x] CALLF %s (%#04x)", core.GetCurrentlyExecutingInstructionAddress(), reg_str, uint16(*reg)))
-	} else {
-		addr := modrm.getAddressMode16(core)
-		stackPush16(core, uint16(uint16(core.GetIP()+2)))
-
-		core.registers.IP = uint16(addr)
-		core.logInstruction(fmt.Sprintf("[%#04x] CALLF %#04x", core.GetCurrentlyExecutingInstructionAddress(), uint16(addr)))
+	addr, addrName, err := core.readRm16(&modrm)
+	if err != nil {
+		core.logInstruction(fmt.Sprintf("Error reading address: %s", err))
+		return
 	}
 
-eof:
+	stackPush16(core, uint16(core.GetIP()+2))
+	core.registers.IP = uint16(*addr)
+	core.logInstruction(fmt.Sprintf("[%#04x] CALL %s (%#04x)", core.GetCurrentlyExecutingInstructionAddress(), addrName, uint16(*addr)))
 }
 
 func INSTR_CALL_RM16(core *CpuCore) {
@@ -37,30 +29,26 @@ func INSTR_CALL_RM16(core *CpuCore) {
 	modrm, _, err := core.consumeModRm()
 	core.currentByteAddr--
 	if err != nil {
-		goto eof
+		core.logInstruction("Error reading modrm: %s", err.Error())
+		doCoreDump(core)
+		panic(0)
 	}
 
-	if modrm.mod == 3 {
-		reg, reg_str := core.registers.registers16Bit[modrm.rm], core.registers.index16ToString(modrm.rm)
-
-		stackPush16(core, uint16(core.GetIP()+2))
-
-		core.registers.IP = uint16(*reg)
-		core.logInstruction(fmt.Sprintf("[%#04x] CALL %s (%#04x)", core.GetCurrentlyExecutingInstructionAddress(), reg_str, uint16(*reg)))
-	} else {
-		addr := modrm.getAddressMode16(core)
-		stackPush16(core, uint16(core.GetIP()+2))
-
-		core.registers.IP = uint16(addr)
-		core.logInstruction(fmt.Sprintf("[%#04x] CALL %#04x", core.GetCurrentlyExecutingInstructionAddress(), uint16(addr)))
+	addr, addrName, err := core.readRm16(&modrm)
+	if err != nil {
+		core.logInstruction("Error reading address: %s", err.Error())
+		doCoreDump(core)
+		panic(0)
 	}
 
-eof:
+	stackPush16(core, uint16(core.GetIP()+2))
+	core.registers.IP = uint16(*addr)
+	core.logInstruction(fmt.Sprintf("[%#04x] CALL %s (%#04x)", core.GetCurrentlyExecutingInstructionAddress(), addrName, uint16(*addr)))
 }
 
 func INSTR_DEC_COUNT_JMP_SHORT(core *CpuCore) {
 
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -109,7 +97,7 @@ func INSTR_DEC_COUNT_JMP_SHORT(core *CpuCore) {
 
 func INSTR_DEC_COUNT_JMP_SHORT_Z(core *CpuCore) {
 
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -158,20 +146,20 @@ func INSTR_DEC_COUNT_JMP_SHORT_Z(core *CpuCore) {
 }
 
 func INSTR_JMP_FAR_PTR16(core *CpuCore) {
-	core.currentByteAddr++
-	destAddr, err := core.memoryAccessController.ReadMemoryAddr16(uint32(core.GetCurrentCodePointer()) + 1)
+
+	destAddr, err := core.memoryAccessController.ReadMemoryValue16(uint32(core.GetCurrentCodePointer()) + 1)
 	if err != nil {
-		fmt.Println("Error reading memory address")
+		core.logInstruction(fmt.Sprintf("Error reading memory address: %s", err))
 		return
 	}
-	segment, err := core.memoryAccessController.ReadMemoryAddr16(uint32(core.GetCurrentCodePointer()) + 3)
+	segment, err := core.memoryAccessController.ReadMemoryValue16(uint32(core.GetCurrentCodePointer()) + 3)
 	if err != nil {
-		fmt.Println("Error reading memory address")
+		core.logInstruction(fmt.Sprintf("Error reading memory address: %s", err))
 		return
 	}
 
 	core.logInstruction(fmt.Sprintf("[%#04x] JMP %#04x:%#04x (FAR_PTR16)", core.GetCurrentlyExecutingInstructionAddress(), segment, destAddr))
-	if err == nil {
+	if err == nil && segment < 0xFFFF {
 		segmentBase := uint32(segment)
 		core.writeSegmentRegister(&core.registers.CS, segmentBase)
 	}
@@ -179,21 +167,40 @@ func INSTR_JMP_FAR_PTR16(core *CpuCore) {
 	core.registers.IP = uint16(destAddr)
 }
 
-func INSTR_JMP_FAR_M16(core *CpuCore, modrm *ModRm) {
-	if modrm.mod == 3 {
-		reg, reg_str := core.registers.registers16Bit[modrm.rm], core.registers.index16ToString(modrm.rm)
-		core.registers.IP = uint16(*reg)
-		core.logInstruction(fmt.Sprintf("[%#04x] JMP %s (%#04x) (JMP_FAR_M16)", core.GetCurrentlyExecutingInstructionAddress(), reg_str, uint16(*reg)))
-	} else {
-		addr := modrm.getAddressMode16(core)
-		core.registers.IP = uint16(addr)
-		core.logInstruction(fmt.Sprintf("[%#04x] JMP %#04x (JMP_FAR_M16)", core.GetCurrentlyExecutingInstructionAddress(), uint16(addr)))
+func INSTR_JMP_FAR_M16(core *CpuCore) {
+
+	core.currentByteAddr++
+	modrm, _, err := core.consumeModRm()
+	if err != nil {
+		core.logInstruction("Error consuming ModR/M byte: %v\n", err)
+		return // Exit early on error
 	}
+	core.currentByteAddr--
+
+	addr, addrName, err := core.readRm16(&modrm)
+	if err != nil {
+		log.Fatalf("Error reading address: %s", err.Error())
+		doCoreDump(core)
+		panic(0)
+	}
+
+	newCSAddr, _ := core.getEffectiveAddress16(&modrm)
+	newCS, err := core.memoryAccessController.ReadMemoryValue16(uint32(newCSAddr + 2))
+	if err != nil {
+		core.logInstruction(fmt.Sprintf("Error reading new CS: %s", err.Error()))
+		return
+	}
+
+	core.registers.IP = uint16(*addr)
+	core.writeSegmentRegister(&core.registers.CS, uint32(newCS))
+
+	core.logInstruction(fmt.Sprintf("[%#04x] JMP %s (JMP_FAR_M16) (dst=%#04x:%#04x)",
+		core.GetCurrentlyExecutingInstructionAddress(), addrName, newCS, uint16(*addr)))
 }
 
 func INSTR_JMP_NEAR_REL16(core *CpuCore) {
 
-	offset, err := core.memoryAccessController.ReadMemoryAddr16(uint32(core.GetCurrentCodePointer()) + 1)
+	offset, err := core.memoryAccessController.ReadMemoryValue16(uint32(core.GetCurrentCodePointer()) + 1)
 	if err != nil {
 		return
 	}
@@ -209,16 +216,7 @@ func INSTR_CALL_NEAR_REL16(core *CpuCore) {
 
 	// Get the current IP and read the offset
 	currentIP := core.GetIP()
-	offsetAddress := uint32(currentIP) + 1 // Convert currentIP to uint32 before adding
-
-	// Read the offset directly as a signed 16-bit integer
-	offsetBytes, err := core.memoryAccessController.ReadMemoryAddr16(offsetAddress)
-	if err != nil {
-		return
-	}
-
-	// Convert the offset from unsigned to signed
-	offset := int16(offsetBytes)
+	offset, err := core.readImm16()
 
 	// Calculate the address after the instruction and the destination address
 	nextIP := currentIP + 3                           // Size of this CALL instruction
@@ -227,7 +225,7 @@ func INSTR_CALL_NEAR_REL16(core *CpuCore) {
 	// Push the return address (next instruction address) onto the stack
 	err = stackPush16(core, nextIP)
 	if err != nil {
-		log.Printf("Error pushing to stack: %s", err.Error())
+		core.logInstruction("Error pushing to stack: %s", err.Error())
 		return
 	}
 
@@ -237,7 +235,7 @@ func INSTR_CALL_NEAR_REL16(core *CpuCore) {
 
 func INSTR_JS_SHORT_REL8(core *CpuCore) {
 
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -257,7 +255,7 @@ func INSTR_JS_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JNS_SHORT_REL8(core *CpuCore) {
 
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -278,7 +276,7 @@ func INSTR_JNS_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JZ_SHORT_REL8(core *CpuCore) {
 
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -298,7 +296,7 @@ func INSTR_JZ_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
 
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -314,12 +312,11 @@ func INSTR_JNZ_SHORT_REL8(core *CpuCore) {
 		core.registers.IP = uint16(core.GetIP() + 2)
 		core.logInstruction(fmt.Sprintf("[%#04x] JNZ %#04x (SHORT REL8) (Skipped)", core.GetCurrentlyExecutingInstructionAddress(), uint16(destAddr)))
 	}
-
 }
 
 func INSTR_JBE_SHORT_REL8(core *CpuCore) {
 
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -340,7 +337,7 @@ func INSTR_JBE_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
 
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -361,7 +358,7 @@ func INSTR_JCXZ_SHORT_REL8(core *CpuCore) {
 
 func INSTR_JMP_SHORT_REL8(core *CpuCore) {
 
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 
 	if err != nil {
 		return
@@ -376,7 +373,7 @@ func INSTR_JMP_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JO_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -394,7 +391,7 @@ func INSTR_JO_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JNO_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -412,7 +409,7 @@ func INSTR_JNO_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JLE_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -426,7 +423,7 @@ func INSTR_JLE_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JG_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -440,7 +437,7 @@ func INSTR_JG_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JB_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -454,7 +451,7 @@ func INSTR_JB_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JNB_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -468,7 +465,7 @@ func INSTR_JNB_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JL_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -482,7 +479,7 @@ func INSTR_JL_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JGE_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -496,7 +493,7 @@ func INSTR_JGE_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JPE_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}
@@ -510,7 +507,7 @@ func INSTR_JPE_SHORT_REL8(core *CpuCore) {
 }
 
 func INSTR_JPO_SHORT_REL8(core *CpuCore) {
-	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryAddr8(uint32(core.GetCurrentCodePointer()) + 1))
+	offset, err := common.Int8Err(core.memoryAccessController.ReadMemoryValue8(uint32(core.GetCurrentCodePointer()) + 1))
 	if err != nil {
 		return
 	}

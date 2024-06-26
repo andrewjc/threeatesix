@@ -112,7 +112,7 @@ func (c *Motorola6845) SetModeControlRegister(value uint8) {
 	           bit 0  = 0  40*25 text mode
 	              = 1  80*25 text mode
 	*/
-	//log.Printf("CGA Controller set mode control register: [%#04x]", value)
+	//core.logInstruction("CGA Controller set mode control register: [%#04x]", value)
 
 	c.BlinkEnabled = (value & 0x20) != 0
 	c.GraphicsMode640x200 = (value & 0x10) != 0
@@ -122,7 +122,7 @@ func (c *Motorola6845) SetModeControlRegister(value uint8) {
 	c.GraphicsMode320x200 = (value & 0x02) != 0
 	c.TextMode80x25 = (value & 0x01) != 0
 
-	//log.Printf("CGA Controller set mode control register: BlinkEnabled: %v, GraphicsMode640x200: %v, VideoEnabled: %v, MonochromeSignal: %v, TextMode: %v, GraphicsMode320x200: %v, TextMode80x25: %v", c.BlinkEnabled, c.GraphicsMode640x200, c.VideoEnabled, c.MonochromeSignal, c.TextMode, c.GraphicsMode320x200, c.TextMode80x25)
+	//core.logInstruction("CGA Controller set mode control register: BlinkEnabled: %v, GraphicsMode640x200: %v, VideoEnabled: %v, MonochromeSignal: %v, TextMode: %v, GraphicsMode320x200: %v, TextMode80x25: %v", c.BlinkEnabled, c.GraphicsMode640x200, c.VideoEnabled, c.MonochromeSignal, c.TextMode, c.GraphicsMode320x200, c.TextMode80x25)
 }
 
 func (c *Motorola6845) SetColorSelectRegister(value uint8) {

@@ -46,11 +46,11 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 	if devicePortRegistration != nil {
 		return devicePortRegistration.Device.ReadAddr8(addr)
 	} else {
-		//log.Printf("warn: PORT READ WITHOUT DEVICE ROUTE: %#04x", addr)
+		//core.logInstruction("warn: PORT READ WITHOUT DEVICE ROUTE: %#04x", addr)
 
 		if addr == 0x24 {
 			// RC1 roll compare register???
-			//log.Printf("RC1 roll compare register read")
+			//core.logInstruction("RC1 roll compare register read")
 			sr := r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).Rc1RegisterRead()
 			return sr
 		}
@@ -76,7 +76,7 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 	if devicePortRegistration != nil {
 		devicePortRegistration.Device.WriteAddr8(port_addr, value)
 	} else {
-		//log.Printf("warn: PORT WRITE WITHOUT DEVICE ROUTE: %#04x", port_addr)
+		//core.logInstruction("warn: PORT WRITE WITHOUT DEVICE ROUTE: %#04x", port_addr)
 
 		if port_addr == 0x00F1 {
 			// 80287 math coprocessor
@@ -142,28 +142,9 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 			return
 		}
 
-		if port_addr == 0x22 {
-			// MCR register setup
-			r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).McrRegisterInitialize(value)
-			return
-		}
-
-		if port_addr == 0x24 {
-			// RC1 roll compare register???
-			//log.Printf("RC1 roll compare register write")
-			r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).Rc1RegisterWrite(value)
-			return
-		}
-
-		if port_addr == 0x26 {
-			// DMA command register write
-			r.GetBus().FindSingleDevice(common.MODULE_INTEL_82335).(*intel82335.Intel82335).DmaCommandRegisterWrite(value)
-			return
-		}
-
 		if port_addr == 0x92 {
 			// A20 Gate
-			// log.Printf("A20 GATE: %#02x", value)
+			// core.logInstruction("A20 GATE: %#02x", value)
 			if value == 0x00 {
 				err := r.GetBus().SendMessageSingle(common.MODULE_MEMORY_ACCESS_CONTROLLER, bus.BusMessage{Subject: common.MESSAGE_DISABLE_A20_GATE, Data: []byte{value}})
 				if err != nil {

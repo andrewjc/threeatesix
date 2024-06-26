@@ -83,7 +83,8 @@ func (d *Intel8237) ReadAddr8(addr uint16) uint8 {
 			return d.ReadTemporaryRegister()
 		}
 	}
-	panic("implement me")
+	log.Fatalf("Intel8237 Invalid read address: %#04x", addr)
+	panic(0)
 }
 
 func (d *Intel8237) WriteAddr8(addr uint16, data uint8) {
@@ -410,7 +411,7 @@ func (d *Intel8237) HandleDMATransfer(channel uint8) {
 	if transferType == 0x01 {
 		// Write transfer
 		for i := uint16(0); i < count; i++ {
-			data, _ := memoryController.ReadMemoryAddr8(uint32(sourceAddr))
+			data, _ := memoryController.ReadMemoryValue8(uint32(sourceAddr))
 			err := memoryController.WriteMemoryAddr8(uint32(destinationAddr), data)
 			if err != nil {
 				log.Printf("DMA Write Error: %v", err)
@@ -422,7 +423,7 @@ func (d *Intel8237) HandleDMATransfer(channel uint8) {
 	} else if transferType == 0x02 {
 		// Read transfer
 		for i := uint16(0); i < count; i++ {
-			data, _ := memoryController.ReadMemoryAddr8(uint32(sourceAddr))
+			data, _ := memoryController.ReadMemoryValue8(uint32(sourceAddr))
 			err := memoryController.WriteMemoryAddr8(uint32(destinationAddr), data)
 			if err != nil {
 				log.Printf("DMA Read Error: %v", err)

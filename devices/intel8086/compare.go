@@ -125,7 +125,7 @@ func INSTR_TEST(core *CpuCore) {
 		}
 
 	default:
-		log.Printf("Unsupported TEST opcode: %#x\n", core.currentOpCodeBeingExecuted)
+		core.logInstruction("Unsupported TEST opcode: %#x\n", core.currentOpCodeBeingExecuted)
 		return
 	}
 
@@ -223,11 +223,11 @@ func INSTR_CMP(core *CpuCore) {
 	case 0xA6: // CMPS m8, m8
 		address1 := core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI)
 		address2 := core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI)
-		tmp1, err := core.memoryAccessController.ReadMemoryAddr8(address1)
+		tmp1, err := core.memoryAccessController.ReadMemoryValue8(address1)
 		if err != nil {
 			return
 		}
-		tmp2, err := core.memoryAccessController.ReadMemoryAddr8(address2)
+		tmp2, err := core.memoryAccessController.ReadMemoryValue8(address2)
 		if err != nil {
 			return
 		}
@@ -240,11 +240,11 @@ func INSTR_CMP(core *CpuCore) {
 	case 0xA7: // CMPS m16, m16
 		address1 := core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.SI)
 		address2 := core.SegmentAddressToLinearAddress(core.registers.DS, core.registers.DI)
-		tmp1, err := core.memoryAccessController.ReadMemoryAddr16(address1)
+		tmp1, err := core.memoryAccessController.ReadMemoryValue16(address1)
 		if err != nil {
 			return
 		}
-		tmp2, err := core.memoryAccessController.ReadMemoryAddr16(address2)
+		tmp2, err := core.memoryAccessController.ReadMemoryValue16(address2)
 		if err != nil {
 			return
 		}

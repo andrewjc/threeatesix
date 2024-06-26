@@ -2,7 +2,9 @@ package intel82335
 
 import (
 	"fmt"
+	"github.com/andrewjc/threeatesix/common"
 	"github.com/andrewjc/threeatesix/devices/bus"
+
 	"log"
 	"strings"
 )
@@ -78,16 +80,37 @@ func (device *Intel82335) OnReceiveMessage(message bus.BusMessage) {
 }
 
 func (controller *Intel82335) GetPortMap() *bus.DevicePortMap {
-	return nil
+	return &bus.DevicePortMap{
+		ReadPorts:  []uint16{0x0022, 0x0024},
+		WritePorts: []uint16{0x0022, 0x0024},
+	}
 }
 
 func (controller *Intel82335) ReadAddr8(addr uint16) uint8 {
-	//TODO implement me
-	panic("implement me")
+	switch addr {
+	case 0x0022:
+		// Example: Read a system configuration register or similar
+		return controller.ReadSelectedRegister()
+	case 0x0024:
+		// Example: Read another important register
+		return controller.Rc1RegisterRead()
+	default:
+		log.Printf("Intel82335: Invalid read address: %#04x", addr)
+		return 0
+	}
 }
 
 func (controller *Intel82335) WriteAddr8(addr uint16, data uint8) {
-
+	switch addr {
+	case 0x0022:
+		// Example: Write to a system configuration register
+		controller.McrRegisterInitialize(data)
+	case 0x0024:
+		// Example: Write to another control register
+		controller.Rc1RegisterWrite(data)
+	default:
+		log.Printf("Intel82335: Invalid write address: %#04x", addr)
+	}
 }
 
 func (device *Intel82335) McrRegisterInitialize(registerValue uint8) {
@@ -104,14 +127,34 @@ func (device *Intel82335) McrRegisterInitialize(registerValue uint8) {
 	device.videoReadOnly = getRegisterBit(registerValue, MCR_VIDEO_READ_ONLY)
 
 	// Log the updated configuration
-	//log.Printf("MCR Set Config: %s", device.toString())
+	log.Printf("MCR Set Config: %s", device.toString())
+
+	if device.biosRomAccessEnabled {
+		log.Printf("BIOS ROM Access Enabled")
+
+		// Send a message to the bus to notify other devices of the change
+		device.bus.SendMessage(bus.BusMessage{
+			Subject: common.MESSAGE_BIOS_ROM_ACCESS_ENABLED,
+			Sender:  device.busId,
+			Data:    []byte{0},
+		})
+	} else {
+		log.Printf("BIOS ROM Access Disabled, BIOS Shadow Enabled")
+
+		// Send a message to the bus to notify other devices of the change
+		device.bus.SendMessage(bus.BusMessage{
+			Subject: common.MESSAGE_BIOS_ROM_ACCESS_DISABLED,
+			Sender:  device.busId,
+			Data:    []byte{0},
+		})
+	}
 }
 
 func (device *Intel82335) toString() string {
 	var strs []string
 
 	// Append configuration strings based on the current settings
-	if !device.biosRomAccessEnabled {
+	if device.biosRomAccessEnabled {
 		strs = append(strs, "BiosRomAccessEnabled")
 	} else {
 		strs = append(strs, "BiosRomAccessDisabled,BiosRomShadowEnabled")
@@ -172,6 +215,17 @@ func (controller *Intel82335) Rc1RegisterRead() uint8 {
 func (controller *Intel82335) Rc1RegisterWrite(value uint8) {
 	// Write the value to the RC1 roll compare register
 	controller.rc1RollCompareRegister = value
+
+	// Log the updated value
+	log.Printf("RC1 Register Write: %#02x", value)
+
+	// Send a message to the bus to notify other devices of the change
+	controller.bus.SendMessage(bus.BusMessage{
+		Subject: common.MESSAGE_RC1_REGISTER_UPDATE,
+		Sender:  controller.busId,
+		Data:    []byte{value},
+	})
+
 }
 
 func (controller *Intel82335) DmaCommandRegisterWrite(value uint8) {
