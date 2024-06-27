@@ -150,7 +150,6 @@ func INSTR_ADC(core *CpuCore) {
 	updateFlags()
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_ADD(core *CpuCore) {
@@ -368,7 +367,6 @@ func INSTR_ADD(core *CpuCore) {
 	core.logInstruction(fmt.Sprintf("[%#04x] ADD %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_AND(core *CpuCore) {
@@ -631,7 +629,6 @@ success:
 	core.registers.SetFlag(OverFlowFlag, (sign1^sign2 == 0) && (sign1^signr == 1))
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_OR(core *CpuCore) {
@@ -827,7 +824,7 @@ func INSTR_OR(core *CpuCore) {
 
 	// Increment instruction pointer
 	core.logInstruction(fmt.Sprintf("[%#04x] OR %s, %s", core.GetCurrentlyExecutingInstructionAddress(), dstName, srcName))
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
 }
 
 func INSTR_XOR(core *CpuCore) {
@@ -1074,7 +1071,6 @@ success:
 
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_SUB(core *CpuCore) {
@@ -1347,7 +1343,6 @@ success:
 	core.logInstruction(fmt.Sprintf("[%#04x] SUB %s, %s", core.GetCurrentlyExecutingInstructionAddress(), destName, srcName))
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_INC(core *CpuCore) {
@@ -1371,7 +1366,6 @@ func INSTR_INC(core *CpuCore) {
 		doCoreDump(core)
 	}
 
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_INC_RM16(core *CpuCore) {
@@ -1399,7 +1393,7 @@ func INSTR_INC_RM16(core *CpuCore) {
 
 eof:
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", destName))
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
 }
 
 func INSTR_INC_SHORT_REL8(core *CpuCore) {
@@ -1436,7 +1430,7 @@ func INSTR_INC_SHORT_REL8(core *CpuCore) {
 
 eof:
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", destName))
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
 }
 
 func INSTR_DEC(core *CpuCore) {
@@ -1459,14 +1453,12 @@ func INSTR_DEC(core *CpuCore) {
 
 			*val = result
 
-			core.logInstruction(fmt.Sprintf("[%#04x] dec %s", core.GetCurrentlyExecutingInstructionAddress(), valName))
+			core.logInstruction(fmt.Sprintf("[%#04x] DEC %s", core.GetCurrentlyExecutingInstructionAddress(), valName))
 		}
 	default:
 		log.Println(fmt.Printf("Unhandled DEC instruction:  %#04x", core.currentOpCodeBeingExecuted))
 		doCoreDump(core)
 	}
-
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_DEC_RM16(core *CpuCore) {
@@ -1500,7 +1492,6 @@ func INSTR_DEC_RM16(core *CpuCore) {
 
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "DEC", destName))
 
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_DAS(core *CpuCore) {
@@ -1523,7 +1514,6 @@ func INSTR_DAS(core *CpuCore) {
 
 	core.logInstruction(fmt.Sprintf("[%#04x] das", core.GetCurrentlyExecutingInstructionAddress()))
 
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_DAA(core *CpuCore) {
@@ -1546,7 +1536,6 @@ func INSTR_DAA(core *CpuCore) {
 
 	core.logInstruction(fmt.Sprintf("[%#04x] daa", core.GetCurrentlyExecutingInstructionAddress()))
 
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_AAA(core *CpuCore) {
@@ -1567,7 +1556,6 @@ func INSTR_AAA(core *CpuCore) {
 
 	core.logInstruction(fmt.Sprintf("[%#04x] aaa", core.GetCurrentlyExecutingInstructionAddress()))
 
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_AAS(core *CpuCore) {
@@ -1588,7 +1576,6 @@ func INSTR_AAS(core *CpuCore) {
 
 	core.logInstruction(fmt.Sprintf("[%#04x] aas", core.GetCurrentlyExecutingInstructionAddress()))
 
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_SHIFT(core *CpuCore) {
@@ -1826,7 +1813,6 @@ func INSTR_SHIFT(core *CpuCore) {
 	}
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_STC(core *CpuCore) {
@@ -2094,7 +2080,6 @@ success:
 	core.registers.SetFlag(OverFlowFlag, (sign1 == 1 && sign2 == 0 && signr == 0) || (sign1 == 0 && sign2 == 1 && signr == 1))
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_IMUL(core *CpuCore) {
@@ -2267,7 +2252,6 @@ func INSTR_IMUL(core *CpuCore) {
 	core.registers.SetFlag(ZeroFlag, result == 0)
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(uint32(result))%2 == 0)
 
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_MUL(core *CpuCore) {
@@ -2337,7 +2321,6 @@ success:
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_DIV(core *CpuCore) {
@@ -2407,7 +2390,6 @@ success:
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(result)%2 == 0)
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_IDIV(core *CpuCore) {
@@ -2477,7 +2459,6 @@ success:
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(uint32(result))%2 == 0)
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_NEG(core *CpuCore) {
@@ -2546,7 +2527,6 @@ success:
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(uint32(result))%2 == 0)
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_NOT(core *CpuCore) {
@@ -2618,8 +2598,6 @@ success:
 	core.registers.SetFlag(ParityFlag, bits.OnesCount32(uint32(result))%2 == 0)
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
-
 }
 
 func calculateParity(value uint16) bool {

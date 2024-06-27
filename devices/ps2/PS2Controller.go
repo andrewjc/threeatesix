@@ -28,6 +28,24 @@ type Ps2Controller struct {
 	outputPort           uint8
 	testInputs           uint8
 
+	commandByte        uint8
+	lastCommand        uint8
+	expectingParameter bool
+	selfTestPassed     bool
+	keyboardEnabled    bool
+	mouseEnabled       bool
+	keyboardIRQEnabled bool
+	mouseIRQEnabled    bool
+
+	refreshCycleToggle   bool
+	ioChannelCheck       bool
+	ioChannelCheckStatus bool
+	keyboardA20          bool
+	outputRegisterFull   bool
+	inputRegisterFull    bool
+	clockGate2           bool
+	speakerData          bool
+
 	endpoint Ps2Device
 }
 
@@ -85,7 +103,39 @@ func (controller *Ps2Controller) OnReceiveMessage(message bus.BusMessage) {
 }
 
 func CreatePS2Controller() *Ps2Controller {
-	return &Ps2Controller{}
+	controller := &Ps2Controller{
+		port1_enabled:        true,
+		port2_enabled:        true,
+		dataPortWriteEnabled: true,
+		dataPortReadEnabled:  false,
+		selfTestPassed:       true,
+		keyboardEnabled:      false,
+		mouseEnabled:         false,
+		keyboardIRQEnabled:   false,
+		mouseIRQEnabled:      false,
+	}
+	controller.resetController()
+	return controller
+}
+
+func (controller *Ps2Controller) resetController() {
+	controller.commandByte = 0x5D // Default command byte value
+	controller.lastCommand = 0
+	controller.expectingParameter = false
+	controller.systemFlag = false
+	controller.isCommand = false
+	controller.ioChannelCheck = false
+	controller.ioChannelCheckStatus = false
+	controller.keyboardLocked = false
+	controller.auxiliaryBufferFull = false
+	controller.timeout = false
+	controller.parityError = false
+	controller.inputBuffer = 0
+	controller.outputBuffer = 0
+	controller.systemControlPort = 0
+	controller.updateSystemControlPort()
+
+	log.Println("PS/2 Controller: System Reset requested")
 }
 
 func (controller *Ps2Controller) GetBus() *bus.Bus {
@@ -97,8 +147,38 @@ func (controller *Ps2Controller) SetBus(bus *bus.Bus) {
 }
 
 func (controller *Ps2Controller) WriteDataPort(value uint8) {
-	controller.isCommand = false
-	controller.BufferInputData(value)
+	if controller.expectingParameter {
+		controller.handleCommandParameter(value)
+	} else {
+		// Handle data port writes (e.g., sending commands to keyboard/mouse)
+		if controller.port1_enabled && controller.endpoint != nil {
+			controller.endpoint.SendData(value)
+		}
+	}
+}
+
+func (controller *Ps2Controller) handleCommandParameter(value uint8) {
+	switch controller.lastCommand {
+	case 0x60: // Write command byte
+		controller.commandByte = value
+		controller.updateControllerState()
+	case 0xD1: // Write output port
+		controller.WriteOutputPort(value)
+	case 0xD4: // Write to second PS/2 port
+		if controller.port2_enabled {
+			// Send to mouse device if implemented
+		}
+	default:
+		log.Printf("Unexpected parameter for command [%#02x]: [%#02x]", controller.lastCommand, value)
+	}
+	controller.expectingParameter = false
+}
+
+func (controller *Ps2Controller) updateControllerState() {
+	controller.keyboardEnabled = controller.commandByte&0x10 != 0
+	controller.mouseEnabled = controller.commandByte&0x20 != 0
+	controller.keyboardIRQEnabled = controller.commandByte&0x01 != 0
+	controller.mouseIRQEnabled = controller.commandByte&0x02 != 0
 }
 
 func (controller *Ps2Controller) WriteControlPort(value uint8) {
@@ -150,46 +230,43 @@ func (controller *Ps2Controller) updateStatusRegister() {
 func (controller *Ps2Controller) ReadDataPort() uint8 {
 	data := controller.outputBuffer
 	controller.DisableDataPortReadyForRead()
+	controller.outputRegisterFull = false
+	controller.updateSystemControlPort()
 	return data
 }
 
 func (controller *Ps2Controller) WriteCommandRegister(value uint8) {
-	log.Printf("PS2 controller write command: [%#04x]", value)
+	controller.lastCommand = value
+	controller.expectingParameter = false
+
 	switch value {
-	case 0x20:
-		controller.BufferOutputData(controller.configurationByte)
-	case 0x60:
-		controller.configurationByte = controller.inputBuffer
-	case 0xA7:
+	case 0x20: // Read command byte
+		controller.BufferOutputData(controller.commandByte)
+	case 0x60: // Write command byte
+		controller.expectingParameter = true
+	case 0xA7: // Disable second PS/2 port
 		controller.port2_enabled = false
-	case 0xA8:
+	case 0xA8: // Enable second PS/2 port
 		controller.port2_enabled = true
-	case 0xA9:
+	case 0xA9: // Test second PS/2 port
 		controller.BufferOutputData(controller.TestPort2())
-	case 0xAA:
-		controller.BufferOutputData(0x55)
-	case 0xAB:
+	case 0xAA: // Test PS/2 Controller
+		controller.performSelfTest()
+	case 0xAB: // Test first PS/2 port
 		controller.BufferOutputData(controller.TestPort1())
-	case 0xAD:
+	case 0xAD: // Disable first PS/2 port
 		controller.port1_enabled = false
-	case 0xAE:
+	case 0xAE: // Enable first PS/2 port
 		controller.port1_enabled = true
-	case 0xC0:
-		controller.BufferOutputData(controller.ReadInputPort())
-	case 0xD0:
-		controller.BufferOutputData(controller.ReadOutputPort())
-	case 0xD1:
-		controller.WriteOutputPort(controller.inputBuffer)
-	case 0xD2:
-		controller.BufferOutputData(controller.inputBuffer)
-	case 0xD3:
-		controller.BufferOutputData(controller.inputBuffer)
-	case 0xD4:
-		controller.endpoint.SendData(controller.inputBuffer)
-	case 0xF0:
-		controller.BufferOutputData(controller.ReadTestInputs())
+	case 0xF0: // Pulse output line
+		// Implement pulse output line logic if needed
+	case 0xFE: // Resend
+		controller.resetController()
+	case 0xFF: // Reset
+		controller.resetController()
+		controller.BufferOutputData(0xFA) // ACK
 	default:
-		log.Printf("Unknown PS2 controller write command: [%#04x]", value)
+		log.Printf("Unknown PS2 controller command: [%#02x]", value)
 	}
 }
 
@@ -220,16 +297,12 @@ func (controller *Ps2Controller) ConnectDevice(device Ps2Device) {
 
 func (controller *Ps2Controller) BufferInputData(data uint8) {
 	controller.inputBuffer = data
-	controller.DisableDataPortReadyForRead()
 	controller.DisableDataPortReadyForWrite()
-	interruptMessage := bus.BusMessage{
-		Subject: common.MESSAGE_INTERRUPT_RAISE,
-		Sender:  controller.busId,
-		Data:    []byte{byte(2)},
-	}
-	err := controller.bus.SendMessageSingle(common.MODULE_INTERRUPT_CONTROLLER_1, interruptMessage)
-	if err != nil {
-		log.Printf("8259A: Error sending interrupt request message: %v", err)
+	controller.EnableDataPortReadyForRead()
+	controller.outputRegisterFull = true
+	controller.updateSystemControlPort()
+	if controller.keyboardIRQEnabled {
+		controller.triggerInterrupt()
 	}
 }
 
@@ -244,43 +317,37 @@ func (controller *Ps2Controller) BufferOutputData(data uint8) {
 }
 
 func (controller *Ps2Controller) ReadSystemControlPort() uint8 {
+	controller.updateSystemControlPort()
 	return controller.systemControlPort
+}
+
+func (controller *Ps2Controller) updateSystemControlPort() {
+	controller.systemControlPort &= 0x0F // Clear the upper 4 bits
+
+	if controller.ioChannelCheck {
+		controller.systemControlPort |= 0x10
+	}
+	if controller.ioChannelCheckStatus {
+		controller.systemControlPort |= 0x20
+	}
+	if controller.refreshCycleToggle {
+		controller.systemControlPort |= 0x40
+	}
+	controller.refreshCycleToggle = !controller.refreshCycleToggle // Toggle for next read
+
+	if controller.outputRegisterFull {
+		controller.systemControlPort |= 0x80
+	}
 }
 
 func (controller *Ps2Controller) WriteSystemControlPort(data uint8) {
 	controller.systemControlPort = data
+	controller.speakerData = data&0x02 != 0
+	controller.clockGate2 = data&0x01 != 0
 
-	if controller.systemControlPort&0x01 == 0x01 {
-		controller.systemFlag = true
-	} else {
-		controller.systemFlag = false
+	if data&0x80 != 0 {
+		controller.ioChannelCheckStatus = false
 	}
-
-	if controller.systemControlPort&0x02 == 0x02 {
-		controller.keyboardLocked = true
-	} else {
-		controller.keyboardLocked = false
-	}
-
-	if controller.systemControlPort&0x04 == 0x04 {
-		controller.auxiliaryBufferFull = true
-	} else {
-		controller.auxiliaryBufferFull = false
-	}
-
-	if controller.systemControlPort&0x08 == 0x08 {
-		controller.timeout = true
-	} else {
-		controller.timeout = false
-	}
-
-	if controller.systemControlPort&0x10 == 0x10 {
-		controller.parityError = true
-	} else {
-		controller.parityError = false
-	}
-
-	controller.updateStatusRegister()
 }
 
 func (controller *Ps2Controller) TestPort1() uint8 {
@@ -317,4 +384,48 @@ func (controller *Ps2Controller) WriteOutputPort(data uint8) {
 func (controller *Ps2Controller) ReadTestInputs() uint8 {
 	// Implement reading test inputs
 	return controller.testInputs
+}
+
+func (controller *Ps2Controller) performSelfTest() {
+	if controller.selfTestPassed {
+		controller.BufferOutputData(0x55) // Test passed
+	} else {
+		controller.BufferOutputData(0xFC) // Test failed
+	}
+}
+
+func (controller *Ps2Controller) triggerInterrupt() {
+	interruptMessage := bus.BusMessage{
+		Subject: common.MESSAGE_INTERRUPT_RAISE,
+		Sender:  controller.busId,
+		Data:    []byte{byte(1)}, // IRQ 1 for keyboard
+	}
+	err := controller.bus.SendMessageSingle(common.MODULE_INTERRUPT_CONTROLLER_1, interruptMessage)
+	if err != nil {
+		log.Printf("PS/2 Controller: Error sending interrupt request message: %v", err)
+	}
+}
+
+func (controller *Ps2Controller) ResetKeyboard() {
+	if controller.endpoint != nil {
+		controller.endpoint.SendData(0xFF) // Send reset command to keyboard
+	}
+}
+
+func (controller *Ps2Controller) SetTypematicRateDelay(data uint8) {
+	if controller.endpoint != nil {
+		controller.endpoint.SendData(0xF3) // Set typematic rate/delay command
+		controller.endpoint.SendData(data) // Send the rate/delay value
+	}
+}
+
+func (controller *Ps2Controller) EnableKeyboardScanning() {
+	if controller.endpoint != nil {
+		controller.endpoint.SendData(0xF4) // Enable scanning command
+	}
+}
+
+func (controller *Ps2Controller) EnableIRQ1() {
+	controller.commandByte |= 0x01
+	controller.keyboardIRQEnabled = true
 }

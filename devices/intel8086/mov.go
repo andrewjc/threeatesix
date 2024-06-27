@@ -6,12 +6,12 @@ import (
 )
 
 func INSTR_MOV(core *CpuCore) {
-	core.currentByteAddr++
 
 	switch core.currentOpCodeBeingExecuted {
 	case 0xA0:
 		{
 			// mov al, moffs8*
+			core.currentByteAddr++
 			offset, err := core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr)
 			if err != nil {
 				core.logInstruction(fmt.Sprintf("Error reading memory: %s", err))
@@ -34,6 +34,7 @@ func INSTR_MOV(core *CpuCore) {
 		{
 
 			// mov ax, moffs16*
+			core.currentByteAddr++
 			offset, err := core.memoryAccessController.ReadMemoryValue16(core.currentByteAddr)
 			if err != nil {
 				goto eof
@@ -52,6 +53,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xA2:
 		{
 			// mov moffs8*, al
+			core.currentByteAddr++
 			offset, err := core.memoryAccessController.ReadMemoryValue8(core.currentByteAddr)
 			if err != nil {
 				goto eof
@@ -69,6 +71,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xA3:
 		{
 			// mov moffs16*, ax
+			core.currentByteAddr++
 			offset, err := core.memoryAccessController.ReadMemoryValue16(core.currentByteAddr)
 			if err != nil {
 				goto eof
@@ -86,6 +89,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xA4:
 		{
 			// movsb
+			core.currentByteAddr++
 			src := core.getSegmentOverride()
 			dest := core.registers.ES
 			srcAddr := core.SegmentAddressToLinearAddress(src, core.registers.SI)
@@ -114,6 +118,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xA5:
 		{
 			// movsw
+			core.currentByteAddr++
 			src := core.getSegmentOverride()
 			dest := core.registers.ES
 			srcAddr := core.SegmentAddressToLinearAddress(src, core.registers.SI)
@@ -143,10 +148,12 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7:
 		{
 			// mov r8, imm8
+			core.currentByteAddr++
 			regIndex := core.currentOpCodeBeingExecuted - 0xB0
 			r8 := core.registers.registers8Bit[regIndex]
 			r8Str := core.registers.index8ToString(regIndex)
 			val, err := core.readImm8()
+			core.currentByteAddr++
 			if err != nil {
 				goto eof
 			}
@@ -156,8 +163,10 @@ func INSTR_MOV(core *CpuCore) {
 	case 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
 		{
 			// mov r16, imm16
+			core.currentByteAddr++
 			regIndex := uint8(core.currentOpCodeBeingExecuted - 0xB8)
 			immVal, _, err := core.GetImmediate16()
+			core.currentByteAddr += 2
 			if err != nil {
 				goto eof
 			}
@@ -172,6 +181,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x88:
 		{
 			/* MOV r/m8, r8 */
+			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
@@ -192,6 +202,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x89:
 		{
 			/* MOV r/m16, r16 */
+			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
@@ -211,6 +222,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x8A:
 		{
 			/* MOV r8,r/m8 */
+			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
@@ -232,6 +244,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x8B:
 		{
 			/* mov r16, r/m16 */
+			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
@@ -253,6 +266,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x8C:
 		{
 			/* MOV r/m16,Sreg */
+			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
@@ -273,6 +287,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x8E:
 		{
 			/* MOV Sreg,r/m16 */
+			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
@@ -294,6 +309,7 @@ func INSTR_MOV(core *CpuCore) {
 	case 0x20:
 		{
 			/* MOV r32, cr0 */
+			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof
@@ -330,6 +346,7 @@ func INSTR_MOV(core *CpuCore) {
 		}
 	case 0x22:
 		{
+			core.currentByteAddr++
 			modrm, bytesConsumed, err := core.consumeModRm()
 			if err != nil {
 				goto eof

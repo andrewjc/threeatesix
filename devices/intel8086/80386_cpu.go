@@ -781,6 +781,29 @@ func (core *CpuCore) SetRegister16(registerIndex uint8, value uint16) (string, e
 	return core.registers.index16ToString(registerIndex), nil
 }
 
+func (core *CpuCore) GetRegister32(register *uint32) (uint32, string, uint8) {
+
+	var registerIndex uint8
+	for i, reg := range core.registers.registers32Bit {
+		if reg == register {
+			registerIndex = uint8(i)
+			break
+		}
+	}
+
+	if !core.flags.OperandSizeOverrideEnabled {
+		// find the index of the pointer address in registers16Bit
+		return *core.registers.registers32Bit[registerIndex], core.registers.index32ToString(uint8(registerIndex)), 32
+	} else {
+		return uint32(*core.registers.registers16Bit[registerIndex]), core.registers.index16ToString(uint8(registerIndex)), 16
+	}
+}
+
+func (core *CpuCore) SetRegister32(registerIndex uint8, value uint32) (string, error) {
+	core.registers.registers32Bit[registerIndex] = &value
+	return core.registers.index32ToString(registerIndex), nil
+}
+
 func (core *CpuCore) GetImmediate16() (uint32, uint8, error) {
 	if core.flags.OperandSizeOverrideEnabled {
 		imm32, err := core.readImm32()

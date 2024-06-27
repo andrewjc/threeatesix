@@ -55,7 +55,7 @@ func INSTR_LODS(core *CpuCore) {
 	}
 
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s %s", core.GetCurrentlyExecutingInstructionAddress(), prefixStr, operStr, extras))
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
 }
 
 func INSTR_STOSB(core *CpuCore) {
@@ -96,7 +96,6 @@ func INSTR_STOSB(core *CpuCore) {
 	// Log the instruction
 	core.logInstruction(fmt.Sprintf("[%#04x] STOSB", core.GetCurrentlyExecutingInstructionAddress()))
 
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 
 func INSTR_STOSD(core *CpuCore) {
@@ -137,5 +136,4 @@ func INSTR_STOSD(core *CpuCore) {
 	// Log the instruction
 	core.logInstruction(fmt.Sprintf("[%#04x] STOSD", core.GetCurrentlyExecutingInstructionAddress()))
 
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }

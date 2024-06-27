@@ -133,6 +133,11 @@ func (core *CpuCore) decodeInstruction() uint8 {
 		return 0
 	case 0x0F:
 		instructionImpl = core.handle2ByteOpcode()
+		if instructionImpl != nil {
+			instructionImpl(core)
+		} else {
+			core.handleUnrecognizedOpcode(instrByte)
+		}
 	case 0xFF:
 		handleGroup5Opcode(core)
 	case 0x80:
@@ -287,7 +292,8 @@ func handleGroup5Opcode(core *CpuCore) {
 		// PUSH rm16
 		INSTR_PUSH_RM16(core)
 	case 7:
-		core.logInstruction(fmt.Sprintf("Invalid Group 5 opcode: reg = 7 is undefined\n"))
+		doCoreDump(core)
+		panic("Invalid Group 5 opcode: reg = 7 is undefined")
 	default:
 		core.logInstruction(fmt.Sprintf("INSTR_FF_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 	}
@@ -351,8 +357,8 @@ func handleGroup5Opcode_32(core *CpuCore) {
 func handleGroup80opcode(core *CpuCore) {
 
 	core.currentByteAddr++
-	modrm, bytesConsumed, err := core.consumeModRm()
-	core.currentByteAddr += bytesConsumed
+	modrm, _, err := core.consumeModRm()
+	core.currentByteAddr--
 	if err != nil {
 		goto eof
 	}

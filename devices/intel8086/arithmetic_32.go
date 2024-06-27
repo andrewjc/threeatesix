@@ -32,7 +32,7 @@ func INSTR_INC_RM32(core *CpuCore) {
 	core.registers.SetFlag(OverFlowFlag, false) // Assume no overflow for INC
 
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", srcName))
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
 	return
 
 eof:
@@ -62,7 +62,7 @@ func INSTR_DEC_RM32(core *CpuCore) {
 	}
 
 	core.logInstruction(fmt.Sprintf("[%#04x] %s %s", core.GetCurrentlyExecutingInstructionAddress(), "INC", srcName))
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
 	return
 
 eof:

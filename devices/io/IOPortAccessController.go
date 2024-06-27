@@ -56,7 +56,7 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 		}
 
 		if addr == 0x80 {
-			// bios post diag
+			// Delay port - hack!
 			return 0x00
 		}
 
@@ -129,11 +129,6 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 
 		if port_addr == 0x82 {
 			// unknown?
-			return
-		}
-
-		if port_addr == 0x83 {
-			// int 1a ? - RTC
 			return
 		}
 

@@ -139,7 +139,7 @@ func INSTR_TEST(core *CpuCore) {
 	core.registers.SetFlag(OverFlowFlag, false) // Always cleared
 
 	// Update IP to reflect bytes read
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
+
 }
 
 func INSTR_XCHG(core *CpuCore) {
@@ -211,7 +211,6 @@ func INSTR_XCHG(core *CpuCore) {
 	}
 
 eof:
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 }
 func INSTR_CMP(core *CpuCore) {
 	var term1, term2, result uint32
@@ -441,6 +440,28 @@ func INSTR_CMP(core *CpuCore) {
 		result = term1 - term2
 		dataSize = 16
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP AX, %#04x", core.GetCurrentlyExecutingInstructionAddress(), imm16))
+	case 0x75: //via handleGroup80opcode
+		// CMP AL, imm8
+		core.currentByteAddr++
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		rm16, rm16Str, err := core.readRm8(&modrm)
+		if err != nil {
+			return
+		}
+		imm8, err := core.readImm8()
+		if err != nil {
+			return
+		}
+		term1 = uint32(*rm16)
+		term2 = uint32(int8(imm8)) // Sign-extend the 8-bit immediate to 32-bit if necessary
+		result = term1 - term2
+		dataSize = 16
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, imm8))
 	default:
 		fmt.Printf("Unsupported opcode %#x\n", core.currentOpCodeBeingExecuted)
 		doCoreDump(core)
@@ -499,7 +520,5 @@ func INSTR_TEST_IMM16_AX(core *CpuCore) {
 	core.registers.SetFlag(ZeroFlag, result == 0)
 	core.registers.SetFlag(SignFlag, (result>>15)&0x01 == 1)
 	core.registers.SetFlag(OverFlowFlag, false) // Always cleared
-
-	core.registers.IP += uint16(core.currentByteAddr - core.currentByteDecodeStart)
 
 }

@@ -54,7 +54,7 @@ type PersonalComputer struct {
 }
 
 // BiosFilename - name of the bios image the virtual machine will boot up
-const BiosFilename = "bios/bios.bin"
+const BiosFilename = "bios/ami386.bin"
 const VideoBiosFilename = "bios/vgabios.bin"
 
 // MaxRAMBytes - the amount of ram installed in this virtual machine

@@ -196,12 +196,50 @@ func mapOpCodes(c *CpuCore) {
 
 	// Two-byte opcode map
 	opCodeMap2ByteHandlers := map[byte]OpCodeImpl{
-		0x01: INSTR_SMSW,
-		0x20: INSTR_MOV,
-		0x22: INSTR_MOV,
-		0x85: INSTR_TEST,
-		0x09: INSTR_WBINVD,
+		0x01: INSTR_ROUTER_2BYTE_01,
+		/*        0x00: INSTR_ROUTER_2BYTE_GROUP6,
+		    0x02: INSTR_LAR,
+		    0x03: INSTR_LSL,
+		    0x06: INSTR_CLTS,
+		    0x08: INSTR_INVD,
+		    0x09: INSTR_WBINVD,
+		    0x20: INSTR_MOVCR,
+		    0x22: INSTR_MOVDR,
+		    0x30: INSTR_WRMSR,
+		    0x31: INSTR_RDTSC,
+		    0x32: INSTR_RDMSR,
+		    0x33: INSTR_RDPMC,
+			0xA0: INSTR_PUSH_FS,
+			0xA1: INSTR_POP_FS,
+			0xA2: INSTR_CPUID,
+			0xA3: INSTR_BT,
+			0xA4: INSTR_SHLD,
+			0xA5: INSTR_SHLD_CL,
+			0xA8: INSTR_PUSH_GS,
+			0xA9: INSTR_POP_GS,
+			0xAB: INSTR_BTS,
+			0xAC: INSTR_SHRD,
+			0xAD: INSTR_SHRD_CL,
+			0xAF: INSTR_IMUL,
+			0xB0: INSTR_CMPXCHG,
+			0xB1: INSTR_CMPXCHG,
+			0xB6: INSTR_MOVZX,
+			0xB7: INSTR_MOVZX,
+			0xBA: INSTR_BITTEST,
+			0xBB: INSTR_BTC,
+			0xBC: INSTR_BSF,
+			0xBD: INSTR_BSR,
+			0xBE: INSTR_MOVSX,
+			0xBF: INSTR_MOVSX,*/
 	}
+
+	/*for i := 0x80; i <= 0x8F; i++ {
+		c.opCodeMap2Byte[byte(i)] = INSTR_JCC
+	}
+
+	for i := 0x90; i <= 0x9F; i++ {
+		c.opCodeMap2Byte[byte(i)] = INSTR_SETCC
+	}*/
 
 	// Transfer two-byte opcodes into the CPU core map
 	for k, v := range opCodeMap2ByteHandlers {

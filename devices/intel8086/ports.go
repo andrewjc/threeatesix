@@ -20,7 +20,11 @@ func INSTR_IN(core *CpuCore) {
 
 			data := core.ioPortAccessController.ReadAddr8(uint16(imm))
 
-			core.registers.AL = data
+			if imm == 0x80 {
+				// do nothing
+			} else {
+				core.registers.AL = data
+			}
 			core.logInstruction(fmt.Sprintf("[%#04x] IN AL, IMM8 (Port: %#04x, data = %#08x)", core.GetCurrentlyExecutingInstructionAddress(), imm, data))
 		}
 	case 0xE5:

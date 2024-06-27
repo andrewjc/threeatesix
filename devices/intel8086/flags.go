@@ -83,27 +83,52 @@ func INSTR_CLC(core *CpuCore) {
 }
 
 func INSTR_SMSW(core *CpuCore) {
-	var value uint16
 	var destName string
 
-	core.currentByteAddr++
+	// Get the Machine Status Word (MSW), which is the lower 16 bits of CR0
+	msw := uint16(core.registers.CR0 & 0xFFFF)
+
 	modrm, bytesConsumed, err := core.consumeModRm()
 	if err != nil {
 		goto eof
 	}
 	core.currentByteAddr += bytesConsumed
 
-	value = uint16(core.registers.CR0)
+	switch modrm.reg {
+	case 4, 5, 7: // All variants of SMSW
+		if modrm.mod == 3 { // Register operand
+			if modrm.reg == 5 { // 32-bit register for SMSW r32/m16
+				tmp := uint32(modrm.rm)
+				var regValue uint32
+				regValue, destName, _ = core.GetRegister32(&tmp)
+				_, err := core.SetRegister32(modrm.rm, (regValue&0xFFFF0000)|uint32(msw))
+				if err != nil {
+					return
+				}
+			} else { // 16-bit register for SMSW r/m16
+				tmp := uint16(modrm.rm)
+				_, destName, _ = core.GetRegister16(&tmp)
+				_, err := core.SetRegister16(modrm.rm, msw)
+				if err != nil {
+					return
+				}
+			}
+		} else { // Memory operand
+			var addr uint32
 
-	// mask out the reserved bits
-	value = value & 0xFFFF
+			// Calculate the effective address when accessing memory
+			addr, destName = core.getEffectiveAddress32(&modrm) // Discard the address description here as it's not used
 
-	destName, err = core.writeRm16(&modrm, &value)
-	if err != nil {
-		core.logInstruction("Error in INSTR_SMSW: %s\n", err)
+			// Write the 16-bit value to memory
+			err := core.memoryAccessController.WriteMemoryAddr16(uint32(addr), msw)
+			if err != nil {
+				return
+			}
+		}
+	default:
+		core.logInstruction(fmt.Sprintf("Unrecognized SMSW opcode: 0x0F 0x01 0x%02X", modrm.reg))
 		doCoreDump(core)
-		panic(0)
-		return
+		panic(fmt.Sprintf("Unrecognized SMSW opcode: 0x0F 0x01 0x%02X", modrm.reg))
 	}
 
 eof:
