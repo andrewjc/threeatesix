@@ -41,6 +41,7 @@ func (mem *IOPortAccessController) OnReceiveMessage(message bus.BusMessage) {
 }
 
 func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
+	log.Printf("ReadAddr8: %#04x", addr)
 
 	devicePortRegistration := r.bus.GetDeviceOnPort(addr)
 	if devicePortRegistration != nil {
@@ -71,7 +72,7 @@ func (r *IOPortAccessController) ReadAddr8(addr uint16) uint8 {
 }
 
 func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
-	//print("WriteAddr8: ", port_addr, " ", value, "\n")
+	// log.Printf("WriteAddr8: %#04x, %#02x", port_addr, value)
 	devicePortRegistration := r.bus.GetDeviceOnPort(port_addr)
 	if devicePortRegistration != nil {
 		devicePortRegistration.Device.WriteAddr8(port_addr, value)
@@ -109,6 +110,16 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 		if port_addr == 0x80 && value > 0x00 {
 			// bios post diag
 			log.Printf("BIOS POST: %#02x - %s", value, common.BiosPostCodeToString(value))
+
+			if value == 0x40 {
+				// disable a20 line
+				err := r.GetBus().SendMessageSingle(common.MODULE_MEMORY_ACCESS_CONTROLLER, bus.BusMessage{Subject: common.MESSAGE_DISABLE_A20_GATE, Data: []byte{value}})
+				if err != nil {
+					log.Fatalf("Failed to send message to memory access controller: %s", err)
+					return
+				}
+			}
+
 			return
 		}
 
@@ -124,11 +135,6 @@ func (r *IOPortAccessController) WriteAddr8(port_addr uint16, value uint8) {
 		}
 		if port_addr == 0x81 && value == 0x00 {
 			// port 80 delay
-			return
-		}
-
-		if port_addr == 0x82 {
-			// unknown?
 			return
 		}
 

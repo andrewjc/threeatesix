@@ -153,7 +153,6 @@ func INSTR_MOV(core *CpuCore) {
 			r8 := core.registers.registers8Bit[regIndex]
 			r8Str := core.registers.index8ToString(regIndex)
 			val, err := core.readImm8()
-			core.currentByteAddr++
 			if err != nil {
 				goto eof
 			}
@@ -166,7 +165,6 @@ func INSTR_MOV(core *CpuCore) {
 			core.currentByteAddr++
 			regIndex := uint8(core.currentOpCodeBeingExecuted - 0xB8)
 			immVal, _, err := core.GetImmediate16()
-			core.currentByteAddr += 2
 			if err != nil {
 				goto eof
 			}

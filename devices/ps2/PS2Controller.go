@@ -46,7 +46,8 @@ type Ps2Controller struct {
 	clockGate2           bool
 	speakerData          bool
 
-	endpoint Ps2Device
+	endpoint   Ps2Device
+	a20Enabled bool
 }
 
 type Ps2Device interface {
@@ -99,7 +100,7 @@ func (controller *Ps2Controller) SetDeviceBusId(id uint32) {
 }
 
 func (controller *Ps2Controller) OnReceiveMessage(message bus.BusMessage) {
-	// Handle received messages here
+
 }
 
 func CreatePS2Controller() *Ps2Controller {
@@ -133,9 +134,31 @@ func (controller *Ps2Controller) resetController() {
 	controller.inputBuffer = 0
 	controller.outputBuffer = 0
 	controller.systemControlPort = 0
+	controller.a20Enabled = false
+	controller.keyboardA20 = false
+	controller.updateOutputPort()
 	controller.updateSystemControlPort()
 
 	log.Println("PS/2 Controller: System Reset requested")
+}
+
+func (controller *Ps2Controller) updateOutputPort() {
+	// Update the output port based on current state
+	var outputPort uint8 = 0
+	if controller.a20Enabled {
+		outputPort |= 0x02
+	}
+	if controller.keyboardA20 {
+		outputPort |= 0x01
+	}
+	if controller.keyboardEnabled {
+		outputPort |= 0x04
+	}
+	if controller.mouseEnabled {
+		outputPort |= 0x08
+	}
+
+	controller.outputPort = outputPort
 }
 
 func (controller *Ps2Controller) GetBus() *bus.Bus {
@@ -265,6 +288,10 @@ func (controller *Ps2Controller) WriteCommandRegister(value uint8) {
 	case 0xFF: // Reset
 		controller.resetController()
 		controller.BufferOutputData(0xFA) // ACK
+	case 0xD0: // Read Output Port
+		controller.BufferOutputData(controller.ReadOutputPort())
+	case 0xD1: // Write Output Port
+		controller.expectingParameter = true
 	default:
 		log.Printf("Unknown PS2 controller command: [%#02x]", value)
 	}
@@ -322,8 +349,13 @@ func (controller *Ps2Controller) ReadSystemControlPort() uint8 {
 }
 
 func (controller *Ps2Controller) updateSystemControlPort() {
-	controller.systemControlPort &= 0x0F // Clear the upper 4 bits
+	// Preserve the lower 4 bits (they are writable)
+	preservedBits := controller.systemControlPort & 0x0F
 
+	// Clear the upper 4 bits
+	controller.systemControlPort &= 0x0F
+
+	// Set the upper 4 bits based on system state
 	if controller.ioChannelCheck {
 		controller.systemControlPort |= 0x10
 	}
@@ -338,16 +370,46 @@ func (controller *Ps2Controller) updateSystemControlPort() {
 	if controller.outputRegisterFull {
 		controller.systemControlPort |= 0x80
 	}
+
+	// Restore the preserved lower 4 bits
+	controller.systemControlPort |= preservedBits
+
+	if controller.a20Enabled {
+		controller.systemControlPort |= 0x02
+	} else {
+		controller.systemControlPort &= ^uint8(0x02)
+	}
 }
 
 func (controller *Ps2Controller) WriteSystemControlPort(data uint8) {
-	controller.systemControlPort = data
+	// Preserve the upper 4 bits (they are read-only)
+	preservedBits := controller.systemControlPort & 0xF0
+
+	// Update the lower 4 bits based on the written data
+	controller.systemControlPort = preservedBits | (data & 0x0F)
+
+	// Update specific flags based on the written data
 	controller.speakerData = data&0x02 != 0
 	controller.clockGate2 = data&0x01 != 0
 
-	if data&0x80 != 0 {
-		controller.ioChannelCheckStatus = false
+	// Toggle speaker if bit 1 changes
+	if (data & 0x02) != (controller.systemControlPort & 0x02) {
+		// Implement any speaker toggling logic here if needed
 	}
+
+	// Handle system reset if bit 0 is set (System Reset line)
+	if data&0x01 != 0 {
+		controller.handleSystemReset()
+	}
+
+	newA20Status := data&0x02 != 0
+	if newA20Status != controller.a20Enabled {
+		controller.a20Enabled = newA20Status
+		controller.handleA20Change()
+	}
+
+	// Update the system control port for reading
+	controller.updateSystemControlPort()
 }
 
 func (controller *Ps2Controller) TestPort1() uint8 {
@@ -372,12 +434,32 @@ func (controller *Ps2Controller) ReadInputPort() uint8 {
 }
 
 func (controller *Ps2Controller) ReadOutputPort() uint8 {
-	// Implement reading from the output port
-	return controller.outputPort
+	var outputPort uint8 = 0
+
+	if controller.a20Enabled {
+		outputPort |= 0x02 // Set bit 1 if A20 is enabled
+	}
+	if controller.keyboardA20 {
+		outputPort |= 0x01 // Set bit 0 if keyboard A20 is enabled
+	}
+
+	if controller.keyboardEnabled {
+		outputPort |= 0x04 // Set bit 2 if keyboard is enabled
+	}
+
+	if controller.mouseEnabled {
+		outputPort |= 0x08 // Set bit 3 if mouse is enabled
+	}
+
+	return outputPort
 }
 
 func (controller *Ps2Controller) WriteOutputPort(data uint8) {
-	// Implement writing to the output port
+	controller.a20Enabled = (data & 0x02) != 0
+	controller.keyboardA20 = (data & 0x01) != 0
+
+	controller.updateOutputPort()
+
 	controller.outputPort = data
 }
 
@@ -428,4 +510,14 @@ func (controller *Ps2Controller) EnableKeyboardScanning() {
 func (controller *Ps2Controller) EnableIRQ1() {
 	controller.commandByte |= 0x01
 	controller.keyboardIRQEnabled = true
+}
+
+func (controller *Ps2Controller) handleSystemReset() {
+	// Implement system reset logic here
+	log.Println("PS/2 Controller: System Reset requested")
+	// You might want to trigger a system-wide reset or specific PS/2 controller reset
+	controller.resetController()
+}
+
+func (controller *Ps2Controller) handleA20Change() {
 }

@@ -51,18 +51,44 @@ func (d *Intel8237) OnReceiveMessage(message bus.BusMessage) {
 func (d *Intel8237) GetPortMap() *bus.DevicePortMap {
 	if d.isPrimaryDevice {
 		return &bus.DevicePortMap{
-			ReadPorts: []uint16{0x0008, 0x000D},
+			ReadPorts: []uint16{
+				0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, // Channel registers
+				0x0008,                         // Status register
+				0x000D,                         // Temporary register
+				0x0087, 0x0083, 0x0081, 0x0082, // Page registers
+			},
 			WritePorts: []uint16{
-				0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007,
-				0x0008, 0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
+				0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, // Channel registers
+				0x0008,                         // Command register
+				0x0009,                         // Request register
+				0x000A,                         // Single mask register bit
+				0x000B,                         // Mode register
+				0x000C,                         // Clear byte pointer flip-flop
+				0x000D,                         // Master clear / Temporary register
+				0x000E,                         // Clear mask register
+				0x000F,                         // Write all mask register bits
+				0x0087, 0x0083, 0x0081, 0x0082, // Page registers
 			},
 		}
 	} else if d.isSecondaryDevice {
 		return &bus.DevicePortMap{
-			ReadPorts: []uint16{0x00D0, 0x00DA},
+			ReadPorts: []uint16{
+				0x00C0, 0x00C2, 0x00C4, 0x00C6, 0x00C8, 0x00CA, 0x00CC, 0x00CE, // Channel registers
+				0x00D0,                         // Status register
+				0x00DA,                         // Temporary register
+				0x008F, 0x008B, 0x0089, 0x008A, // Page registers
+			},
 			WritePorts: []uint16{
-				0x00C0, 0x00C2, 0x00C4, 0x00C6, 0x00C8, 0x00CA, 0x00CC, 0x00CE,
-				0x00D0, 0x00D2, 0x00D4, 0x00D6, 0x00D8, 0x00DA, 0x00DC, 0x00DE,
+				0x00C0, 0x00C2, 0x00C4, 0x00C6, 0x00C8, 0x00CA, 0x00CC, 0x00CE, // Channel registers
+				0x00D0,                         // Command register
+				0x00D2,                         // Request register
+				0x00D4,                         // Single mask register bit
+				0x00D6,                         // Mode register
+				0x00D8,                         // Clear byte pointer flip-flop
+				0x00DA,                         // Master clear / Temporary register
+				0x00DC,                         // Clear mask register
+				0x00DE,                         // Write all mask register bits
+				0x008F, 0x008B, 0x0089, 0x008A, // Page registers
 			},
 		}
 	}
@@ -513,15 +539,40 @@ func (d *Intel8237) AcknowledgeDMA(channel uint8) {
 	d.HandleDMATransfer(channel)
 }
 
-func (d *Intel8237) StartDMATransfer(channel uint8, addr uint32, addr2 uint32, count uint16) {
-	// Start the DMA transfer on the specified channel
-	// Implement the logic to start the DMA transfer on the specified channel.
-	// This involves setting up the DMA controller to transfer data from the specified source address
-	// to the specified destination address for the specified count of bytes.
+func (d *Intel8237) StartDMATransfer(channel uint8, sourceAddr uint32, destAddr uint32, count uint16) {
+	// Ensure the channel is valid
+	if channel > 3 {
+		log.Printf("Error: Invalid DMA channel %d", channel)
+		return
+	}
 
-	// For now, we will just log the details of the DMA transfer.
+	// Set up the address registers
+	d.addressRegisters[channel] = uint16(sourceAddr & 0xFFFF)
+	d.pageRegisters[channel] = uint8((sourceAddr >> 16) & 0xFF)
+
+	// Set up the count register
+	d.countRegisters[channel] = count
+
+	// Set up the mode register
+	// Assume single transfer mode, address increment, and write transfer for this example
+	// You may want to make these configurable based on the specific needs of the transfer
+	d.modeRegisters[channel] = 0x44 | channel // 01000100 | channel
+
+	// Clear the byte pointer flip-flop
+	d.ClearBytePointerFlipFlop()
+
+	// Unmask the channel
+	d.WriteSingleMaskRegister(channel)
+
+	// Set the request bit for the channel
+	d.WriteRequestRegister(0x04 | channel)
+
+	// Log the start of the transfer
 	log.Printf("Starting DMA transfer on channel %d", channel)
-	log.Printf("Source address: %#08x", addr)
-	log.Printf("Destination address: %#08x", addr2)
+	log.Printf("Source address: %#08x", sourceAddr)
+	log.Printf("Destination address: %#08x", destAddr)
 	log.Printf("Count: %d", count)
+
+	// Start the transfer
+	d.HandleDMATransfer(channel)
 }

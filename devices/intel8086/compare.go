@@ -416,18 +416,43 @@ func INSTR_CMP(core *CpuCore) {
 		result = term1 - term2
 		dataSize = 16
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rm16Str, imm8))
-	case 0xBC:
+	case 0xB0:
 		// CMP AL, imm8
 		core.currentByteAddr++
 		imm8, err := core.readImm8()
 		if err != nil {
 			return
 		}
+
 		term1 = uint32(core.registers.AL)
 		term2 = uint32(imm8)
 		result = term1 - term2
 		dataSize = 8
+
 		core.logInstruction(fmt.Sprintf("[%#04x] CMP AL, %#02x", core.GetCurrentlyExecutingInstructionAddress(), imm8))
+	case 0xBC:
+		// CMP r/m8, imm8
+		core.currentByteAddr++
+		modrm, bytesConsumed, err := core.consumeModRm()
+		if err != nil {
+			return
+		}
+		core.currentByteAddr += bytesConsumed
+
+		rm8, rm8Str, err := core.readRm8(&modrm)
+		if err != nil {
+			return
+		}
+		imm8, err := core.readImm8()
+		if err != nil {
+			return
+		}
+		term1 = uint32(*rm8)
+		term2 = uint32(int8(imm8)) // Sign-extend the 8-bit immediate to 32-bit if necessary
+		result = term1 - term2
+		dataSize = 8
+		core.logInstruction(fmt.Sprintf("[%#04x] CMP %s, %#04x", core.GetCurrentlyExecutingInstructionAddress(), rm8Str, imm8))
+
 	case 0xBD:
 		// CMP AX, imm16
 		core.currentByteAddr++
@@ -457,6 +482,7 @@ func INSTR_CMP(core *CpuCore) {
 		if err != nil {
 			return
 		}
+
 		term1 = uint32(*rm16)
 		term2 = uint32(int8(imm8)) // Sign-extend the 8-bit immediate to 32-bit if necessary
 		result = term1 - term2
@@ -520,5 +546,29 @@ func INSTR_TEST_IMM16_AX(core *CpuCore) {
 	core.registers.SetFlag(ZeroFlag, result == 0)
 	core.registers.SetFlag(SignFlag, (result>>15)&0x01 == 1)
 	core.registers.SetFlag(OverFlowFlag, false) // Always cleared
+
+}
+
+func INSTR_CMP_RM32(core *CpuCore, modrm ModRm, immediate uint32) {
+	var term2 uint32 = immediate
+
+	tmp, srcName, err := core.readRm32(&modrm)
+	if err != nil {
+		core.dumpAndExit()
+	}
+	term1 := *tmp
+
+	// Perform the comparison
+	result := term2 - term2
+
+	dataSize := 32
+
+	// Set the flags based on the result
+	core.registers.SetFlag(CarryFlag, term1 < term2)
+	core.registers.SetFlag(ZeroFlag, result == 0)
+	core.registers.SetFlag(SignFlag, (result>>(dataSize-1))&0x01 == 1)
+	core.registers.SetFlag(OverFlowFlag, ((term1^term2)&(term1^result)&(1<<(dataSize-1))) != 0)
+
+	core.logInstruction(fmt.Sprintf("[%#04x] CMP %s %#02x", core.GetCurrentlyExecutingInstructionAddress(), srcName, immediate))
 
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/andrewjc/threeatesix/devices/io"
 	"github.com/andrewjc/threeatesix/devices/memmap"
 	"log"
+	"os"
 )
 
 func New80386CPU() *CpuCore {
@@ -766,7 +767,6 @@ func (core *CpuCore) GetRegister16(register *uint16) (uint32, string, uint8) {
 	}
 
 	if core.flags.OperandSizeOverrideEnabled {
-
 		// find the index of the pointer address in registers16Bit
 		return *core.registers.registers32Bit[registerIndex], core.registers.index32ToString(uint8(registerIndex)), 32
 
@@ -904,6 +904,11 @@ func (device *CpuCore) getSegmentOverride() SegmentRegister {
 	}
 
 	return device.registers.CS
+}
+
+func (device *CpuCore) dumpAndExit() {
+	doCoreDump(device)
+	os.Exit(1)
 }
 
 func INSTR_HLT(core *CpuCore) {

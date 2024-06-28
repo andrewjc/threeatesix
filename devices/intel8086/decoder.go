@@ -384,31 +384,44 @@ eof:
 }
 
 func handleGroup81opcode(core *CpuCore) {
-
 	core.currentByteAddr++
 	modrm, bytesConsumed, err := core.consumeModRm()
 	core.currentByteAddr += bytesConsumed
 	if err != nil {
-		goto eof
+		core.dumpAndExit()
+	}
+
+	var immediate uint32
+
+	if !core.Is32BitOperand() {
+		imm16, err := core.readImm16()
+		if err != nil {
+			core.dumpAndExit()
+		}
+		immediate = uint32(imm16)
+	} else {
+		immediate, err = core.readImm32()
+		if err != nil {
+			core.dumpAndExit()
+		}
 	}
 
 	switch modrm.reg {
 	case 0:
-		INSTR_ADD(core)
+		INSTR_ADD_RM32(core, modrm, immediate)
 	case 1:
-		INSTR_OR(core)
+		INSTR_OR_RM32(core, modrm, immediate)
 	case 4:
-		INSTR_AND(core)
+		INSTR_AND_RM32(core, modrm, immediate)
 	case 6:
-		INSTR_XOR(core)
+		INSTR_XOR_RM32(core, modrm, immediate)
 	case 7:
-		INSTR_CMP(core)
+		INSTR_CMP_RM32(core, modrm, immediate)
 	default:
 		log.Println(fmt.Sprintf("INSTR_81_OPCODE UNHANDLED OPER: (modrm: base:%d, reg:%d, mod:%d, rm: %d)\n\n", modrm.base, modrm.reg, modrm.mod, modrm.rm))
 		doCoreDump(core)
 		panic(0)
 	}
-eof:
 }
 
 func (core *CpuCore) GetAddressSize() int {
